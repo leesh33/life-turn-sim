@@ -201,7 +201,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   },
   {
     id: 'parenting_night', stage: 'family', at: [37, 3], when: function (s) { return s.flags.자녀; }, place: '아이 방 새벽',
-    title: '새벽 수유',
+    title: '아이의 새벽 수유',
     text: '새벽 3시, 아이가 웁니다. 내일은 중요한 보고가 있습니다. 배우자는 깊이 잠들었습니다.',
     choices: [
       { label: '내가 일어난다', result: '한 시간을 달랬습니다. 보고는 무사히 했지만 하루 종일 멍했습니다.', effects: { hp: -3, social: 3, mental: -1 } },
