@@ -230,7 +230,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'college_enter', stage: 'college', at: [20, 1], place: '캠퍼스', milestone: true, weight: 6,
     title: '대학교 입학',
-    text: '캠퍼스에 도착했습니다. 총 Student회 안내 부스, 동아리 부스, 교양 시간표.\n첫날부터 삶의 밀도가 달라집니다.',
+    text: '캠퍼스에 도착했습니다. 총학생회 안내 부스, 동아리 부스, 교양 시간표.\n첫날부터 삶의 밀도가 달라집니다.',
     choices: [
       { label: 'OT · 개강파티 참석', result: '첫날부터 10명의 얼굴을 외웠습니다. 대학 생활의 기반이 생겼습니다.', effects: { social: 3, hp: -1, asset: -15 }, set: { 대학생: true, 인싸_시작: true } },
       { label: '조용히 교양 수업만 듣는다', result: '혼자 다니는 게 편했습니다. 도서관이 내 자리가 됐습니다.', effects: { mental: 3, social: -2 }, set: { 대학생: true } },
