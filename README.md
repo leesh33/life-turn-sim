@@ -133,6 +133,9 @@ node tools/fallback.js 20
 # 실제 브라우저(390×844) 검증 — 5개 졸업 결산·능력치 비교·전당 등록/계속 살기·콘솔 에러 0건
 python3 test/grad.py --url https://life-turn-sim.vercel.app/
 
+# 라이브 스크린샷 (저장본 주입 — 리소스가 빠듯한 환경에서도 돌아감)
+node test/mkstate.js && python3 test/grad_shots.py
+
 # 개월차 표기·3세 이상 새벽수유 미노출
 python3 test/verify_months.py --url https://life-turn-sim.vercel.app/
 ```

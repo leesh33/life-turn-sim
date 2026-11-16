@@ -876,8 +876,9 @@
 
     var gr = gradeFromTop(total.top);
     var rank = hallRank(def.key, score);
-    // 아직 등록 전이므로, 비교 문구의 인원은 '나까지 포함한' 수로 보여준다
-    var hallNow = { count: rank.count + 1, rank: rank.rank, best: rank.best };
+    // 아직 등록 전이면 '나까지 포함한' 인원으로 보여준다 (등록 뒤에는 이미 내 기록이 들어 있다)
+    var hallNow = (s.grad && s.grad.registered) ? rank
+      : { count: rank.count + 1, rank: rank.rank, best: rank.best };
 
     return {
       key: def.key,
