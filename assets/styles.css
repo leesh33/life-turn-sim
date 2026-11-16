@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────
-   인생 턴제 시뮬레이션 — mobile web prototype
+   인생 한 턴 (Life Turn Sim) — mobile web prototype
    390×844 (iPhone) 우선, 데스크톱은 중앙 프레임
    ───────────────────────────────────────────── */
 
@@ -1074,3 +1074,394 @@ body {
 
 /* 하단 여백 보정 (보상 바 + 배너) — 토스트는 보상 바 위로 */
 .toast { bottom: calc(196px + var(--safe-b)); }
+
+/* ═════════════ 명예의 전당 진입 버튼 ═════════════ */
+.brand-hall {
+  position: absolute;
+  top: 2px; right: 0;
+  z-index: 2;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #8a6a17;
+  background: #fff;
+  border: 1px solid rgba(181, 139, 42, 0.3);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.brand-hall:active { transform: scale(0.97); }
+
+/* ═════════════ 졸업 결산 화면 ═════════════ */
+.grad-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(16px + var(--safe-t)) 16px calc(28px + var(--safe-b));
+}
+
+.grad-hero {
+  text-align: center;
+  background: #fff;
+  border-radius: 24px;
+  padding: 20px 16px 16px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.grad-hero::before {
+  content: "";
+  position: absolute;
+  top: -70px; left: 50%;
+  width: 220px; height: 160px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 206, 166, 0.5), rgba(255, 206, 166, 0) 70%);
+  pointer-events: none;
+}
+.gh-emoji { font-size: 40px; line-height: 1; position: relative; }
+.grad-kicker {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--accent-ink);
+  position: relative;
+}
+.grad-name { margin: 6px 0 4px; font-size: 24px; font-weight: 800; letter-spacing: -1px; position: relative; }
+.grad-sub { margin: 0; font-size: 12px; color: var(--ink-3); font-weight: 700; position: relative; }
+.grad-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 15px; position: relative; }
+.gs-cell { background: var(--card-2); border-radius: 10px; padding: 7px 3px; }
+.gs-label { display: block; font-size: 9px; font-weight: 700; color: var(--ink-3); }
+.gs-cell b { font-size: 13px; font-weight: 800; letter-spacing: -0.4px; }
+
+.grad-sec { margin: 20px 4px 9px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.8px; color: var(--ink-3); }
+.grad-memories { display: flex; flex-direction: column; gap: 7px; }
+.grad-memory {
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 13px;
+  box-shadow: var(--shadow);
+  border-left: 3px solid var(--accent);
+}
+.grad-memory span { display: block; font-size: 10px; font-weight: 800; color: var(--ink-3); }
+.grad-memory b { font-size: 13.5px; letter-spacing: -0.3px; }
+.grad-tags { margin-top: 9px; }
+
+/* 회고 편지 */
+.recall-card {
+  position: relative;
+  margin-top: 14px;
+  padding: 18px 17px 17px 20px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffdf9 0%, #fdf5ea 100%);
+  border: 1px solid rgba(181, 139, 42, 0.2);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.recall-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #e8a06f, #c9a227);
+}
+.recall-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.recall-kicker {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  color: #8a6a17;
+  background: rgba(201, 162, 39, 0.15);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.recall-when { font-size: 10px; font-weight: 700; color: var(--ink-3); }
+.recall-title {
+  margin: 12px 0 11px;
+  font-family: "AppleMyungjo", "NanumMyeongjo", "Nanum Myeongjo", Georgia, serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #4a3a25;
+}
+.recall-body p {
+  margin: 0 0 6px;
+  font-family: "AppleMyungjo", "NanumMyeongjo", "Nanum Myeongjo", Georgia, serif;
+  font-size: 13.5px;
+  line-height: 1.86;
+  letter-spacing: -0.15px;
+  color: #3f372d;
+  word-break: keep-all;
+}
+.recall-body p:last-child { margin-bottom: 0; color: #6b5a42; }
+
+/* 능력치 비교 */
+.cmp-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 15px 16px 6px;
+  box-shadow: var(--shadow);
+}
+.cmp-note { margin: 0 0 6px; font-size: 11px; line-height: 1.6; color: var(--ink-3); letter-spacing: -0.1px; }
+.cmp-note b { color: var(--ink-2); }
+.cmp-row { padding: 9px 0 9px; border-top: 1px dashed var(--line-2); }
+.cmp-row:first-child { border-top: 0; }
+.cmp-line { display: flex; align-items: center; gap: 7px; }
+.cmp-label { font-size: 12px; font-weight: 800; letter-spacing: -0.2px; min-width: 34px; color: var(--ink-2); }
+.cmp-val { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+.cmp-diff { font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 7px; }
+.cmp-diff.up { color: var(--up); background: var(--up-soft); }
+.cmp-diff.down { color: var(--down); background: var(--down-soft); }
+.cmp-pct {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.cmp-barrow { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.cmp-bar { position: relative; flex: 1; height: 8px; border-radius: 99px; background: rgba(27, 26, 24, 0.075); }
+.cmp-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #f0b184, var(--accent));
+}
+.cmp-bar u {
+  position: absolute;
+  top: -3px; bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: rgba(27, 26, 24, 0.4);
+}
+.cmp-avg { font-size: 9.5px; font-weight: 700; color: var(--ink-4); white-space: nowrap; }
+.cmp-row.total { margin-top: 2px; border-top: 1px solid var(--line); padding-top: 11px; }
+.cmp-row.total .cmp-label { color: var(--accent-ink); }
+.cmp-row.total .cmp-bar { height: 10px; }
+
+/* 전당 미리보기 */
+.grad-hall {
+  margin-top: 16px;
+  background: linear-gradient(160deg, #fffdf6, #fdf3d8);
+  border: 1px solid rgba(181, 139, 42, 0.22);
+  border-radius: 18px;
+  padding: 14px 15px;
+  box-shadow: var(--shadow);
+}
+.gh-head { font-size: 12px; font-weight: 800; color: #8a6a17; letter-spacing: -0.1px; }
+.gh-head span { font-weight: 700; color: #a98b3a; }
+.gh-rank { margin-top: 7px; font-size: 13px; color: #5d4a17; }
+.gh-rank b { font-size: 15px; font-weight: 800; color: #8a6a17; }
+.gh-best {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: #8a6a17;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gh-link {
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a6a17;
+  background: #fff;
+  border: 1px solid rgba(181, 139, 42, 0.28);
+  border-radius: 999px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+
+.grad-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
+.btn.outline {
+  color: var(--ink);
+  background: #fff;
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow);
+  font-size: 15px;
+  padding: 15px 14px;
+}
+.grad-actions .fine { margin-top: 2px; }
+
+/* ═════════════ 명예의 전당 화면 ═════════════ */
+.hall-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(12px + var(--safe-t)) 16px 8px;
+}
+.hall-back {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 16px;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-2);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.hall-title-box h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.6px; }
+.hall-title-box p { margin: 3px 0 0; font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
+.hall-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 4px 16px 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.hall-tabs::-webkit-scrollbar { display: none; }
+.hall-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.hall-tab span { font-size: 9.5px; font-weight: 800; color: var(--ink-4); }
+.hall-tab.active { color: #fff; background: var(--ink); border-color: var(--ink); }
+.hall-tab.active span { color: rgba(255, 255, 255, 0.62); }
+
+.hall-pin {
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  background: linear-gradient(160deg, #fffdf6, #fdf3d8);
+  border: 1.5px solid #d9a92c;
+  border-radius: 16px;
+  padding: 12px 13px;
+  box-shadow: 0 8px 22px rgba(181, 139, 42, 0.18);
+  cursor: pointer;
+  margin-bottom: 3px;
+}
+.hall-pin:active { transform: scale(0.99); }
+.hp-line { display: flex; align-items: center; gap: 6px; }
+.hp-badge {
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  background: #b58b2a;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.hp-stage { font-size: 10.5px; font-weight: 800; color: #8a6a17; }
+.hp-title {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5d4a17;
+  letter-spacing: -0.2px;
+  line-height: 1.4;
+}
+.hp-meta { margin-top: 4px; font-size: 9.5px; font-weight: 700; color: #9b7d34; }
+
+.hall-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 16px calc(26px + var(--safe-b));
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.hall-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 11px 12px;
+  box-shadow: var(--shadow);
+  border: 1.5px solid transparent;
+}
+.hall-row.mine { border-color: rgba(224, 101, 60, 0.32); background: linear-gradient(180deg, #fff, #fff8f4); }
+.hall-row.best { border-color: #d9a92c; box-shadow: 0 8px 22px rgba(181, 139, 42, 0.2); }
+.hr-rank { flex: 0 0 24px; text-align: center; font-size: 11.5px; font-weight: 800; color: var(--ink-3); }
+.hall-row.best .hr-rank { font-size: 17px; }
+.hr-body { flex: 1; min-width: 0; }
+.hr-line1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.hr-line1 b { font-size: 13px; font-weight: 800; letter-spacing: -0.2px; white-space: nowrap; }
+.hr-mine { font-size: 8.5px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 2px 5px; white-space: nowrap; }
+.hall-row.best .hr-mine { background: #b58b2a; }
+.hr-stage {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink-3);
+  background: rgba(27, 26, 24, 0.05);
+  border-radius: 5px;
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+.hr-title {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.42;
+  color: var(--ink-2);
+  letter-spacing: -0.15px;
+  word-break: keep-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hr-stats { margin-top: 3px; font-size: 9.5px; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hr-score { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.hr-score b { font-size: 17px; font-weight: 800; letter-spacing: -0.6px; }
+.hr-score i { font-style: normal; font-size: 9px; font-weight: 800; color: #fff; border-radius: 5px; padding: 1px 4px; background: var(--ink-3); }
+.hr-score i.g-s { background: #6d5bd0; }
+.hr-score i.g-a { background: #2ea36b; }
+.hr-score i.g-b { background: #d99a2b; }
+.hr-score i.g-c { background: #8d867c; }
+.hr-score i.g-d { background: #c2413a; }
+.hr-score span { font-size: 8.5px; font-weight: 700; color: var(--ink-4); white-space: nowrap; }
+.hall-empty { text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.75; padding: 54px 16px; }
+.hall-fine { margin: 12px 2px 0; font-size: 9.5px; line-height: 1.65; color: var(--ink-4); text-align: center; }
+
+/* 엔딩 화면 추가 요소 */
+.end-brand {
+  margin-top: 16px;
+  padding-top: 11px;
+  border-top: 1px dashed var(--line);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  color: var(--ink-4);
+  text-align: right;
+  position: relative;
+}
+.end-hall {
+  margin-top: 14px;
+  background: linear-gradient(160deg, #fffdf6, #fdf3d8);
+  border: 1px solid rgba(181, 139, 42, 0.22);
+  border-radius: 14px;
+  padding: 11px 13px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8a6a17;
+}
+.end-hall b { font-weight: 800; }
+.end-actions.second { margin-top: 9px; }
+.end-actions.second .btn { flex: 1; }
+

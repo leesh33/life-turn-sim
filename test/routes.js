@@ -130,9 +130,88 @@ FOLLOW.forEach(([parent, child, age]) => {
   global.window.localStorage.setItem('lifeTurnSim.save.v1', JSON.stringify(legacy));
   const loaded = Life.load();
   check('예전 저장본(v1 일차) → 개월차 마이그레이션',
-    !!loaded && loaded.v === 2 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
+    !!loaded && loaded.v === 3 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
     `month:${loaded && loaded.month} histMonth:${loaded && loaded.history[0].month}`);
   Life.clear();
+})();
+
+// 9) 졸업 결산 · 능력치 비교 · 명예의 전당
+(function () {
+  global.window.localStorage.removeItem('lifeTurnSim.hall.v1');
+  const g = Life.newGame({ name: '졸업생', gender: '여', startAge: 1 });
+  let guard = 0;
+  let grad = null;
+  while (!g.ended && guard++ < 400) {
+    if (g.age === 7 && g.month === 12) {
+      Life.choose(g, 0);
+      const r = Life.advance(g);
+      grad = r.graduation;
+      break;
+    }
+    const ev = Life.currentEvent(g);
+    Life.choose(g, Math.floor(Math.random() * ev.choices.length));
+    const r = Life.advance(g);
+    if (r.graduation) Life.graduate(g, false);
+  }
+  check('7세 12개월차 턴 후 유치원 졸업 결산', grad === 'kindergarten' && g.age === 8,
+    `grad:${grad} age:${g.age}`);
+  const info = Life.gradInfo(g);
+  check('졸업 결산 정보(능력치 비교 · 백분위 · 회고)',
+    !!info && info.rows.length === 5 && info.rows.every((r) => typeof r.top === 'number') &&
+    info.total.top !== null && info.hall.count >= 0,
+    `rows:${info && info.rows.length} top:${info && info.total.top} hall:${info && info.hall.count}`);
+  const recall = Life.recall(g, 'grad');
+  check('회고 편지 8~11줄', recall.length >= 8 && recall.length <= 11, `줄:${recall.length}`);
+  const before = g.history.length;
+  Life.graduate(g, false);
+  check('계속 살기: 졸업 결산 닫고 8세 1개월차 유지', g.grad === null && !g.ended && g.age === 8 && g.month === 1,
+    `age:${g.age} month:${g.month} ended:${g.ended}`);
+
+  // 13세 초등학교 졸업에서 등록 종료
+  guard = 0;
+  while (!g.ended && guard++ < 400) {
+    if (g.age === 13 && g.month === 12) {
+      Life.choose(g, 0);
+      Life.advance(g);
+      break;
+    }
+    const ev = Life.currentEvent(g);
+    Life.choose(g, Math.floor(Math.random() * ev.choices.length));
+    const r = Life.advance(g);
+    if (r.graduation) Life.graduate(g, false);
+  }
+  check('13세 12개월차 초등학교 졸업 결산', !!g.grad && g.grad.key === 'elementary', `grad:${g.grad && g.grad.key}`);
+  const reg = Life.graduate(g, true);
+  Life.save(g);
+  const rec = Life.hallRecords().filter((r) => r.mine)[0];
+  check('명예의 전당 등록 후 종료', !!reg && reg.ended && g.ended && g.endingKind === 'graduation' && !!rec && rec.key === 'elementary',
+    `rec:${rec && rec.key} score:${rec && rec.score}`);
+  const reloaded = Life.load();
+  check('졸업 엔딩 저장본 복원', !!reloaded && reloaded.ended && reloaded.grad && reloaded.grad.registered);
+  check('내 기록이 최고 기록으로', Life.hallBestMine() && Life.hallBestMine().id === rec.id);
+  check('시드 기록 유지 + 내 기록 별도', Life.hallRecords().filter((r) => r.seed).length >= 20 && Life.hallRecords().filter((r) => r.mine).length === 1,
+    `시드:${Life.hallRecords().filter((r) => r.seed).length} 내:${Life.hallRecords().filter((r) => r.mine).length}`);
+  check('같은 단계 순위 계산', Life.hallRank('elementary', rec.score).count >= 6, `count:${Life.hallRank('elementary', rec.score).count}`);
+  Life.clear();
+  global.window.localStorage.removeItem('lifeTurnSim.hall.v1');
+})();
+
+// 10) 80세 완주 기록 자동 등록
+(function () {
+  global.window.localStorage.removeItem('lifeTurnSim.hall.v1');
+  const s80 = Life.newGame({ name: '완주', gender: '남', startAge: 75 });
+  let guard = 0;
+  while (!s80.ended && guard++ < 400) {
+    const ev = Life.currentEvent(s80);
+    Life.choose(s80, Math.floor(Math.random() * ev.choices.length));
+    const r = Life.advance(s80);
+    if (r.graduation) Life.graduate(s80, false);
+  }
+  const lifeRec = Life.hallRecords().filter((r) => r.mine && r.key === 'life80');
+  check('80세 완주 시 전당 자동 등록', s80.ended && lifeRec.length === 1, `기록:${lifeRec.length}`);
+  check('완주 엔딩 회고 8~11줄', Life.recall(s80, 'life').length >= 8);
+  Life.clear();
+  global.window.localStorage.removeItem('lifeTurnSim.hall.v1');
 })();
 
 console.log(ran.join('\n'));

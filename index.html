@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#F4F1EB" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="인생 턴제" />
-<meta name="description" content="한 달 버튼 한 번, 한 살 한 살. 선택이 쌓여 인생이 되는 턴제 시뮬레이션." />
-<title>인생 턴제 시뮬레이션</title>
+<meta name="apple-mobile-web-app-title" content="인생 한 턴" />
+<meta name="description" content="한 달 버튼 한 번, 한 살 한 살. 선택이 쌓여 인생이 되는 턴제 시뮬레이션 「인생 한 턴」." />
+<title>인생 한 턴</title>
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="assets/favicon.svg" />
@@ -20,10 +20,11 @@
   <section id="screen-start" class="screen active">
     <div class="start-scroll">
       <header class="brand">
+        <button type="button" class="brand-hall" id="hallBtnStart">🏆 명예의 전당</button>
         <div class="brand-mark" aria-hidden="true">🎲</div>
-        <h1>인생 턴제<br /><em>시뮬레이션</em></h1>
+        <h1>인생 한 <em>턴</em></h1>
         <p class="brand-sub">
-          한 달 버튼 한 번, 한 살 한 살.<br />
+          한 달에 한 번, 인생을 한 칸씩.<br />
           당신의 선택이 다음 80년을 바꿉니다.
         </p>
       </header>
@@ -73,6 +74,7 @@
           <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1개월차</span></span>
         </div>
         <div class="sb-actions">
+          <button class="ghost-btn" id="hallBtnPlay">🏆 전당</button>
           <button class="ghost-btn" id="summaryBtn">인생 요약</button>
           <button class="ghost-btn danger" id="resetBtn">새로 시작</button>
         </div>
@@ -117,6 +119,24 @@
   <!-- ───────────── 엔딩 화면 ───────────── -->
   <section id="screen-ending" class="screen">
     <div class="ending-scroll" id="endingScroll"></div>
+  </section>
+
+  <!-- ───────────── 졸업 결산 화면 ───────────── -->
+  <section id="screen-grad" class="screen">
+    <div class="grad-scroll" id="gradScroll"></div>
+  </section>
+
+  <!-- ───────────── 명예의 전당 ───────────── -->
+  <section id="screen-hall" class="screen">
+    <header class="hall-head">
+      <button class="hall-back" id="hallBack" aria-label="뒤로 가기">←</button>
+      <div class="hall-title-box">
+        <h2>🏆 명예의 전당</h2>
+        <p id="hallSub">—</p>
+      </div>
+    </header>
+    <div class="hall-tabs" id="hallTabs"></div>
+    <div class="hall-body" id="hallBody"></div>
   </section>
 
   <!-- ───────────── 인생 일지 시트 ───────────── -->
@@ -180,6 +200,8 @@
 <script src="assets/events/senior2.js"></script>
 <script src="assets/events/extra.js"></script>
 <script src="assets/events/zz-finalize.js"></script>
+<script src="assets/refdist.js"></script>
+<script src="assets/hall-seeds.js"></script>
 <script src="assets/ads.js"></script>
 <script src="assets/app.js"></script>
 </body>

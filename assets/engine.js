@@ -6,7 +6,7 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
-  var SAVE_VERSION = 2;      // v1(일차 단위) → v2(개월차 단위)
+  var SAVE_VERSION = 3;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
   var MONTHS = 12;           // 한 살 = 12개월차
   var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
@@ -41,6 +41,19 @@
     { key: 'social', label: '호감도' }
   ];
 
+  /* ── 졸업 결산 체크포인트 ──
+     각 나이의 12개월차 턴을 마치고 다음 나이로 넘어가는 순간, 졸업 결산이 열린다.
+     7세 유치원 · 13세 초등학교 · 16세 중학교 · 19세 고등학교 · 24세 대학교. */
+  var GRADUATIONS = [
+    { key: 'kindergarten', age: 7,  emoji: '🐥', name: '유치원 졸업식',   label: '유치원 졸업 엔딩',   short: '유치원 졸업',   stageId: 'infancy',    years: 7, next: '초등학교' },
+    { key: 'elementary',   age: 13, emoji: '🎒', name: '초등학교 졸업식', label: '초등학교 졸업 엔딩', short: '초등학교 졸업', stageId: 'elementary', years: 6, next: '중학교' },
+    { key: 'middle',       age: 16, emoji: '📐', name: '중학교 졸업식',   label: '중학교 졸업 엔딩',   short: '중학교 졸업',   stageId: 'middle',     years: 3, next: '고등학교' },
+    { key: 'high',         age: 19, emoji: '🎓', name: '고등학교 졸업식', label: '고등학교 졸업 엔딩', short: '고등학교 졸업', stageId: 'high',       years: 3, next: '대학교' },
+    { key: 'college',      age: 24, emoji: '🏛️', name: '대학교 졸업식',   label: '대학교 졸업 엔딩',   short: '대학교 졸업',   stageId: 'college',    years: 5, next: '사회' }
+  ];
+  var GRAD_BY_AGE = {}, GRAD_BY_KEY = {};
+  GRADUATIONS.forEach(function (g) { GRAD_BY_AGE[g.age] = g; GRAD_BY_KEY[g.key] = g; });
+
   // 시작 스탯은 50~60대 — 한두 번의 선택으로 100이 되지 않게 낮게 잡는다
   var PRESETS = {
     1:  { stats: { hp: 60, mental: 62, charm: 52, social: 58, asset: 0 },
@@ -61,6 +74,7 @@
 
   /* ── 유틸 ── */
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function round1(v) { return Math.round(v * 10) / 10; }
   function rand(s) {
     var t = (s.rngState = (s.rngState + 0x6D2B79F5) >>> 0);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -310,6 +324,8 @@
     var snap = s.undo;
     s.undo = null;
     s.age = snap.age; s.month = snap.month; s.turn = snap.turn; s.ended = false;
+    s.grad = null;
+    s.endingKind = null;
     s.stats = Object.assign({}, snap.stats);
     s.flags = Object.assign({}, snap.flags);
     s.used = snap.used.slice();
@@ -399,6 +415,9 @@
       history: [],
       current: null,
       ended: false,
+      endingKind: null,
+      grad: null,
+      hallId: null,
       undo: null,
       rewards: { heal: 0, reroll: 0, undo: 0 },
       createdAt: Date.now()
@@ -474,7 +493,8 @@
       milestone: !!ev.milestone,
       choice: typeof choice.label === 'function' ? choice.label(s) : choice.label,
       result: resultText || '',
-      deltas: deltas
+      deltas: deltas,
+      setKeys: choice.set ? Object.keys(choice.set) : []
     };
     s.history.push(entry);
     s.current = { eventId: ev.id, chosen: index, result: resultText, deltas: deltas, event: ev.__generic ? ev : null };
@@ -530,6 +550,7 @@
     if (!s.current || s.current.chosen === null) return { ok: false };
     if (s.ended) return { ok: false };
 
+    var prevAge = s.age;
     var birthday = false;
     if (s.month >= LAST_MONTH) { s.age += 1; s.month = 1; birthday = true; }
     else { s.month += 1; }
@@ -539,15 +560,23 @@
 
     if (s.age > END_AGE) {
       s.ended = true;
+      s.endingKind = 'life';
       s.current = null;
-      return { ok: true, ended: true, birthday: birthday };
+      registerLife(s);
+      return { ok: true, ended: true, birthday: birthday, graduation: null };
+    }
+
+    // 졸업 결산: 7·13·16·19·24세의 12개월차를 마치고 다음 나이로 넘어간 순간
+    var gradDef = birthday ? GRAD_BY_AGE[prevAge] : null;
+    if (gradDef) {
+      s.grad = { key: gradDef.key, age: prevAge, registered: false, stats: statSnapshot(s.stats) };
     }
 
     var ev = pickEvent(s);
     s.current = { eventId: ev.id, chosen: null, event: ev.__generic ? ev : null };
     s.used.push(ev.id);
     s.lastSeen[ev.id] = s.turn;
-    return { ok: true, ended: false, birthday: birthday, event: ev };
+    return { ok: true, ended: false, birthday: birthday, event: ev, graduation: gradDef ? gradDef.key : null };
   }
 
   /* ── 저장 ── */
@@ -568,6 +597,9 @@
     if (s.month === undefined) s.month = dayToMonth(s.day);
     s.month = clamp(s.month || 1, 1, MONTHS);
     delete s.day;
+    if (s.grad === undefined) s.grad = null;
+    if (s.endingKind === undefined) s.endingKind = null;
+    if (s.hallId === undefined) s.hallId = null;
     (s.history || []).forEach(function (h) {
       if (h && h.month === undefined) h.month = dayToMonth(h.day);
       if (h) delete h.day;
@@ -724,6 +756,433 @@
     return sentence;
   }
 
+  /* ═════════════ 졸업 결산 · 능력치 비교 · 명예의 전당 ═════════════ */
+
+  // 종합 점수(0~100) — 네 스탯 평균 55점 + 재산 45점. 졸업 시점 비교·전당 점수에 공통으로 쓴다.
+  function scoreOfStats(st) {
+    var gauge = (st.hp + st.mental + st.charm + st.social) / 4;
+    var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
+    return clamp(gauge * 0.55 + assetScore, 0, 100);
+  }
+
+  function refTable(key, name) {
+    var d = global.LIFE_REFDIST;
+    if (!d || !d[key] || !d[key][name]) return null;
+    return d[key][name];
+  }
+
+  // 기준 분포(시뮬레이션 표본의 0~100 백분위표)에서 '나보다 낮은 사람의 비율'을 구한다
+  function refBelow(key, name, v) {
+    var t = refTable(key, name);
+    if (!t || !t.p || !t.p.length) return null;
+    var p = t.p;
+    if (v <= p[0]) return 0;
+    if (v >= p[p.length - 1]) return 100;
+    for (var i = 0; i < p.length - 1; i++) {
+      if (v >= p[i] && v <= p[i + 1]) {
+        var span = p[i + 1] - p[i];
+        return i + (span > 0 ? (v - p[i]) / span : 0);
+      }
+    }
+    return 50;
+  }
+
+  function topPercent(key, name, v) {
+    var b = refBelow(key, name, v);
+    if (b === null) return null;
+    return clamp(Math.round(100 - b), 1, 100);
+  }
+
+  function gradeFromTop(top) {
+    if (top === null) return { grade: 'B', label: '평균 권' };
+    if (top <= 5) return { grade: 'S', label: '상위 5%' };
+    if (top <= 15) return { grade: 'A', label: '상위 15%' };
+    if (top <= 40) return { grade: 'B', label: '상위 40%' };
+    if (top <= 70) return { grade: 'C', label: '상위 70%' };
+    return { grade: 'D', label: '하위 30%' };
+  }
+
+  function impactOf(h) {
+    var impact = 0;
+    Object.keys(h.deltas || {}).forEach(function (k) {
+      var v = h.deltas[k];
+      impact += (k === 'asset') ? Math.min(3, Math.abs(v) / 300) : Math.abs(v);
+    });
+    return impact + (h.milestone ? 4 : 0);
+  }
+
+  function statSnapshot(st) {
+    return { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social, asset: st.asset };
+  }
+
+  function diffText(key, diff) {
+    if (diff === null || diff === undefined) return '';
+    if (key === 'asset') return (diff >= 0 ? '+' : '-') + formatAsset(Math.abs(diff));
+    return (diff >= 0 ? '+' : '') + diff;
+  }
+
+  /* ── 졸업 결산 정보 ── */
+  function gradInfo(s) {
+    if (!s || !s.grad) return null;
+    var def = GRAD_BY_KEY[s.grad.key];
+    if (!def) return null;
+    var st = s.grad.stats || statSnapshot(s.stats);
+    var stage = stageOf(def.age);
+    var entries = (s.history || []).filter(function (h) { return h.age >= stage.from && h.age <= stage.to; });
+    var highlights = entries.slice().sort(function (a, b) { return impactOf(b) - impactOf(a); }).slice(0, 3);
+
+    var flags = [];
+    entries.forEach(function (h) {
+      (h.setKeys || []).forEach(function (k) {
+        if (s.flags[k] && flags.indexOf(k) === -1) flags.push(k);
+      });
+    });
+
+    var rows = STATS.map(function (each) {
+      var v = st[each.key];
+      var t = refTable(def.key, each.key);
+      var avg = t ? t.mean : null;
+      var diff = avg === null ? null : Math.round(v - avg);
+      return {
+        key: each.key,
+        label: each.label,
+        value: v,
+        disp: displayStat(each.key, v),
+        avg: avg,
+        avgDisp: avg === null ? null : displayStat(each.key, avg),
+        diff: diff,
+        diffDisp: diff === null ? null : diffText(each.key, diff),
+        top: topPercent(def.key, each.key, v),
+        pct: statPct(each.key, v),
+        avgPct: avg === null ? null : statPct(each.key, avg)
+      };
+    });
+
+    var score = scoreOfStats(st);
+    var tScore = refTable(def.key, 'score');
+    var total = {
+      key: 'score',
+      label: '종합 점수',
+      value: score,
+      disp: String(Math.round(score)),
+      avg: tScore ? tScore.mean : null,
+      avgDisp: tScore ? String(Math.round(tScore.mean)) : null,
+      diff: tScore ? Math.round(score - tScore.mean) : null,
+      top: topPercent(def.key, 'score', score),
+      pct: score,
+      avgPct: tScore ? tScore.mean : null
+    };
+    total.diffDisp = diffText('score', total.diff);
+
+    var gr = gradeFromTop(total.top);
+    var rank = hallRank(def.key, score);
+
+    return {
+      key: def.key,
+      def: def,
+      stage: stage,
+      age: def.age,
+      month: LAST_MONTH,
+      name: s.name,
+      title: buildTitle(s),
+      endingLabel: def.label,
+      stats: statSnapshot(st),
+      rows: rows,
+      total: total,
+      score: score,
+      grade: gr.grade,
+      gradeLabel: gr.label,
+      highlights: highlights,
+      count: entries.length,
+      flags: flags.map(function (k) { return FLAG_LABEL[k] || String(k).replace(/_/g, ' '); }).slice(0, 4),
+      sampleSize: (refTable(def.key, 'score') || {}).n || null,
+      hall: rank
+    };
+  }
+
+  /* ── 명예의 전당 (localStorage) ── */
+  var HALL_KEY = 'lifeTurnSim.hall.v1';
+  var HALL_MAX = 240;
+
+  function hallState() {
+    var d = null;
+    try { d = JSON.parse(global.localStorage.getItem(HALL_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || !Array.isArray(d.records)) d = { v: 1, seeded: false, records: [] };
+    return d;
+  }
+  function hallWrite(d) {
+    try { global.localStorage.setItem(HALL_KEY, JSON.stringify(d)); } catch (e) {}
+  }
+  function hallSeed(d) {
+    if (d.seeded) return d;
+    var seeds = global.LIFE_HALL_SEEDS || [];
+    for (var i = 0; i < seeds.length; i++) {
+      var sd = seeds[i], dup = false;
+      for (var j = 0; j < d.records.length; j++) { if (d.records[j].id === sd.id) { dup = true; break; } }
+      if (!dup) d.records.push(Object.assign({}, sd));
+    }
+    d.seeded = true;
+    return d;
+  }
+  function hallRecords() {
+    var d = hallState();
+    if (!d.seeded) { hallSeed(d); hallWrite(d); }
+    return d.records;
+  }
+  function hallSorted(list) {
+    return list.slice().sort(function (a, b) {
+      return (b.score || 0) - (a.score || 0) || (a.ts || 0) - (b.ts || 0);
+    });
+  }
+  function hallOf(key) {
+    return hallSorted(hallRecords().filter(function (r) { return r.key === key; }));
+  }
+  function hallRank(key, score) {
+    var list = hallOf(key);
+    var better = list.filter(function (r) { return (r.score || 0) > score; }).length;
+    return { count: list.length, rank: better + 1, best: list[0] || null };
+  }
+  function hallAdd(rec) {
+    var d = hallSeed(hallState());
+    rec.id = 'r' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e4).toString(36);
+    rec.ts = Date.now();
+    rec.mine = true;
+    d.records.push(rec);
+    while (d.records.length > HALL_MAX) {
+      var oldest = -1, oldestTs = Infinity;
+      for (var i = 0; i < d.records.length; i++) {
+        var r = d.records[i];
+        if (!r.mine) continue;
+        if ((r.ts || 0) < oldestTs) { oldestTs = r.ts || 0; oldest = i; }
+      }
+      if (oldest < 0) break;
+      d.records.splice(oldest, 1);
+    }
+    hallWrite(d);
+    return rec;
+  }
+  function hallMine() {
+    return hallSorted(hallRecords().filter(function (r) { return r.mine; }));
+  }
+  function hallBestMine() {
+    return hallMine()[0] || null;
+  }
+
+  /* ── 졸업하기 / 계속 살기 ── */
+  function graduate(s, register) {
+    if (!s || !s.grad) return null;
+    var info = gradInfo(s);
+    if (!register) {
+      s.grad = null;
+      s.endingKind = null;
+      return { ok: true, continued: true, info: info };
+    }
+    if (!s.grad.registered) {
+      var rec = hallAdd({
+        kind: 'graduation',
+        key: info.def.key,
+        stageLabel: info.def.short,
+        age: info.def.age,
+        score: round1(info.score),
+        grade: info.grade,
+        top: info.total.top,
+        title: info.title,
+        name: s.name,
+        stats: statSnapshot(info.stats)
+      });
+      s.grad.registered = true;
+      s.hallId = rec.id;
+      info.hall = hallRank(info.def.key, info.score);
+    }
+    s.ended = true;
+    s.endingKind = 'graduation';
+    s.current = null;
+    return { ok: true, ended: true, info: info };
+  }
+
+  // 80세를 넘기면 80세 완주 기록을 자동으로 남긴다
+  function registerLife(s) {
+    if (!s || s.hallId) return null;
+    var sum = summary(s);
+    var rec = hallAdd({
+      kind: 'life',
+      key: 'life80',
+      stageLabel: '80세 완주',
+      age: END_AGE,
+      score: round1(scoreOfStats(s.stats)),
+      grade: sum.grade,
+      top: null,
+      title: sum.title,
+      name: s.name,
+      stats: statSnapshot(s.stats)
+    });
+    s.hallId = rec.id;
+    return rec;
+  }
+
+  /* ═════════════ 회고 편지 — 실제 기록으로 만드는 8~10줄 ═════════════ */
+  function recallRand(seedStr) {
+    var h = 2166136261;
+    for (var i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return function () {
+      h = Math.imul(h ^ (h >>> 15), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    };
+  }
+  function recallPick(rnd, arr) { return arr[Math.floor(rnd() * arr.length)]; }
+
+  var RECALL_OPEN = {
+    kindergarten: [
+      '작은 손에 크레파스를 쥐고, 도화지 가득 해를 그리던 아이.',
+      '낮잠에서 깬 오후, 창밖으로는 벌써 몇 번째 봄이 지나가고 있었습니다.',
+      '이름표를 붙인 사물함 앞에서, 세상은 아직 내 키만 했습니다.'
+    ],
+    elementary: [
+      '책가방이 몸집보다 커 보이던 봄이 있었습니다.',
+      '운동장 모래가 신발 안으로 들어오던 날들, 그것이 6년이었습니다.',
+      '급식실 냄새와 종이 울리던 소리로 기억되는 시간이었습니다.'
+    ],
+    middle: [
+      '처음 입은 교복 소매가 조금 길었습니다.',
+      '사춘기라는 이름의 계절을, 아무에게도 말하지 못한 채 지나왔습니다.',
+      '사물함 문을 열면 사춘기 냄새가 났습니다. 그 냄새도 이제는 그립습니다.'
+    ],
+    high: [
+      '야자 끝난 밤공기를 마시며, 별이 아니라 시계를 봤습니다.',
+      '3년 내내 누군가의 등을 바라보며 달려온 시간이었습니다.',
+      '새벽 6시의 교실, 형광등이 켜지기 전의 어둠이 아직 기억납니다.'
+    ],
+    college: [
+      '캠퍼스 잔디에 앉아 처음으로 내일을 스스로 정해본 시절.',
+      '졸업증명서 한 장이, 몇 해의 밤낮을 접어 넣은 종이가 되었습니다.',
+      '도서관 창가 자리, 음료수 캔, 그리고 이름 모를 누군가의 필기 소리.'
+    ],
+    life80: [
+      '여든 번의 봄을 지나, 이제 창가에 앉아 지나온 길을 셉니다.',
+      '손등의 주름 사이로, 그 시절의 햇빛이 아직 남아 있습니다.',
+      '긴 하루를 살아낸 사람의 저녁처럼, 방 안이 조용합니다.'
+    ]
+  };
+
+  var RECALL_CLOSE = {
+    kindergarten: [
+      '이제 앞니 빠진 입으로, 교실 문을 나섭니다.',
+      '크레파스는 다 닳았지만, 그리고 싶은 것은 아직 많습니다.'
+    ],
+    elementary: [
+      '이제 더 큰 교실로 걸어갑니다. 책가방은 이제 제법 잘 어울립니다.',
+      '6년의 종이 울렸습니다. 마지막 종소리는 조금 길게 들렸습니다.'
+    ],
+    middle: [
+      '교복 소매는 이제 맞습니다. 사람은 조금 늘었습니다.',
+      '이제 교문을 나서면, 세상이 조금 더 넓어집니다.'
+    ],
+    high: [
+      '이제 교문을 나섭니다. 세상은 아직 나를 모르지만, 나도 아직 나를 모릅니다.',
+      '3년의 마지막 종이 울렸습니다. 가방은 가볍고, 마음은 무겁습니다.'
+    ],
+    college: [
+      '이제 학생이라는 이름을 내려놓고, 내 이름으로 서야 합니다.',
+      '졸업식장을 나서는 발걸음이, 처음 걷는 길처럼 낯섭습니다.'
+    ],
+    life80: [
+      '긴 인생이었습니다. 잘 살았는지는 아직 모르겠지만, 살아냈습니다.',
+      '이제 남은 것은 기억뿐입니다. 그것으로 충분합니다.'
+    ]
+  };
+
+  // 실제 스탯·플래그·선택 기록으로 만드는 8~10줄 회고
+  function recallLines(s, mode, info) {
+    var key = mode === 'life' ? 'life80' : (info ? info.key : 'kindergarten');
+    var age = mode === 'life' ? Math.min(s.age, END_AGE) : (info ? info.age : s.age);
+    var st = mode === 'life' ? s.stats : (info ? info.stats : s.stats);
+    var rnd = recallRand([s.name, s.createdAt, mode, key, Math.round(st.hp), Math.round(st.mental)].join('|'));
+    var lines = [];
+
+    lines.push(recallPick(rnd, RECALL_OPEN[key] || RECALL_OPEN.kindergarten));
+
+    if (mode === 'life') {
+      lines.push('그 사이 세상은 몇 번이나 모습을 바꿨습니다. 나도 그렇게 바뀌었습니다.');
+    } else {
+      var stageName = info && info.stage ? info.stage.name : '학교';
+      lines.push('그때 나는 ' + age + '세, ' + stageName + '의 마지막 달을 보내고 있었습니다.');
+    }
+
+    // 3~4줄: 실제로 겪은 사건에서 기억 한두 개
+    var pool = (s.history || []).filter(function (h) { return h.age <= age; });
+    if (mode !== 'life' && info) {
+      var scoped = pool.filter(function (h) { return h.age >= info.stage.from && h.age <= info.stage.to; });
+      if (scoped.length) pool = scoped.concat(pool.filter(function (h) { return h.age < info.stage.from; }));
+    }
+    var mem = pool.slice().sort(function (a, b) { return impactOf(b) - impactOf(a); }).slice(0, 2);
+    mem.sort(function (a, b) { return a.age - b.age; });
+    if (mem[0]) {
+      lines.push(mem[0].age + '세 ' + mem[0].month + '개월차, ' + mem[0].title + '. 그날의 공기가 아직 남아 있습니다.');
+    }
+    if (mem[1]) {
+      lines.push(mem[1].age + '세 ' + mem[1].month + '개월차의 ' + mem[1].title + ' — 그때는 그게 전부인 줄 알았습니다.');
+    }
+
+    // 5~6줄: 마음과 몸
+    var mental = st.mental, hp = st.hp;
+    lines.push(mental >= 78 ? '마음은 대체로 맑았습니다. 웃음이 잘 나는 사람이었고, 그 웃음이 하루를 버티게 했습니다.'
+      : mental >= 58 ? '마음은 잔잔한 편이었습니다. 큰 파도 없이도 여기까지 왔습니다.'
+      : mental >= 42 ? '마음이 눅눅해지는 날이 있었습니다. 다음 날이면 조금 말랐습니다.'
+      : mental >= 26 ? '혼자 삼키는 밤이 많았습니다. 아무도 모르는, 그런 밤이었습니다.'
+      : '마음의 바닥을 몇 번 보았습니다. 그래도 아침이면 다시 일어났습니다.');
+    lines.push(hp >= 72 ? '몸은 말을 잘 들었습니다. 뛰어도 다음 날 아침은 어김없이 왔습니다.'
+      : hp >= 52 ? '몸은 그럭저럭이었습니다. 아픈 날보다 괜찮은 날이 조금 많았습니다.'
+      : hp >= 36 ? '몸이 자주 신호를 보냈지만, 대부분 모른 척 지나갔습니다.'
+      : '몸이 먼저 지친 날들이 있었습니다. 그때는 그게 당연한 줄 알았습니다.');
+
+    // 7줄: 사람과의 거리
+    if (st.social >= 72) {
+      lines.push('곁에 사람이 있었습니다. 이름을 부르면 돌아보는 얼굴이 몇 있었습니다.');
+    } else if (st.social >= 52) {
+      lines.push('친구 몇, 그 정도면 충분했습니다. 연락은 뜸해도 마음은 남았습니다.');
+    } else if (st.social >= 36) {
+      lines.push('사람 사이가 넓지도 좁지도 않았습니다. 그 거리가 편했습니다.');
+    } else {
+      lines.push('곁은 조용했습니다. 그 조용함이 편할 때도, 서운할 때도 있었습니다.');
+    }
+
+    // 8줄: 그 시절에 남은 이름표(플래그)
+    var traitKeys = [];
+    (s.history || []).forEach(function (h) {
+      if (h.age > age) return;
+      (h.setKeys || []).forEach(function (k) { if (s.flags[k] && traitKeys.indexOf(k) === -1) traitKeys.push(k); });
+    });
+    var traitKey = traitKeys.length ? traitKeys[traitKeys.length - 1] : null;
+    if (traitKey) {
+      var traitName = FLAG_LABEL[traitKey] || (s.flags[traitKey] === true ? traitKey : String(s.flags[traitKey]));
+      lines.push('그 시절을 설명하는 이름표가 하나 있었습니다 — ‘' + traitName + '’.');
+    } else if (s.flags.직업 && mode === 'life') {
+      lines.push('한때는 ‘' + s.flags.직업 + '’이라는 이름으로 불렸습니다. 그 이름도 이제는 추억입니다.');
+    }
+
+    // 9줄: 남은 돈에 대한 한 줄
+    if (mode === 'life') {
+      if (st.asset >= 30000) lines.push('남긴 것은 ' + formatAsset(st.asset) + '. 숫자보다, 그 숫자를 만든 날들이 길었습니다.');
+      else if (st.asset < 0) lines.push('빚도 남겼습니다. 부끄럽지만, 그것도 내가 살아온 흔적입니다.');
+      else lines.push('남은 재산은 ' + formatAsset(st.asset) + '. 많지 않아도, 아쉽지 않습니다.');
+      if ((s.flags.자녀수 || 0) > 0) lines.push('아이들은 이제 각자의 집에서 저녁을 먹습니다. 그것이 내가 남긴 가장 큰 재산입니다.');
+    } else if (st.asset >= 1) {
+      if (key === 'kindergarten') {
+        lines.push('저금통 안에는 ' + formatAsset(st.asset) + '이 남아 있었습니다. 세지 않아도 알던 돈입니다.');
+      } else if (key === 'elementary' || key === 'middle') {
+        lines.push('통장에 ' + formatAsset(st.asset) + '이 남았습니다. 처음으로 내 돈이라는 걸 알았습니다.');
+      } else {
+        lines.push('통장 잔고는 ' + formatAsset(st.asset) + '. 그것이 내가 가진 전부였고, 부끄럽지 않았습니다.');
+      }
+    } else {
+      lines.push('가진 것은 없었지만, 그게 부끄럽지 않은 나이였습니다.');
+    }
+
+    lines.push(recallPick(rnd, RECALL_CLOSE[key] || RECALL_CLOSE.kindergarten));
+    return lines.slice(0, 10);
+  }
+
   /* ── 공개 API ── */
   global.Life = {
     STAGES: STAGES,
@@ -731,6 +1190,20 @@
     STATS: STATS,
     END_AGE: END_AGE,
     MONTHS: MONTHS,
+    GRADUATIONS: GRADUATIONS,
+    gradInfo: gradInfo,
+    graduate: graduate,
+    recall: function (s, mode) {
+      var info = mode === 'life' ? null : gradInfo(s);
+      return recallLines(s, mode === 'life' ? 'life' : 'grad', info);
+    },
+    hallRecords: hallRecords,
+    hallOf: hallOf,
+    hallRank: hallRank,
+    hallMine: hallMine,
+    hallBestMine: hallBestMine,
+    hallSorted: hallSorted,
+    scoreOfStats: scoreOfStats,
     ageOk: ageOk,
     migrate: migrate,
     stageOf: stageOf,
