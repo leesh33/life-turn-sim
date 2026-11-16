@@ -142,7 +142,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: calc(22px + var(--safe-t)) 22px 18px;
+  padding: calc(18px + var(--safe-t)) 22px 14px;
 }
 
 .start-foot {
@@ -151,7 +151,7 @@ body {
   background: linear-gradient(180deg, rgba(244, 241, 235, 0) 0%, rgba(244, 241, 235, 0.92) 30%);
 }
 
-.brand { padding: 6px 4px 18px; position: relative; }
+.brand { padding: 6px 4px 14px; position: relative; }
 .brand::before {
   content: "";
   position: absolute;
