@@ -876,6 +876,8 @@
 
     var gr = gradeFromTop(total.top);
     var rank = hallRank(def.key, score);
+    // 아직 등록 전이므로, 비교 문구의 인원은 '나까지 포함한' 수로 보여준다
+    var hallNow = { count: rank.count + 1, rank: rank.rank, best: rank.best };
 
     return {
       key: def.key,
@@ -896,7 +898,7 @@
       count: entries.length,
       flags: flags.map(function (k) { return FLAG_LABEL[k] || String(k).replace(/_/g, ' '); }).slice(0, 4),
       sampleSize: (refTable(def.key, 'score') || {}).n || null,
-      hall: rank
+      hall: hallNow
     };
   }
 
