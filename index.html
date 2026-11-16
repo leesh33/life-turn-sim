@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#F4F1EB" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="인생 턴제" />
+<meta name="description" content="30일 버튼 한 번, 한 살 한 살. 선택이 쌓여 인생이 되는 턴제 시뮬레이션." />
+<title>인생 턴제 시뮬레이션</title>
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="assets/favicon.svg" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ───────────── 시작 화면 ───────────── -->
+  <section id="screen-start" class="screen active">
+    <div class="start-scroll">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">🎲</div>
+        <h1>인생 턴제<br /><em>시뮬레이션</em></h1>
+        <p class="brand-sub">
+          30일 버튼 한 번, 한 살 한 살.<br />
+          당신의 선택이 다음 30년을 바꿉니다.
+        </p>
+      </header>
+
+      <button class="resume-card" id="resumeCard" hidden>
+        <div class="resume-left">
+          <span class="resume-label">저장된 인생이 있어요</span>
+          <strong id="resumeName">—</strong>
+          <span class="resume-meta" id="resumeMeta">—</span>
+        </div>
+        <span class="resume-cta">이어하기 →</span>
+      </button>
+
+      <div class="start-form">
+        <h2 class="section-label">어디서부터 시작할까요?</h2>
+        <div class="age-grid" id="ageGrid"></div>
+
+        <div class="name-row">
+          <label class="field">
+            <span class="field-label">이름</span>
+            <input id="nameInput" type="text" maxlength="8" placeholder="상훈" autocomplete="off" />
+          </label>
+          <div class="field gender-field">
+            <span class="field-label">성별</span>
+            <div class="chips" id="genderChips" role="group" aria-label="성별 선택">
+              <button type="button" class="chip active" data-g="남">남</button>
+              <button type="button" class="chip" data-g="여">여</button>
+              <button type="button" class="chip" data-g="랜덤">랜덤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="start-foot">
+      <button class="btn primary big" id="startBtn">인생 시작하기</button>
+      <p class="fine">진행 상황은 이 브라우저에 자동 저장됩니다 · 언제든 새로 시작할 수 있어요</p>
+    </div>
+  </section>
+
+  <!-- ───────────── 플레이 화면 ───────────── -->
+  <section id="screen-play" class="screen">
+    <header class="statusbar">
+      <div class="sb-top">
+        <div class="sb-who">
+          <span class="sb-name" id="whoName">—</span>
+          <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1일차</span></span>
+        </div>
+        <div class="sb-actions">
+          <button class="ghost-btn" id="summaryBtn">인생 요약</button>
+          <button class="ghost-btn danger" id="resetBtn">새로 시작</button>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <main class="stage" id="stage">
+      <div class="stage-inner" id="stageInner"></div>
+    </main>
+
+    <footer class="bottombar">
+      <button class="btn log" id="logBtn"><span class="log-emoji">📖</span> 인생 일지 <b id="logCount">0</b></button>
+      <button class="btn primary advance" id="advanceBtn" disabled>다음 30일 진행하기 →</button>
+    </footer>
+  </section>
+
+  <!-- ───────────── 엔딩 화면 ───────────── -->
+  <section id="screen-ending" class="screen">
+    <div class="ending-scroll" id="endingScroll"></div>
+  </section>
+
+  <!-- ───────────── 인생 일지 시트 ───────────── -->
+  <div class="overlay" id="overlay" hidden></div>
+  <div class="sheet" id="sheet" hidden aria-hidden="true">
+    <div class="sheet-grab"><span></span></div>
+    <div class="sheet-head">
+      <div>
+        <h3>인생 일지</h3>
+        <p id="sheetSub">—</p>
+      </div>
+      <button class="sheet-close" id="sheetClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+</div>
+
+<script src="assets/engine.js"></script>
+<script src="assets/content.early.js"></script>
+<script src="assets/content.mid.js"></script>
+<script src="assets/content.late.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
