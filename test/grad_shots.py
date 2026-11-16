@@ -13,7 +13,7 @@ CHROME = "/workspace/.cache/ms-playwright/chromium-1134/chrome-linux/chrome"
 STATES = "/workspace/downloads/life-states.json"
 
 
-def run(url, outdir):
+def run(url, outdir, phase):
     os.makedirs(outdir, exist_ok=True)
     data = json.load(open(STATES))
     problems, shots = [], []
@@ -51,6 +51,30 @@ def run(url, outdir):
 
         open_page(page)
         page.evaluate("localStorage.clear()")
+
+        if phase == "life":
+            page.evaluate("""([save, hall]) => {
+              localStorage.setItem('lifeTurnSim.save.v1', save);
+              if (hall) localStorage.setItem('lifeTurnSim.hall.v1', hall);
+            }""", [json.dumps(data["life80"]["save"]), json.dumps(data["life80"]["hall"])])
+            open_page(page)
+            page.click("#resumeCard")
+            page.wait_for_timeout(800)
+            shot(page, "12-life80-ending")
+            lines = page.locator(".recall-body p").all_inner_texts()
+            print("80세 회고 줄 수:", len(lines))
+            if not (7 <= len(lines) <= 10):
+                problems.append("80세 회고 줄 수 이상")
+            page.locator(".recall-card").scroll_into_view_if_needed()
+            page.wait_for_timeout(300)
+            shot(page, "13-life80-recall")
+            hard = [e for e in errors if "ERR_INSUFFICIENT_RESOURCES" not in e]
+            print("콘솔 에러:", hard if hard else "없음")
+            browser.close()
+            print("=== 결과:", "PASS" if not problems else "FAIL", "===")
+            for pr in problems:
+                print(" -", pr)
+            return 0 if not problems else 1
 
         # ── 13세 초등학교 졸업 결산 ──
         page.evaluate("""([save]) => {
@@ -101,23 +125,6 @@ def run(url, outdir):
         page.click("#hallBack")
         page.wait_for_timeout(400)
 
-        # ── 80세 완주 엔딩 ──
-        page.evaluate("""([save, hall]) => {
-          localStorage.setItem('lifeTurnSim.save.v1', save);
-          if (hall) localStorage.setItem('lifeTurnSim.hall.v1', hall);
-        }""", [json.dumps(data["life80"]["save"]), json.dumps(data["life80"]["hall"])])
-        open_page(page)
-        page.click("#resumeCard")
-        page.wait_for_timeout(800)
-        shot(page, "12-life80-ending")
-        lines = page.locator(".recall-body p").all_inner_texts()
-        print("80세 회고 줄 수:", len(lines))
-        if not (7 <= len(lines) <= 10):
-            problems.append("80세 회고 줄 수 이상")
-        page.locator(".recall-card").scroll_into_view_if_needed()
-        page.wait_for_timeout(300)
-        shot(page, "13-life80-recall")
-
         # 시작 화면(전당 버튼) — 새로 시작 상태
         page.evaluate("localStorage.clear()")
         open_page(page)
@@ -140,5 +147,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="https://life-turn-sim.vercel.app/")
     ap.add_argument("--out", default="/workspace/downloads/life-sim-grad-live")
+    ap.add_argument("--phase", default="grad", choices=["grad", "life"])
     a = ap.parse_args()
-    sys.exit(run(a.url, a.out))
+    sys.exit(run(a.url, a.out, a.phase))

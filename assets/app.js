@@ -21,6 +21,11 @@
     return h(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
   function num(v) { return Math.round(v); }
+  // 점수는 소수 한 자리까지 (반올림해 같은 숫자처럼 보이는 서로 다른 기록을 구분)
+  function scoreText(v) {
+    var n = Math.round((v || 0) * 10) / 10;
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
 
   /* ── 시작 화면 ── */
   function renderStart() {
@@ -574,7 +579,7 @@
             ' · 매력 ' + num(r.stats.charm) + ' · 호감도 ' + num(r.stats.social) +
             ' · 재산 ' + esc(Life.formatAsset(r.stats.asset)) + '</div>' +
         '</div>' +
-        '<div class="hr-score"><b>' + Math.round(r.score) + '</b>' +
+        '<div class="hr-score"><b>' + scoreText(r.score) + '</b>' +
           '<i class="g-' + String(r.grade || 'B').toLowerCase() + '">' + esc(r.grade || '-') + '</i>' +
           '<span>' + (r.top ? '상위 ' + r.top + '%' : '완주') + '</span></div>' +
         '</div>';
