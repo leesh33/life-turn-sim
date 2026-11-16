@@ -41,6 +41,7 @@
 
     var saved = Life.load();
     var card = $('resumeCard');
+    document.getElementById('screen-start').classList.toggle('has-resume', !!saved);
     if (saved) {
       card.hidden = false;
       $('resumeName').textContent = saved.name + ' · ' + saved.age + '세';
