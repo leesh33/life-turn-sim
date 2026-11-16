@@ -1072,5 +1072,5 @@ body {
 }
 .ad-fine code { font-size: 9px; background: rgba(27, 26, 24, 0.05); padding: 1px 3px; border-radius: 3px; }
 
-/* 하단 여백 보정 (보상 바 + 배너) */
-.toast { bottom: calc(146px + var(--safe-b)); }
+/* 하단 여백 보정 (보상 바 + 배너) — 토스트는 보상 바 위로 */
+.toast { bottom: calc(196px + var(--safe-b)); }

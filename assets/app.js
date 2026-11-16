@@ -238,7 +238,7 @@
     var healSub = heal.querySelector('.rb-sub');
     if (r.healLeft <= 0) healSub.textContent = '이번 판 소진';
     else if (r.canHeal) healSub.textContent = '광고 보고 +' + r.healAmount + ' (' + r.healLeft + '회 남음)';
-    else healSub.textContent = '광고 보고 +' + r.healAmount + ' (30 이하)'; 
+    else healSub.textContent = '체력·멘탈 ' + r.healThreshold + ' 이하';
   }
 
   function requestReward(kind) {
