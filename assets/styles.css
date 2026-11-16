@@ -56,6 +56,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 430px;
+  height: 100vh;
   height: 100dvh;
   margin: 0 auto;
   overflow: hidden;
@@ -405,7 +406,7 @@ body {
 .stage-inner {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   min-height: 100%;
   padding-bottom: 6px;

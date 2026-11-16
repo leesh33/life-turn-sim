@@ -13,7 +13,7 @@ global.window = {
 global.localStorage = global.window.localStorage;
 
 const base = path.join(__dirname, '..', 'assets');
-for (const f of ['engine.js', 'content.early.js', 'content.mid.js', 'content.late.js']) {
+for (const f of ['engine.js', 'content.early.js', 'content.mid.js', 'content.late.js', 'content.extra.js']) {
   const code = fs.readFileSync(path.join(base, f), 'utf8');
   (0, eval)(code);
 }

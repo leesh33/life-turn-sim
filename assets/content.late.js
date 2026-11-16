@@ -176,7 +176,8 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     text: '예식장입니다. 신부 입장 음악이 흐르고, 200명의 눈이 나를 봅니다.\n서약서를 읽을 순서입니다.',
     choices: [
       { label: '준비한 서약을 읽는다', result: '목소리가 떨렸습니다. 뒤에서 엄마가 울었습니다. 결혼했습니다.', effects: { social: 10, mental: 6, asset: -2000, charm: 4 }, set: { 결혼: true, 배우자: true } },
-      { label: '눈을 보며 즉석에서 말한다', result: '준비한 대본은 없었지만 진심이었다고 합니다. 하객들이 박수를 보냈습니다.', effects: { social: 8, mental: 8, charm: 6, asset: -1800 }, set: { 결혼: true, 배우자: true } }
+      { label: '눈을 보며 즉석에서 말한다', result: '준비한 대본은 없었지만 진심이었다고 합니다. 하객들이 박수를 보냈습니다.', effects: { social: 8, mental: 8, charm: 6, asset: -1800 }, set: { 결혼: true, 배우자: true } },
+      { label: '아직 아니다 — 오늘은 여기까지', result: '예식장 앞에서 돌아섰습니다. 미안함과 홀가분함이 반반이었습니다.', effects: { mental: -4, social: -4, asset: 2000 } }
     ]
   },
   {
@@ -312,7 +313,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'weekend_family', stage: 'family', repeatable: true, place: '주말 오후',
+    id: 'weekend_family', stage: 'family', repeatable: true, when: function (s) { return s.flags.자녀; }, place: '주말 오후',
     title: '주말 오후',
     text: '토요일 오후 2시입니다. 아이는 놀자고 하고, 나는 눕고 싶습니다.',
     choices: [

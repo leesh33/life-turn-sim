@@ -224,7 +224,7 @@
       ev = list[i];
       if (ev.stage === 'any' && !ev.at && passes(ev, s) && !used(s, ev.id)) anyPool.push(ev);
     }
-    if (anyPool.length && rand(s) < 0.22) return weightedPick(s, anyPool);
+    if (anyPool.length && rand(s) < (s.stats.mental <= 30 ? 0.55 : 0.22)) return weightedPick(s, anyPool);
 
     // 4) 해당 생애 단계의 아직 안 쓴 이벤트
     var stage = stageOf(s.age).id;
