@@ -100,6 +100,7 @@
     $('logCount').textContent = state.history.length;
     renderStats();
     renderEvent(false);
+    renderRewards();
     $('advanceBtn').disabled = !(state.current && state.current.chosen !== null);
   }
 
@@ -208,9 +209,99 @@
     renderStats();
     pulseStats(res.deltas);
     renderEvent(true);
+    renderRewards();
     $('advanceBtn').disabled = false;
     $('logCount').textContent = state.history.length;
     if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  }
+
+  /* ── 보상형 광고 ── */
+  var REWARD_HINT = {
+    undo: '지금은 되돌릴 선택이 없어요',
+    reroll: '선택을 하기 전에만 다시 뽑을 수 있어요',
+    heal: '체력·멘탈이 30 이하일 때 쓸 수 있어요'
+  };
+
+  function renderRewards() {
+    var bar = $('rewardBar');
+    if (!bar || !state) return;
+    var r = Life.rewardState(state);
+    var undo = $('rewardUndo'), reroll = $('rewardReroll'), heal = $('rewardHeal');
+
+    undo.disabled = !r.canUndo;
+    undo.querySelector('.rb-sub').textContent = r.canUndo ? '광고 보고 1턴 전으로' : '기록 없음';
+
+    reroll.disabled = !r.canReroll;
+    reroll.querySelector('.rb-sub').textContent = r.canReroll ? '광고 보고 다시 뽑기' : '지금은 불가';
+
+    heal.disabled = !r.canHeal;
+    var healSub = heal.querySelector('.rb-sub');
+    if (r.healLeft <= 0) healSub.textContent = '이번 판 소진';
+    else if (r.canHeal) healSub.textContent = '광고 보고 +' + r.healAmount + ' (' + r.healLeft + '회 남음)';
+    else healSub.textContent = '광고 보고 +' + r.healAmount + ' (30 이하)'; 
+  }
+
+  function requestReward(kind) {
+    if (!state) return;
+    var r = Life.rewardState(state);
+    var ok = kind === 'undo' ? r.canUndo : kind === 'reroll' ? r.canReroll : r.canHeal;
+    if (!ok) { toast(REWARD_HINT[kind] || '지금은 쓸 수 없어요'); return; }
+    if (typeof window.showRewardedAd !== 'function') { toast('광고 모듈을 찾지 못했습니다'); return; }
+    window.showRewardedAd(kind, applyReward);
+  }
+
+  function applyReward(kind) {
+    if (!state) return;
+    if (kind === 'undo') {
+      var ev = Life.undo(state);
+      Life.save(state);
+      if (!ev) { toast('되돌릴 기록이 없습니다'); renderRewards(); return; }
+      renderGame();
+      $('ageLabel').textContent = state.age + '세';
+      $('dayLabel').textContent = state.day + '일차';
+      $('logCount').textContent = state.history.length;
+      $('advanceBtn').disabled = true;
+      toast('⏪ 직전 선택을 되돌렸습니다');
+      return;
+    }
+    if (kind === 'reroll') {
+      var next = Life.reroll(state);
+      Life.save(state);
+      if (!next) { toast('다른 사건을 찾지 못했습니다'); return; }
+      renderStats();
+      renderEvent(true);
+      renderRewards();
+      $('advanceBtn').disabled = true;
+      $('stage').scrollTop = 0;
+      toast('🎲 다른 사건이 나타났습니다');
+      return;
+    }
+    if (kind === 'heal') {
+      var res = Life.heal(state);
+      Life.save(state);
+      if (!res) { toast('지금은 회복할 수 없습니다'); return; }
+      renderStats();
+      renderRewards();
+      pulseStats({ hp: 1, mental: 1 });
+      toast('💊 체력 +' + res.hp + ' · 멘탈 +' + res.mental + ' (남은 ' + res.left + '회)');
+    }
+  }
+
+  var BANNER_KEY = 'lifeTurnSim.bannerClosed';
+  function initAdZone() {
+    var zone = $('adZone');
+    if (!zone) return;
+    var closed = false;
+    try { closed = localStorage.getItem(BANNER_KEY) === '1'; } catch (e) {}
+    zone.hidden = closed;
+    var btn = $('adZoneClose');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        zone.hidden = true;
+        try { localStorage.setItem(BANNER_KEY, '1'); } catch (e) {}
+        toast('배너를 접었습니다 (아래 버튼은 그대로)');
+      });
+    }
   }
 
   function timewarp() {
@@ -245,6 +336,7 @@
       $('logCount').textContent = state.history.length;
       renderStats();
       renderEvent(true);
+      renderRewards();
       $('advanceBtn').disabled = true;
       $('stage').scrollTop = 0;
       if (res.birthday) toast('🎂 ' + state.age + '세가 되었습니다');
@@ -382,6 +474,13 @@
       renderEnding(false);
     });
     $('resetBtn').addEventListener('click', resetGame);
+
+    ['rewardUndo', 'rewardReroll', 'rewardHeal'].forEach(function (id) {
+      var btn = $(id);
+      if (!btn) return;
+      btn.addEventListener('click', function () { requestReward(btn.dataset.reason); });
+    });
+    initAdZone();
   }
 
   window.addEventListener('DOMContentLoaded', function () {

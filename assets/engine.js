@@ -40,20 +40,21 @@
     { key: 'social', label: '호감도' }
   ];
 
+  // 시작 스탯은 50~60대 — 한두 번의 선택으로 100이 되지 않게 낮게 잡는다
   var PRESETS = {
-    1:  { stats: { hp: 70, mental: 70, charm: 50, social: 60, asset: 0 },
+    1:  { stats: { hp: 60, mental: 62, charm: 52, social: 58, asset: 0 },
           flags: {} },
-    8:  { stats: { hp: 74, mental: 66, charm: 54, social: 58, asset: 5 },
+    8:  { stats: { hp: 62, mental: 58, charm: 54, social: 56, asset: 5 },
           flags: { 초등학생: true } },
-    14: { stats: { hp: 78, mental: 60, charm: 60, social: 56, asset: 12 },
+    14: { stats: { hp: 64, mental: 54, charm: 57, social: 54, asset: 12 },
           flags: { 중학생: true } },
-    17: { stats: { hp: 79, mental: 55, charm: 63, social: 58, asset: 20 },
+    17: { stats: { hp: 62, mental: 51, charm: 59, social: 54, asset: 20 },
           flags: { 고등학생: true } },
-    20: { stats: { hp: 76, mental: 62, charm: 66, social: 64, asset: 60 },
+    20: { stats: { hp: 61, mental: 55, charm: 60, social: 57, asset: 60 },
           flags: { 대학생: true, 문과: true } },
-    25: { stats: { hp: 70, mental: 58, charm: 68, social: 66, asset: 850 },
+    25: { stats: { hp: 59, mental: 54, charm: 59, social: 58, asset: 850 },
           flags: { 대졸: true, 문과: true, 직업: '대기업 기획자' } },
-    35: { stats: { hp: 64, mental: 60, charm: 70, social: 70, asset: 9500 },
+    35: { stats: { hp: 56, mental: 55, charm: 58, social: 60, asset: 9500 },
           flags: { 대졸: true, 문과: true, 직업: '대기업 기획자' } }
   };
 
@@ -179,10 +180,35 @@
     ]
   };
 
+  // 일상 이벤트의 선택지도 '한쪽이 오르면 한쪽이 빠지는' 맞바꿈으로 둔다
+  var GENERIC_CHOICES = {
+    infancy: [
+      { label: '그냥 잔다', result: '자는 동안 몸이 자랐습니다. 오늘 하루는 아무것도 기억나지 않습니다.', effects: { hp: 2, mental: -1 } },
+      { label: '부모님을 부른다', result: '안아 올려졌습니다. 사람 손이 좋다는 걸 몸으로 압니다.', effects: { social: 2, hp: -1 } },
+      { label: '혼자 놀잇감을 만진다', result: '한 시간을 뒤적였습니다. 세상은 만져지는 것이라는 걸 알았습니다.', effects: { mental: 1, social: -1 } }
+    ],
+    school: [
+      { label: '숙제부터 끝낸다', result: '밤 11시에 끝냈습니다. 마음은 편하지만 몸이 무겁습니다.', effects: { mental: 1, hp: -1 } },
+      { label: '친구들과 어울린다', result: '웃다가 집에 왔습니다. 숙제는 내일의 나에게 맡깁니다.', effects: { social: 2, mental: -1 } },
+      { label: '일찍 자고 푹 쉰다', result: '열 시간을 잤습니다. 다음 날 아무도 나를 기억하지 않습니다.', effects: { hp: 2, social: -1 } }
+    ],
+    adult: [
+      { label: '일단 버틴다', result: '해야 할 일을 해냈습니다. 대신 몸이 하루만큼 낡았습니다.', effects: { mental: 1, hp: -1 } },
+      { label: '사람을 챙긴다', result: '점심을 같이 먹고 커피를 샀습니다. 집에 오니 내 일은 그대로입니다.', effects: { social: 2, mental: -1 } },
+      { label: '몸을 먼저 챙긴다', result: '일찍 누웠습니다. 약속 하나를 미뤘습니다.', effects: { hp: 2, social: -1 } }
+    ],
+    late: [
+      { label: '조용히 보낸다', result: '아무 일도 없는 하루. 그런 하루가 요즘 제일 좋습니다.', effects: { mental: 1, hp: -1 } },
+      { label: '이웃과 마주 앉는다', result: '한 시간을 이야기했습니다. 돌아와서는 조금 피곤합니다.', effects: { social: 2, hp: -1 } },
+      { label: '몸을 돌본다', result: '스트레칭을 하고 일찍 잤습니다. 오늘은 아무도 만나지 않았습니다.', effects: { hp: 2, social: -1 } }
+    ]
+  };
+
   function genericEvent(s) {
     var stage = stageOf(s.age);
-    var bucket = stage.id === 'infancy' ? GENERIC.infancy
-      : (s.age <= 24 ? GENERIC.school : (s.age <= 64 ? GENERIC.adult : GENERIC.late));
+    var bucketId = stage.id === 'infancy' ? 'infancy'
+      : (s.age <= 24 ? 'school' : (s.age <= 64 ? 'adult' : 'late'));
+    var bucket = GENERIC[bucketId];
     var g = bucket[randInt(s, 0, bucket.length - 1)];
     return {
       id: '__generic_' + s.age + '_' + s.day + '_' + s.turn,
@@ -190,11 +216,7 @@
       place: g.place,
       title: g.title,
       text: g.text,
-      choices: [
-        { label: '천천히 흘려보낸다', result: '별일 없이 한 달이 지나갑니다.', effects: { mental: 2 } },
-        { label: '뭔가 해본다', result: '작은 시도 하나. 당장은 티가 안 나지만 나중에 쌓입니다.', effects: { hp: -1, mental: 3, social: 1 } },
-        { label: '쉬어간다', result: '아무것도 하지 않은 하루. 회복도 일입니다.', effects: { hp: 2, mental: 1 } }
-      ],
+      choices: GENERIC_CHOICES[bucketId],
       __generic: true
     };
   }
@@ -246,6 +268,101 @@
     return genericEvent(s);
   }
 
+  /* ── 보상형 광고(프로토타입) ──
+     되돌리기·다시 뽑기·긴급 회복의 '효과'만 엔진에 둔다.
+     광고를 보여주는 부분은 assets/ads.js 의 showRewardedAd 훅이 맡는다. */
+  var REWARD = {
+    healAmount: 12,      // 긴급 회복량 (체력·멘탈 각각)
+    healLimit: 3,        // 한 판에 회복 최대 횟수
+    healThreshold: 30    // 체력 또는 멘탈이 이 값 이하일 때만 활성화
+  };
+
+  function canUndo(s) {
+    return !!(s && s.undo && s.history && s.history.length);
+  }
+
+  function snapshotForUndo(s) {
+    return {
+      age: s.age, day: s.day, turn: s.turn, ended: s.ended,
+      stats: Object.assign({}, s.stats),
+      flags: Object.assign({}, s.flags),
+      used: s.used.slice(),
+      lastSeen: Object.assign({}, s.lastSeen),
+      queue: s.queue.slice(),
+      historyLen: s.history.length,
+      current: s.current ? Object.assign({}, s.current) : null,
+      rngState: s.rngState
+    };
+  }
+
+  // 직전 선택을 되돌린다 (선택 전 상태로 복원)
+  function undo(s) {
+    if (!canUndo(s)) return null;
+    var snap = s.undo;
+    s.undo = null;
+    s.age = snap.age; s.day = snap.day; s.turn = snap.turn; s.ended = false;
+    s.stats = Object.assign({}, snap.stats);
+    s.flags = Object.assign({}, snap.flags);
+    s.used = snap.used.slice();
+    s.lastSeen = Object.assign({}, snap.lastSeen);
+    s.queue = snap.queue.slice();
+    s.history = s.history.slice(0, snap.historyLen);
+    s.current = snap.current ? Object.assign({}, snap.current) : null;
+    s.rngState = snap.rngState;
+    return s.current ? currentEvent(s) : null;
+  }
+
+  function canReroll(s) {
+    return !!(s && !s.ended && s.current && s.current.chosen === null);
+  }
+
+  // 현재 이벤트를 다른 이벤트로 바꾼다
+  function reroll(s) {
+    if (!canReroll(s)) return null;
+    var prev = currentEvent(s);
+    var ev = pickEvent(s);
+    if (!ev || (prev && ev.id === prev.id)) return null;
+    s.current = { eventId: ev.id, chosen: null, event: ev.__generic ? ev : null };
+    s.used.push(ev.id);
+    s.lastSeen[ev.id] = s.turn;
+    if (!s.rewards) s.rewards = { heal: 0, reroll: 0, undo: 0 };
+    s.rewards.reroll += 1;
+    return ev;
+  }
+
+  function canHeal(s) {
+    if (!s || s.ended || !s.stats) return false;
+    if (!s.rewards) s.rewards = { heal: 0, reroll: 0, undo: 0 };
+    if (s.rewards.heal >= REWARD.healLimit) return false;
+    return Math.min(s.stats.hp, s.stats.mental) <= REWARD.healThreshold;
+  }
+
+  // 위기 탈출: 체력·멘탈을 조금 끌어올린다
+  function heal(s) {
+    if (!canHeal(s)) return null;
+    s.rewards.heal += 1;
+    var before = { hp: s.stats.hp, mental: s.stats.mental };
+    s.stats.hp = clamp(s.stats.hp + REWARD.healAmount, 0, 100);
+    s.stats.mental = clamp(s.stats.mental + REWARD.healAmount, 0, 100);
+    return {
+      hp: Math.round(s.stats.hp - before.hp),
+      mental: Math.round(s.stats.mental - before.mental),
+      left: REWARD.healLimit - s.rewards.heal
+    };
+  }
+
+  function rewardState(s) {
+    if (s && !s.rewards) s.rewards = { heal: 0, reroll: 0, undo: 0 };
+    return {
+      canUndo: canUndo(s),
+      canReroll: canReroll(s),
+      canHeal: canHeal(s),
+      healLeft: s && s.rewards ? REWARD.healLimit - s.rewards.heal : REWARD.healLimit,
+      healAmount: REWARD.healAmount,
+      healThreshold: REWARD.healThreshold
+    };
+  }
+
   /* ── 상태 생성 ── */
   function newGame(opts) {
     opts = opts || {};
@@ -273,6 +390,8 @@
       history: [],
       current: null,
       ended: false,
+      undo: null,
+      rewards: { heal: 0, reroll: 0, undo: 0 },
       createdAt: Date.now()
     };
     var first = pickEvent(s);
@@ -321,6 +440,9 @@
     var choice = ev.choices[index];
     if (!choice) return null;
 
+    // 되돌리기를 위해 선택 전 상태를 담아둔다
+    s.undo = snapshotForUndo(s);
+
     // 플래그 먼저 (결과 문구가 플래그를 참조할 수 있음)
     if (choice.set) {
       Object.keys(choice.set).forEach(function (k) { s.flags[k] = choice.set[k]; });
@@ -350,12 +472,39 @@
     return { entry: entry, deltas: deltas, result: resultText };
   }
 
+  /* ── 자연 변화(생활 소모) ──
+     매달 30일이 지나면 네 스탯은 각자의 기준선(baseline) 쪽으로 조금씩 당겨진다.
+     - 기준선보다 높으면 천천히 빠지고(관리하지 않은 호감도·체력이 그렇다),
+     - 기준선보다 낮으면 아주 천천히 회복된다.
+     그래서 100을 유지하려면 계속 신경 써야 하고, 한 선택으로 100을 찍어도 오래 못 간다. */
+  var DRIFT = {
+    hp:     { base: 57, rate: 0.026, age: [[40, -2], [52, -4], [62, -7], [72, -10]] },
+    mental: { base: 55, rate: 0.033, age: [[45, -2], [60, -5]] },
+    charm:  { base: 53, rate: 0.016, age: [[55, -3], [70, -6]] },
+    social: { base: 55, rate: 0.028, age: [[65, -2]] }
+  };
+
+  function driftTarget(key, age) {
+    var d = DRIFT[key];
+    var target = d.base;
+    for (var i = 0; i < d.age.length; i++) if (age >= d.age[i][0]) target = d.base + d.age[i][1];
+    return target;
+  }
+
+  function applyDrift(s) {
+    Object.keys(DRIFT).forEach(function (key) {
+      var cur = s.stats[key];
+      if (cur === undefined) return;
+      var target = driftTarget(key, s.age);
+      var next = cur + (target - cur) * DRIFT[key].rate;
+      s.stats[key] = clamp(next, 0, 100);
+    });
+  }
+
   var AGING = [
-    { from: 30, hp: 1, mental: 0, charm: 0 },
-    { from: 40, hp: 2, mental: 0, charm: 0 },
-    { from: 50, hp: 3, mental: 1, charm: 0 },
-    { from: 60, hp: 4, mental: 1, charm: 1 },
-    { from: 70, hp: 6, mental: 1, charm: 1 }
+    { from: 45, hp: 1, mental: 0, charm: 0 },
+    { from: 62, hp: 1, mental: 0, charm: 1 },
+    { from: 72, hp: 1, mental: 1, charm: 1 }
   ];
 
   // 생일마다 자연 노화 — 스탯이 저절로 100에 달라붙지 않게
@@ -377,6 +526,7 @@
     else if (s.day === 1) { s.day = DAY; }
     else { s.day += DAY; }
     s.turn += 1;
+    applyDrift(s);
     if (birthday) applyAging(s);
 
     if (s.age > END_AGE) {
@@ -562,6 +712,14 @@
     byId: byId,
     allEvents: allEvents,
     rand: rand,
-    clamp: clamp
+    clamp: clamp,
+    REWARD: REWARD,
+    rewardState: rewardState,
+    canUndo: canUndo,
+    undo: undo,
+    canReroll: canReroll,
+    reroll: reroll,
+    canHeal: canHeal,
+    heal: heal
   };
 })(typeof window !== 'undefined' ? window : globalThis);

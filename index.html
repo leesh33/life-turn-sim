@@ -84,10 +84,34 @@
       <div class="stage-inner" id="stageInner"></div>
     </main>
 
+    <!-- ── 보상형 광고 버튼 (프로토타입) ── -->
+    <div class="paidbar" id="rewardBar" aria-label="보상형 광고">
+      <button type="button" class="reward-btn" id="rewardUndo" data-reason="undo" disabled>
+        <span class="rb-main"><span class="rb-emoji">⏪</span> 되돌리기</span>
+        <span class="rb-sub">광고 보고</span>
+      </button>
+      <button type="button" class="reward-btn" id="rewardReroll" data-reason="reroll" disabled>
+        <span class="rb-main"><span class="rb-emoji">🎲</span> 다시 뽑기</span>
+        <span class="rb-sub">광고 보고</span>
+      </button>
+      <button type="button" class="reward-btn" id="rewardHeal" data-reason="heal" disabled>
+        <span class="rb-main"><span class="rb-emoji">💊</span> 긴급 회복</span>
+        <span class="rb-sub">광고 보고 +12</span>
+      </button>
+    </div>
+
+    <!-- ── 얇은 광고 배너 자리 ── -->
+    <div class="adzone" id="adZone">
+      <span class="ad-tag">AD</span>
+      <span class="ad-slot"><b>스폰서 배너 영역</b> · 320×50 프로토타입</span>
+      <button type="button" class="ad-zone-close" id="adZoneClose" aria-label="배너 접기">✕</button>
+    </div>
+
     <footer class="bottombar">
       <button class="btn log" id="logBtn"><span class="log-emoji">📖</span> 인생 일지 <b id="logCount">0</b></button>
       <button class="btn primary advance" id="advanceBtn" disabled>다음 30일 진행하기 →</button>
     </footer>
+
   </section>
 
   <!-- ───────────── 엔딩 화면 ───────────── -->
@@ -110,6 +134,28 @@
   </div>
 
   <div class="toast" id="toast" hidden></div>
+
+  <!-- ───────────── 보상형 광고 모달 (프로토타입) ───────────── -->
+  <div class="ad-modal" id="adModal" hidden aria-hidden="true">
+    <div class="ad-modal-card" role="dialog" aria-modal="true" aria-labelledby="adTitle">
+      <div class="ad-proto-tag">REWARDED AD · PROTOTYPE</div>
+      <div class="ad-icon" id="adIcon">📺</div>
+      <h3 class="ad-title" id="adTitle">보상형 광고</h3>
+      <p class="ad-desc" id="adDesc">—</p>
+      <div class="ad-screen">
+        <span class="ad-screen-tag">AD</span>
+        <span class="ad-screen-count" id="adClock">3</span>
+        <span class="ad-screen-note">프로토타입 광고 지면</span>
+      </div>
+      <div class="ad-track"><i id="adFill"></i></div>
+      <p class="ad-status" id="adStatus">보상형 광고 시청 중…</p>
+      <div class="ad-actions">
+        <button type="button" class="btn ad-cancel-btn" id="adClose">닫기</button>
+        <button type="button" class="btn primary" id="adClaim" disabled>보상 받기</button>
+      </div>
+      <p class="ad-fine">실제 SDK 연동 시 <code>showRewardedAd(reason, onReward)</code>의 시청 완료 콜백으로 교체됩니다</p>
+    </div>
+  </div>
 </div>
 
 <script src="assets/engine.js"></script>
@@ -117,6 +163,9 @@
 <script src="assets/content.mid.js"></script>
 <script src="assets/content.late.js"></script>
 <script src="assets/content.extra.js"></script>
+<script src="assets/content.more1.js"></script>
+<script src="assets/content.more2.js"></script>
+<script src="assets/ads.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
