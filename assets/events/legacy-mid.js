@@ -15,7 +15,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'hair_rule', stage: 'middle', at: [14, 60], place: '교실',
+    id: 'hair_rule', stage: 'middle', at: [14, 3], place: '교실',
     title: '두발 규정',
     text: '학생회가 두발 규정을 없애자는 운동을 시작했습니다. 선생님은 "아직은 안 된다"는 입장입니다.',
     choices: [
@@ -24,7 +24,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'middle_friend_group', stage: 'middle', at: [14, 150], place: '급식실',
+    id: 'middle_friend_group', stage: 'middle', at: [14, 6], place: '급식실',
     title: '무리 정하기',
     text: '점심시간입니다. 두 테이블에서 손짓합니다. 한쪽은 공부하는 아이들, 다른 쪽은 노는 아이들입니다.',
     choices: [
@@ -34,7 +34,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'track_choice', stage: 'middle', at: [15, 30], place: '진로 상담실', milestone: true, weight: 5,
+    id: 'track_choice', stage: 'middle', at: [15, 2], place: '진로 상담실', milestone: true, weight: 5,
     title: '문과 · 이과 선택',
     text: '고등학교 진학을 앞두고 계열을 정해야 합니다. 선생님이 "네가 좋아하는 게 뭐냐"고 묻습니다.',
     choices: [
@@ -44,7 +44,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'first_rank', stage: 'middle', at: [15, 90], place: '교실',
+    id: 'first_rank', stage: 'middle', at: [15, 4], place: '교실',
     title: '첫 시험 등수',
     text: '중간고사 성적표가 나왔습니다. 280명 중 96등입니다. 반에서는 12등.',
     choices: [
@@ -53,7 +53,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'homeroom_talk', stage: 'middle', at: [15, 180], place: '교무실',
+    id: 'homeroom_talk', stage: 'middle', at: [15, 7], place: '교무실',
     title: '담임 선생님과의 대화',
     text: '선생님이 "너는 어떤 어른이 되고 싶냐"고 물으십니다. 그런 걸 생각해본 적이 없습니다.',
     choices: [
@@ -63,7 +63,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'game_rank', stage: 'middle', at: [15, 240], when: function (s) { return s.flags.게이머; }, place: '내 방',
+    id: 'game_rank', stage: 'middle', at: [15, 9], when: function (s) { return s.flags.게이머; }, place: '내 방',
     title: '랭크 게임',
     text: '친구들이 "랭크 같이 하자"고 합니다. 밤 11시, 시험은 3주 남았습니다.',
     choices: [
@@ -72,7 +72,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'volunteer_hours', stage: 'middle', at: [16, 150], place: '동네 도서관',
+    id: 'volunteer_hours', stage: 'middle', at: [16, 6], place: '동네 도서관',
     title: '봉사활동',
     text: '봉사활동 시간이 필요합니다. 도서관 정리, 지역아동센터 학습 도우미, 환경 정화 중에 고르라고 합니다.',
     choices: [
@@ -82,7 +82,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'class_vote', stage: 'middle', at: [16, 90], place: '교실',
+    id: 'class_vote', stage: 'middle', at: [16, 4], place: '교실',
     title: '인기투표',
     text: '장기자랑 시간입니다. 반에서 "누가 제일 인기 많냐" 투표를 한다고 합니다. 나는 후보에 없습니다.',
     choices: [
@@ -92,7 +92,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'family_trip', stage: 'middle', at: [16, 300], place: '제주도',
+    id: 'family_trip', stage: 'middle', at: [16, 11], place: '제주도',
     title: '가족 여행',
     text: '아빠가 갑자기 "겨울에 제주도 가자"고 합니다. 숙소를 알아보니 비싸고, 나는 친구들과 약속이 있습니다.',
     choices: [
@@ -101,7 +101,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'mid_academy', stage: 'middle', repeatable: true, place: '학원',
+    id: 'mid_academy', stage: 'middle', minAge: 14, maxAge: 16, repeatable: true, place: '학원',
     title: '학원 자습실',
     text: '자습실 창가 자리가 비었습니다. 창밖은 벌써 여름입니다.',
     choices: [
@@ -122,7 +122,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'first_mock', stage: 'high', at: [17, 60], place: '고사실',
+    id: 'first_mock', stage: 'high', at: [17, 3], place: '고사실',
     title: '첫 모의고사',
     text: '첫 모의고사입니다. 3등급이 나왔습니다. 선생님이 "여기서 어떻게 하느냐가 갈린다"고 합니다.',
     choices: [
@@ -132,7 +132,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'night_study', stage: 'high', repeatable: true, place: '야자실 밤 10시',
+    id: 'night_study', stage: 'high', minAge: 17, maxAge: 19, repeatable: true, place: '야자실 밤 10시',
     title: '야자실 밤 10시',
     text: '야자 3교시입니다. 앞자리에 아이는 엎드려 잤습니다. 나도 눈이 감깁니다.',
     choices: [
@@ -141,7 +141,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'first_love', stage: 'high', at: [18, 60], place: '학교 앞 카페',
+    id: 'first_love', stage: 'high', at: [18, 3], place: '학교 앞 카페',
     title: '첫 연애',
     text: '같은 학교 아이와 요즘 자꾸 마주칩니다. 오늘 먼저 "같이 영화 볼래?"라는 문자가 왔습니다.',
     choices: [
@@ -150,7 +150,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'smoke_offer', stage: 'high', at: [18, 150], place: '건물 뒷골목',
+    id: 'smoke_offer', stage: 'high', at: [18, 6], place: '건물 뒷골목',
     title: '담배 권유',
     text: '뒷골목에서 선배가 담배를 건넵니다. 거절하면 분위기가 어색해질 겁니다.',
     choices: [
@@ -159,7 +159,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'academy_fee', stage: 'high', at: [18, 240], place: '거실',
+    id: 'academy_fee', stage: 'high', at: [18, 9], place: '거실',
     title: '학원비 걱정',
     text: '저녁에 부모님이 조용히 이야기하고 있습니다. 이번 달 학원비와 카드값 이야기가 들립니다.',
     choices: [
@@ -169,7 +169,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'csat_d100', stage: 'high', at: [19, 60], place: '교실', milestone: true,
+    id: 'csat_d100', stage: 'high', at: [19, 3], place: '교실', milestone: true,
     title: '수능 D-100',
     text: '칠판에 D-100이 적혔습니다. 교실 공기가 달라졌습니다.\n나는 어떤 100일을 보낼까요?',
     choices: [
@@ -179,7 +179,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'csat_day', stage: 'high', at: [19, 240], place: '수능 시험장', milestone: true, weight: 6,
+    id: 'csat_day', stage: 'high', at: [19, 9], place: '수능 시험장', milestone: true, weight: 6,
     title: '수능 당일',
     text: '아침 8시, 시험장입니다. 어머니가 포옹을 하고 "잘해"라고 했습니다.\n국어 시험지가 펼쳐집니다.',
     choices: [
@@ -198,7 +198,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'retry_academy', stage: 'high', place: '재수학원',
+    id: 'retry_academy', stage: 'high', minAge: 19, maxAge: 19, place: '재수학원',
     title: '재수 첫날',
     text: '재수학원 강당입니다. 400명이 동시에 고개를 숙이고 있습니다. 옆자리 아이는 작년에 1점 차로 떨어졌다고 합니다.',
     choices: [
@@ -207,7 +207,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'csat_result', stage: 'high', at: [19, 300], place: '집',
+    id: 'csat_result', stage: 'high', at: [19, 11], place: '집',
     title: '원서 접수',
     text: '성적표가 나왔습니다. 원서는 단 한 번, 세 개까지 쓸 수 있습니다.',
     choices: [
@@ -217,7 +217,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'graduation', stage: 'high', at: [19, 330], place: '졸업식', milestone: true,
+    id: 'graduation', stage: 'high', at: [19, 12], place: '졸업식', milestone: true,
     title: '졸업식',
     text: '교복을 입은 마지막 날입니다. 친구들이 단체 사진을 찍자고 합니다. 울지 않기로 했는데 눈이 시립니다.',
     choices: [
@@ -238,7 +238,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'mt_ot', stage: 'college', at: [20, 60], place: '엠티장',
+    id: 'mt_ot', stage: 'college', at: [20, 3], place: '엠티장',
     title: '새터',
     text: '계곡 근처 펜션입니다. 선배들이 이름을 묻고, 꼬치구이 담당이 나에게 왔습니다.',
     choices: [
@@ -248,7 +248,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'club_join', stage: 'college', at: [20, 120], place: '동아리방',
+    id: 'club_join', stage: 'college', at: [20, 5], place: '동아리방',
     title: '동아리 선택',
     text: '동아리 모집이 끝나갑니다. 밴드, 영상제작, 농구, 학회 중에 하나를 고르라는데 3학년 때까지 나와야 합니다.',
     choices: [
@@ -258,7 +258,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'grade_first', stage: 'college', at: [20, 180], place: '기숙사',
+    id: 'grade_first', stage: 'college', at: [20, 7], place: '기숙사',
     title: '첫 학기 성적',
     text: '성적이 나왔습니다. 2.8입니다. 옆방 친구는 4.3이라고 합니다.',
     choices: [
@@ -267,7 +267,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'tuition', stage: 'college', at: [20, 240], place: '등록금 고지서',
+    id: 'tuition', stage: 'college', at: [20, 9], place: '등록금 고지서',
     title: '등록금',
     text: '두 번째 학기 등록금 고지서가 왔습니다. 240만 원. 부모님께 말씀드리기가 어렵습니다.',
     choices: [
@@ -277,7 +277,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'army_start', stage: 'college', at: [21, 60], when: function (s) { return s.gender === '남' && !s.flags.군필; }, place: '훈련소', milestone: true, weight: 5,
+    id: 'army_start', stage: 'college', at: [21, 3], when: function (s) { return s.gender === '남' && !s.flags.군필; }, place: '훈련소', milestone: true, weight: 5,
     title: '입대',
     text: '휴학계를 냈습니다. 삭발하고 훈련소로 갑니다. 버스 창밖으로 익숙한 길이 흘러갑니다.',
     choices: [
@@ -286,7 +286,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'part_time', stage: 'college', at: [21, 150], place: '편의점',
+    id: 'part_time', stage: 'college', at: [21, 6], place: '편의점',
     title: '아르바이트',
     text: '편의점 야간 시급은 1만 2천 원입니다. 새벽 2시에 오는 손님이 제일 많은 가게입니다.',
     choices: [
@@ -296,7 +296,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'exchange', stage: 'college', at: [22, 60], when: function (s) { return s.flags.학원_영어 || s.flags.장학금; }, place: '국제교류처',
+    id: 'exchange', stage: 'college', at: [22, 3], when: function (s) { return s.flags.학원_영어 || s.flags.장학금; }, place: '국제교류처',
     title: '교환학생',
     text: '교환학생 모집이 떴습니다. 한 학기 해외. 비용은 자기 부담입니다. 영어 성적이 필요합니다.',
     choices: [
@@ -305,7 +305,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'contest', stage: 'college', at: [22, 150], place: '공모전',
+    id: 'contest', stage: 'college', at: [22, 6], place: '공모전',
     title: '공모전',
     text: '전국 규모 공모전이 열렸습니다. 팀을 꾸리면 상금 300만 원. 밤샘이 확정입니다.',
     choices: [
@@ -314,7 +314,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'intern', stage: 'college', at: [23, 90], place: '회사',
+    id: 'intern', stage: 'college', at: [23, 4], place: '회사',
     title: '첫 인턴',
     text: '인턴 자리를 잡았습니다. 출근 첫날, 지하철 2호선에서 회사 명함을 받았습니다.',
     choices: [
@@ -323,7 +323,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'career_prep', stage: 'college', at: [24, 60], place: '졸업반',
+    id: 'career_prep', stage: 'college', at: [24, 3], place: '졸업반',
     title: '취업 준비',
     text: '졸업반입니다. 자소서 항목 4개, 스펙부족, 주변은 이미 하나씩 붙었습니다.',
     choices: [
@@ -333,7 +333,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'campus_dating', stage: 'college', at: [22, 240], place: '캠퍼스 커플',
+    id: 'campus_dating', stage: 'college', at: [22, 9], place: '캠퍼스 커플',
     title: '캠퍼스 커플',
     text: '같은 팀 프로젝트에서 만난 아이와 밤늦게까지 얘기했습니다. 손을 잡아보라고 권하는 친구가 있습니다.',
     choices: [
@@ -342,7 +342,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'college_class', stage: 'college', repeatable: true, place: '강의실',
+    id: 'college_class', stage: 'college', minAge: 20, maxAge: 24, repeatable: true, place: '강의실',
     title: '출석과 과제',
     text: '아침 9시 수업입니다. 어제 술을 조금 했습니다. 출석 20%가 걸려 있습니다.',
     choices: [

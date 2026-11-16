@@ -6,7 +6,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 사회생활 (25~34) ══════════════ */
   {
-    id: 'first_evaluation', stage: 'work', at: [25, 120], place: '인사평가',
+    id: 'first_evaluation', stage: 'work', at: [25, 5], place: '인사평가',
     title: '첫 인사평가',
     text: '상반기 평가 결과가 나왔습니다. 등급은 C. 옆자리 동기는 B를 받았습니다. 팀장이 "다음에 더"라고 합니다.',
     choices: [
@@ -16,7 +16,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'karaoke_after', stage: 'work', at: [27, 60], place: '노래방',
+    id: 'karaoke_after', stage: 'work', at: [27, 3], place: '노래방',
     title: '회식 2차, 노래방',
     text: '1차가 끝나고 다들 일어납니다. 마이크가 나에게 넘어왔습니다. 상사가 신청곡을 누르고 있습니다.',
     choices: [
@@ -26,7 +26,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'lunch_eye_game', stage: 'work', at: [26, 240], place: '회의실',
+    id: 'lunch_eye_game', stage: 'work', at: [26, 9], place: '회의실',
     title: '점심 메뉴 눈치게임',
     text: '다들 "아무거나 좋아요"라고 합니다. 12시 5분입니다. 누가 먼저 말을 꺼내야 하는지 눈치를 봅니다.',
     choices: [
@@ -36,7 +36,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'stock_crash', stage: 'work', at: [28, 60], place: '휴대폰',
+    id: 'stock_crash', stage: 'work', at: [28, 3], place: '휴대폰',
     title: '주식 떡락',
     text: '작년에 산 종목이 -35%입니다. 커뮤니티에는 "물타라"는 글과 "손절하라"는 글이 반반입니다.',
     choices: [
@@ -46,7 +46,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'coin_moon', stage: 'work', at: [29, 60], place: '휴대폰',
+    id: 'coin_moon', stage: 'work', at: [29, 3], place: '휴대폰',
     title: '코인 떡상',
     text: '지인이 추천한 동전 코인이 일주일 만에 두 배가 됐습니다. 커뮤니티에는 "인생 코인"이라는 말이 돕니다.',
     choices: [
@@ -56,7 +56,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'job_interview_v', stage: 'work', at: [30, 150], when: function (s) { return s.flags.이직결심 || s.flags.취준_대기업; }, place: '면접장',
+    id: 'job_interview_v', stage: 'work', at: [30, 6], when: function (s) { return s.flags.이직결심 || s.flags.취준_대기업; }, place: '면접장',
     title: '이직 면접',
     text: '면접장에 앉았습니다. 마주 앉은 사람이 "지금 회사에서는 어떤 일을 하세요?"라고 묻습니다.',
     choices: [
@@ -66,7 +66,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'condolence_money', stage: 'work', at: [31, 60], place: '장례식장',
+    id: 'condolence_money', stage: 'work', at: [31, 3], place: '장례식장',
     title: '경조사비 폭탄',
     text: '이번 달 결혼식 두 건, 장례 한 건, 돌잔치 한 건입니다. 부조금만 40만 원입니다.',
     choices: [
@@ -76,7 +76,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'gym_three_days', stage: 'work', at: [30, 240], place: '헬스장',
+    id: 'gym_three_days', stage: 'work', at: [30, 9], place: '헬스장',
     title: '헬스장 3일',
     text: '3개월 회원권을 끊었습니다. 오늘이 네 번째 가는 날인데 몸이 무겁습니다.',
     choices: [
@@ -85,7 +85,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'office_romance', stage: 'work', at: [28, 300], when: function (s) { return !s.flags.연애중 && !s.flags.결혼; }, place: '회사 옥상',
+    id: 'office_romance', stage: 'work', at: [28, 11], when: function (s) { return !s.flags.연애중 && !s.flags.결혼; }, place: '회사 옥상',
     title: '사내 연애',
     text: '옆 팀 사람과 자꾸 점심이 겹칩니다. 오늘은 "커피 한잔 하실래요"라는 메시지가 왔습니다.',
     choices: [
@@ -94,7 +94,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'team_workshop', stage: 'work', at: [29, 240], place: '워크숍',
+    id: 'team_workshop', stage: 'work', at: [29, 9], place: '워크숍',
     title: '팀 워크숍',
     text: '1박 2일 워크숍입니다. 오후에는 팀 빌딩, 저녁에는 회식이 이어집니다. 주말을 쓰는 일정입니다.',
     choices: [
@@ -103,7 +103,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'salary_freeze', stage: 'work', at: [32, 240], place: '인사 공지',
+    id: 'salary_freeze', stage: 'work', at: [32, 9], place: '인사 공지',
     title: '연봉 동결',
     text: '올해 임금 협상 결과가 공지됐습니다. "전 직원 연봉 동결"입니다. 물가는 올랐습니다.',
     choices: [
@@ -113,7 +113,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'parents_tour', stage: 'work', at: [33, 60], place: '공항',
+    id: 'parents_tour', stage: 'work', at: [33, 3], place: '공항',
     title: '부모님 효도관광',
     text: '부모님이 여행을 한 번도 못 가봤다고 합니다. 3박 4일 패키지, 250만 원. 내 통장과 마음이 함께 계산합니다.',
     choices: [
@@ -123,7 +123,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'friend_wedding', stage: 'work', at: [33, 240], place: '예식장',
+    id: 'friend_wedding', stage: 'work', at: [33, 9], place: '예식장',
     title: '친구의 결혼식',
     text: '대학 때 가장 친한 친구가 결혼합니다. 축의금은 얼마가 적당할까요. 다른 친구들은 20만 원이라고 합니다.',
     choices: [
@@ -133,7 +133,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'credit_loan', stage: 'work', at: [34, 90], place: '은행 앱',
+    id: 'credit_loan', stage: 'work', at: [34, 4], place: '은행 앱',
     title: '신용대출',
     text: '급하게 돈이 필요합니다. 앱에서 신용대출 한도를 조회하니 3천만 원까지 나옵니다. 금리는 6.5%입니다.',
     choices: [
@@ -143,7 +143,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'office_pc_change', stage: 'work', repeatable: true, when: function (s) { return s.flags.직업 && !s.flags.명퇴; }, place: '사무실',
+    id: 'office_pc_change', stage: 'work', minAge: 25, maxAge: 34, repeatable: true, when: function (s) { return s.flags.직업 && !s.flags.명퇴; }, place: '사무실',
     title: '업무 과부하',
     text: '새 업무가 내려왔습니다. 기존 업무는 그대로인데 마감은 이번 주입니다.',
     choices: [
@@ -153,7 +153,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'mid_company_love', stage: 'work', at: [34, 240], when: function (s) { return s.flags.사내연애 && !s.flags.결혼; }, place: '회사 앞',
+    id: 'mid_company_love', stage: 'work', at: [34, 9], when: function (s) { return s.flags.사내연애 && !s.flags.결혼; }, place: '회사 앞',
     title: '사내 연애가 알려졌습니다',
     text: '단톡방에 두 사람 사진이 올라왔습니다. 인사팀에서 "잠깐 이야기 좀"이라고 연락이 왔습니다.',
     choices: [
@@ -162,7 +162,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'job_move_up', stage: 'work', at: [34, 30], when: function (s) { return s.flags.이직_성공 || s.flags.이직결심; }, place: '새 회사',
+    id: 'job_move_up', stage: 'work', at: [34, 2], when: function (s) { return s.flags.이직_성공 || s.flags.이직결심; }, place: '새 회사',
     title: '새 회사 적응',
     text: '이직한 회사의 첫 달입니다. 사람도 시스템도 다릅니다. 회의실 이름조차 모릅니다.',
     choices: [
@@ -173,7 +173,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 가정 (35~49) ══════════════ */
   {
-    id: 'meeting_parents', stage: 'work', at: [32, 120], when: function (s) { return !s.flags.결혼; }, place: '한정식집', milestone: true,
+    id: 'meeting_parents', stage: 'work', at: [32, 5], when: function (s) { return !s.flags.결혼; }, place: '한정식집', milestone: true,
     title: '상견례',
     text: '양가 부모님이 처음 만납니다. 방은 조용하고, 물잔 소리만 들립니다. 어머니가 "우리 애가 말을 잘 못해서"라고 시작합니다.',
     choices: [
@@ -183,7 +183,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'newlywed_interior', stage: 'family', at: [36, 240], when: function (s) { return s.flags.결혼; }, place: '신혼집',
+    id: 'newlywed_interior', stage: 'family', at: [36, 9], when: function (s) { return s.flags.결혼; }, place: '신혼집',
     title: '신혼집 인테리어 갈등',
     text: '거실 벽지를 고르는데 의견이 갈립니다. 나는 회색, 배우자는 아이보리. 서로 "이게 더 낫다"고 합니다.',
     choices: [
@@ -193,7 +193,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'parental_leave', stage: 'family', at: [38, 60], when: function (s) { return s.flags.자녀; }, place: '인사팀',
+    id: 'parental_leave', stage: 'family', at: [38, 3], when: function (s) { return s.flags.자녀; }, place: '인사팀',
     title: '육아휴직 신청',
     text: '아이가 아직 어립니다. 육아휴직을 쓰면 6개월간 급여의 80%가 나옵니다. 대신 복직 후 자리가 달라질 수 있습니다.',
     choices: [
@@ -203,7 +203,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'holiday_nagging', stage: 'family', repeatable: true, when: function (s) { return s.flags.결혼; }, place: '명절 거실',
+    id: 'holiday_nagging', stage: 'family', minAge: 35, maxAge: 49, repeatable: true, when: function (s) { return s.flags.결혼; }, place: '명절 거실',
     title: '명절 잔소리',
     text: '"애는 언제 둘째 낳을 거야", "연봉은 올랐어?" 식탁에서 질문이 이어집니다. 배우자가 옆에서 내 발을 밟습니다.',
     choices: [
@@ -213,7 +213,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'second_child', stage: 'family', at: [39, 90], when: function (s) { return s.flags.자녀 && (s.flags.자녀수 || 0) < 2; }, place: '거실',
+    id: 'second_child', stage: 'family', at: [39, 4], when: function (s) { return s.flags.자녀 && (s.flags.자녀수 || 0) < 2; }, place: '거실',
     title: '둘째 계획',
     text: '배우자가 둘째 이야기를 꺼냅니다. 집은 좁고, 육아는 힘들고, 나이는 서로 마흔을 바라봅니다.',
     choices: [
@@ -222,7 +222,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'floor_noise', stage: 'family', at: [42, 240], place: '아파트 거실',
+    id: 'floor_noise', stage: 'family', minAge: 40, maxAge: 49, at: [42, 9], place: '아파트 거실',
     title: '층간소음',
     text: '밤 11시, 위집에서 쿵쿵 소리가 납니다. 세 번째입니다. 배우자가 "올라가서 말하자"고 합니다.',
     choices: [
@@ -232,7 +232,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'maintenance_bill', stage: 'family', at: [43, 60], place: '현관',
+    id: 'maintenance_bill', stage: 'family', minAge: 40, maxAge: 49, at: [43, 3], place: '현관',
     title: '관리비 폭탄',
     text: '이번 달 관리비가 48만 원입니다. 난방을 그렇게 틀지 않았는데도 숫자가 이렇습니다.',
     choices: [
@@ -242,7 +242,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'kimjang', stage: 'family', at: [44, 240], when: function (s) { return s.flags.결혼; }, place: '베란다',
+    id: 'kimjang', stage: 'family', at: [44, 9], when: function (s) { return s.flags.결혼; }, place: '베란다',
     title: '김장',
     text: '양가에서 배추 스무 포기가 왔습니다. 배우자는 "사 먹자"고 하고, 어머니는 "직접 해야 맛있다"고 합니다.',
     choices: [
@@ -252,7 +252,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'kid_taekwondo', stage: 'family', at: [45, 180], when: function (s) { return s.flags.자녀; }, place: '도장 앞',
+    id: 'kid_taekwondo', stage: 'family', at: [45, 7], when: function (s) { return s.flags.자녀; }, place: '도장 앞',
     title: '아이의 태권도',
     text: '아이가 태권도를 그만두고 싶다고 합니다. 등록은 세 달 남았습니다. 아이는 "재미없다"고 합니다.',
     choices: [
@@ -262,7 +262,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'anniversary', stage: 'family', at: [40, 60], when: function (s) { return s.flags.결혼; }, place: '집',
+    id: 'anniversary', stage: 'family', at: [40, 3], when: function (s) { return s.flags.결혼; }, place: '집',
     title: '결혼기념일',
     text: '오늘이 결혼기념일입니다. 아침에 배우자가 "오늘 뭐 하는 날인지 알지?"라고 합니다. 잊고 있었습니다.',
     choices: [
@@ -272,7 +272,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'pet_dog', stage: 'family', at: [41, 240], when: function (s) { return !s.flags.반려동물; }, place: '유기견 보호소',
+    id: 'pet_dog', stage: 'family', at: [41, 9], when: function (s) { return !s.flags.반려동물; }, place: '유기견 보호소',
     title: '반려견',
     text: '아이가 보호소에 가자고 합니다. 작은 믹스견이 눈을 마주칩니다. 입양 가족을 찾고 있습니다.',
     choices: [
@@ -281,7 +281,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'inlaw_hospital', stage: 'family', at: [46, 300], place: '병원',
+    id: 'inlaw_hospital', stage: 'family', minAge: 44, maxAge: 49, at: [46, 11], place: '병원',
     title: '장모님 입원',
     text: '배우자의 어머니가 수술을 받습니다. 병원비와 간병 일정을 정해야 합니다. 나는 장남도 막내도 아닙니다.',
     choices: [
@@ -291,7 +291,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'kid_academy_diet', stage: 'family', at: [47, 90], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '학원가',
+    id: 'kid_academy_diet', stage: 'family', at: [47, 4], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '학원가',
     title: '학원 다이어트',
     text: '아이 학원비가 한 달 140만 원입니다. 아이가 "줄여도 된다"고 합니다. 성적은 조금 내려갈 수 있습니다.',
     choices: [
@@ -301,7 +301,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'layoff_rumor', stage: 'family', at: [48, 60], when: function (s) { return s.flags.직업 && !s.flags.명퇴; }, place: '사무실',
+    id: 'layoff_rumor', stage: 'family', at: [48, 3], when: function (s) { return s.flags.직업 && !s.flags.명퇴; }, place: '사무실',
     title: '구조조정 소문',
     text: '조직 개편 소문이 돕니다. 내 팀 이름이 리스트에 있다는 이야기도 있습니다. 집에 말할까 고민됩니다.',
     choices: [
@@ -311,7 +311,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'family_road_trip', stage: 'family', at: [49, 120], when: function (s) { return s.flags.자녀; }, place: '고속도로',
+    id: 'family_road_trip', stage: 'family', at: [49, 5], when: function (s) { return s.flags.자녀; }, place: '고속도로',
     title: '가족 차박',
     text: '주말에 차로 3시간 거리로 떠나기로 했습니다. 아이는 좋아하고, 나는 운전이 걱정됩니다.',
     choices: [
@@ -320,7 +320,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'couple_counsel', stage: 'family', at: [49, 240], when: function (s) { return s.flags.결혼; }, place: '상담실',
+    id: 'couple_counsel', stage: 'family', at: [49, 9], when: function (s) { return s.flags.결혼; }, place: '상담실',
     title: '부부 상담',
     text: '요즘 대화가 줄었습니다. 배우자가 상담을 받아보자고 합니다. 비용은 회당 15만 원입니다.',
     choices: [
@@ -331,7 +331,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 중년 (50~64) ══════════════ */
   {
-    id: 'colonoscopy', stage: 'midlife', at: [52, 60], place: '내시경실',
+    id: 'colonoscopy', stage: 'midlife', at: [52, 3], place: '내시경실',
     title: '대장내시경',
     text: '검진 항목에 대장내시경이 있습니다. 전날 장 정결제를 먹어야 합니다. 물만 마시는 하루입니다.',
     choices: [
@@ -340,7 +340,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'polyp_result', stage: 'midlife', when: function (s) { return !!s.flags.검진_완료; }, place: '병원',
+    id: 'polyp_result', stage: 'midlife', minAge: 52, maxAge: 54, when: function (s) { return !!s.flags.검진_완료; }, place: '병원',
     title: '조직검사 결과',
     text: '제거한 용종의 조직검사 결과를 듣습니다. 의사가 서류를 넘기며 표정을 정리합니다.',
     choices: [
@@ -349,7 +349,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'lotto_4th', stage: 'midlife', at: [53, 60], place: '편의점',
+    id: 'lotto_4th', stage: 'midlife', at: [53, 3], place: '편의점',
     title: '로또 4등',
     text: '1년째 매주 5천 원씩 사는 로또가 맞았습니다. 4등, 5만 원입니다.',
     choices: [
@@ -359,7 +359,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'young_boss', stage: 'midlife', at: [54, 30], when: function (s) { return s.flags.직업 && !s.flags.은퇴; }, place: '회의실',
+    id: 'young_boss', stage: 'midlife', at: [54, 2], when: function (s) { return s.flags.직업 && !s.flags.은퇴; }, place: '회의실',
     title: '나보다 어린 상사',
     text: '새 팀장이 30대 후반입니다. 나는 50대 실무자. 회의에서 내 기획이 "예전 방식"이라고 불렸습니다.',
     choices: [
@@ -369,7 +369,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'countryside_prep', stage: 'midlife', at: [55, 240], when: function (s) { return !s.flags.귀촌; }, place: '시골 마을',
+    id: 'countryside_prep', stage: 'midlife', at: [55, 9], when: function (s) { return !s.flags.귀촌; }, place: '시골 마을',
     title: '귀촌을 고민합니다',
     text: '지인이 시골 빈집을 소개합니다. 3천만 원. 마당이 있고, 가장 가까운 병원은 25분 거리입니다.',
     choices: [
@@ -379,7 +379,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'franchise_offer', stage: 'midlife', at: [56, 300], when: function (s) { return !s.flags.창업; }, place: '상담실',
+    id: 'franchise_offer', stage: 'midlife', at: [56, 11], when: function (s) { return !s.flags.창업; }, place: '상담실',
     title: '프랜차이즈 제안',
     text: '지인이 카페 프랜차이즈를 권합니다. 보증금과 시설비를 합쳐 1억 5천. 월 매출 예상은 "잘 되면"이라는 전제입니다.',
     choices: [
@@ -389,7 +389,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'franchise_reality', stage: 'midlife', when: function (s) { return !!s.flags.창업; }, place: '가게',
+    id: 'franchise_reality', stage: 'midlife', minAge: 56, maxAge: 62, when: function (s) { return !!s.flags.창업; }, place: '가게',
     title: '가게의 현실',
     text: '6개월째입니다. 인건비와 임대료를 빼면 남는 것이 거의 없습니다. 본사는 "프로모션을 하라"고 합니다.',
     choices: [
@@ -399,7 +399,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'kid_independence', stage: 'midlife', at: [57, 60], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '현관',
+    id: 'kid_independence', stage: 'midlife', at: [57, 3], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '현관',
     title: '아이가 독립합니다',
     text: '아이가 짐을 싸서 나갑니다. 방이 비었습니다. 현관에서 "들어가라"고 말했는데 발이 떨어지지 않습니다.',
     choices: [
@@ -409,7 +409,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'silver_youtube', stage: 'midlife', at: [58, 180], place: '서재',
+    id: 'silver_youtube', stage: 'midlife', at: [58, 7], place: '서재',
     title: '실버 유튜버',
     text: '은퇴 준비로 유튜브를 시작해볼까 합니다. 주제는 등산과 낚시. 카메라는 폰으로 충분하다고 합니다.',
     choices: [
@@ -419,7 +419,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'divorce_crisis', stage: 'midlife', at: [59, 90], when: function (s) { return s.flags.결혼; }, place: '거실',
+    id: 'divorce_crisis', stage: 'midlife', at: [59, 4], when: function (s) { return s.flags.결혼; }, place: '거실',
     title: '부부의 위기',
     text: '배우자가 "우리 이렇게 사는 게 맞나"라고 묻습니다. 서로 다른 방에서 잔 지 2년입니다.',
     choices: [
@@ -429,7 +429,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'supplement_scam', stage: 'midlife', at: [60, 60], place: '문화센터 강당',
+    id: 'supplement_scam', stage: 'midlife', at: [60, 3], place: '문화센터 강당',
     title: '건강식품 강연',
     text: '무료 건강 강연에 갔더니 마지막에 3개월분 건강식품을 60만 원에 판매합니다. 옆자리 사람들이 줄을 섭니다.',
     choices: [
@@ -439,7 +439,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'friend_funeral', stage: 'midlife', at: [61, 240], place: '장례식장',
+    id: 'friend_funeral', stage: 'midlife', at: [61, 9], place: '장례식장',
     title: '동기의 부고',
     text: '같이 입사한 동기가 갑자기 세상을 떠났습니다. 마지막으로 연락한 게 3년 전입니다.',
     choices: [
@@ -448,7 +448,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'hiking_club', stage: 'midlife', repeatable: true, when: function (s) { return s.age >= 50; }, place: '등산로',
+    id: 'hiking_club', stage: 'midlife', minAge: 50, maxAge: 64, repeatable: true, when: function (s) { return s.age >= 50; }, place: '등산로',
     title: '등산 동호회',
     text: '토요일 아침 6시, 산 입구에 사람들이 모였습니다. 나는 어제 회식을 했습니다.',
     choices: [
@@ -458,7 +458,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'will_draft', stage: 'midlife', at: [63, 150], place: '법무사 사무실',
+    id: 'will_draft', stage: 'midlife', at: [63, 6], place: '법무사 사무실',
     title: '유언장',
     text: '법무사가 유언장 작성을 권합니다. 자필로 쓰면 된다고 합니다. 종이 앞에 앉으니 손이 무겁습니다.',
     choices: [
@@ -467,7 +467,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'home_remodel', stage: 'midlife', at: [58, 60], when: function (s) { return s.flags.집있음; }, place: '우리 집',
+    id: 'home_remodel', stage: 'midlife', at: [58, 3], when: function (s) { return s.flags.집있음; }, place: '우리 집',
     title: '집 리모델링',
     text: '20년 된 집입니다. 주방과 욕실을 고치면 3천만 원. 배우자는 "지금이 마지막 기회"라고 합니다.',
     choices: [
@@ -477,7 +477,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'mid_diet_bet', stage: 'midlife', at: [51, 120], place: '체육관',
+    id: 'mid_diet_bet', stage: 'midlife', at: [51, 5], place: '체육관',
     title: '건강검진 재검',
     text: '작년 검진에서 "경계"를 받았습니다. 올해는 숫자가 더 나쁩니다. 의사가 "6개월만 해보자"고 합니다.',
     choices: [
@@ -487,7 +487,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'mid_second_career', stage: 'midlife', at: [62, 240], place: '교육센터',
+    id: 'mid_second_career', stage: 'midlife', at: [62, 9], place: '교육센터',
     title: '제2의 직업',
     text: '은퇴 전에 자격증을 하나 따두려 합니다. 전기기능사, 요양보호사, 조리사. 무엇이든 6개월이 걸립니다.',
     choices: [
@@ -498,7 +498,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 노년 (65~80) ══════════════ */
   {
-    id: 'silver_job', stage: 'senior', at: [65, 240], place: '구청',
+    id: 'silver_job', stage: 'senior', at: [65, 9], place: '구청',
     title: '노인 일자리',
     text: '구청에서 노인 일자리를 신청받습니다. 하루 3시간, 월 30만 원. 공원 관리와 급식 도우미가 있습니다.',
     choices: [
@@ -508,7 +508,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'voice_phishing', stage: 'senior', at: [70, 180], place: '집',
+    id: 'voice_phishing', stage: 'senior', at: [70, 7], place: '집',
     title: '보이스피싱',
     text: '낯선 번호로 전화가 왔습니다. "아드님이 사고를 당하셨습니다. 지금 바로 돈이 필요합니다." 목소리가 다급합니다.',
     choices: [
@@ -518,7 +518,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'implant', stage: 'senior', at: [69, 90], place: '치과',
+    id: 'implant', stage: 'senior', at: [69, 4], place: '치과',
     title: '임플란트',
     text: '이가 하나 빠졌습니다. 임플란트 한 개에 120만 원. 틀니는 40만 원입니다.',
     choices: [
@@ -528,7 +528,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'cataract', stage: 'senior', at: [73, 150], place: '안과',
+    id: 'cataract', stage: 'senior', at: [73, 6], place: '안과',
     title: '백내장 수술',
     text: '세상이 뿌옇습니다. 진단은 백내장. 수술은 한 시간, 비용은 한쪽에 80만 원입니다.',
     choices: [
@@ -538,7 +538,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'senior_class', stage: 'senior', at: [68, 240], place: '문화센터',
+    id: 'senior_class', stage: 'senior', at: [68, 9], place: '문화센터',
     title: '노래교실',
     text: '경로당에서 노래교실을 시작합니다. 참가비 월 2만 원. 나는 노래를 잘 못한다고 생각했습니다.',
     choices: [
@@ -548,7 +548,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'grandchild_school', stage: 'senior', at: [73, 240], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '초등학교',
+    id: 'grandchild_school', stage: 'senior', at: [73, 9], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '초등학교',
     title: '손주 입학식',
     text: '손주가 초등학교에 들어갑니다. 아이가 "할아버지도 와주세요"라고 했습니다. 학교는 40분 거리입니다.',
     choices: [
@@ -557,7 +557,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'fall_risk', stage: 'senior', at: [76, 60], place: '욕실',
+    id: 'fall_risk', stage: 'senior', at: [76, 3], place: '욕실',
     title: '욕실에서 미끄러짐',
     text: '욕실 바닥에서 발이 미끄러졌습니다. 다행히 손으로 짚었지만 손목이 아픕니다.',
     choices: [
@@ -567,7 +567,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'care_facility', stage: 'senior', at: [78, 240], when: function (s) { return s.flags.건강_나쁨 || s.stats.hp <= 40; }, place: '요양원',
+    id: 'care_facility', stage: 'senior', at: [78, 9], when: function (s) { return s.flags.건강_나쁨 || s.stats.hp <= 40; }, place: '요양원',
     title: '요양원 결정',
     text: '아이가 요양원을 알아보자고 합니다. 집에서 혼자 지내는 시간이 깁니다. 시설은 좋지만 집이 아닙니다.',
     choices: [
@@ -577,7 +577,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'legacy_talk', stage: 'senior', at: [77, 180], place: '거실',
+    id: 'legacy_talk', stage: 'senior', at: [77, 7], place: '거실',
     title: '상속 이야기',
     text: '아이가 조심스럽게 재산 이야기를 꺼냅니다. 나는 아직 정리하지 않았습니다. 서류는 서랍에 있습니다.',
     choices: [
@@ -587,7 +587,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'old_age_diary', stage: 'senior', repeatable: true, when: function (s) { return s.age >= 70; }, place: '창가',
+    id: 'old_age_diary', stage: 'senior', minAge: 72, maxAge: 80, repeatable: true, when: function (s) { return s.age >= 70; }, place: '창가',
     title: '창가의 오후',
     text: '오후 두 시, 햇빛이 좋습니다. 오늘 할 일이 없습니다. 몸은 무겁고 마음은 조용합니다.',
     choices: [
@@ -597,7 +597,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'senior_trip_family', stage: 'senior', at: [74, 240], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '공항',
+    id: 'senior_trip_family', stage: 'senior', at: [74, 9], when: function (s) { return (s.flags.자녀수 || 0) >= 1; }, place: '공항',
     title: '가족 여행 초대',
     text: '아이가 "여름에 다 같이 가자"고 합니다. 5박 7일 해외. 체력이 걱정됩니다.',
     choices: [
@@ -606,7 +606,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'senior_hospital_room', stage: 'senior', at: [79, 120], place: '병원 병실',
+    id: 'senior_hospital_room', stage: 'senior', at: [79, 5], place: '병원 병실',
     title: '병실의 밤',
     text: '며칠째 입원 중입니다. 옆 침상 사람이 밤마다 이야기를 겁니다. 오늘은 내 차례인 것 같습니다.',
     choices: [
@@ -617,7 +617,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 어느 때나 — 돌발 이벤트 ══════════════ */
   {
-    id: 'any_year_end_tax', stage: 'any', when: function (s) { return s.age >= 25 && s.age <= 60; }, place: '연말정산',
+    id: 'any_year_end_tax', stage: 'any', minAge: 20, maxAge: 80, when: function (s) { return s.age >= 25 && s.age <= 60; }, place: '연말정산',
     title: '연말정산',
     text: '연말정산 결과가 나왔습니다. "추가 납부 32만 원"입니다. 회사 사람들이 단톡방에서 욕을 하고 있습니다.',
     choices: [
@@ -626,7 +626,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_phone_lost', stage: 'any', when: function (s) { return s.age >= 15; }, place: '택시',
+    id: 'any_phone_lost', stage: 'any', minAge: 8, maxAge: 80, when: function (s) { return s.age >= 15; }, place: '택시',
     title: '휴대폰 분실',
     text: '택시에서 내린 뒤 주머니가 비어 있습니다. 연락처도 사진도 계정도 다 그 안에 있었습니다.',
     choices: [
@@ -636,7 +636,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_car_touch', stage: 'any', when: function (s) { return s.flags.차있음 || s.flags.면허; }, place: '주차장',
+    id: 'any_car_touch', stage: 'any', minAge: 22, maxAge: 80, when: function (s) { return s.flags.차있음 || s.flags.면허; }, place: '주차장',
     title: '접촉사고',
     text: '주차하다 옆 차 범퍼에 흠집을 냈습니다. 상대 차에는 연락처가 없습니다. 보험료가 오를 수 있습니다.',
     choices: [
@@ -646,7 +646,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_typhoon', stage: 'any', when: function (s) { return s.age >= 10; }, place: '우리 집',
+    id: 'any_typhoon', stage: 'any', minAge: 1, maxAge: 80, when: function (s) { return s.age >= 10; }, place: '우리 집',
     title: '태풍',
     text: '태풍이 올라온다고 합니다. 창문이 흔들립니다. 베란다에 화분과 자전거가 그대로 있습니다.',
     choices: [
@@ -655,7 +655,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_invest_room', stage: 'any', when: function (s) { return s.age >= 25; }, place: '메신저',
+    id: 'any_invest_room', stage: 'any', minAge: 25, maxAge: 80, when: function (s) { return s.age >= 25; }, place: '메신저',
     title: '리딩방 초대',
     text: '지인이 "무료 리딩방"에 초대합니다. 화면마다 수익 인증 사진이 올라옵니다. 첫 종목은 "지금이 마지막"이라고 합니다.',
     choices: [
@@ -664,7 +664,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_smishing', stage: 'any', when: function (s) { return s.age >= 20; }, place: '휴대폰',
+    id: 'any_smishing', stage: 'any', minAge: 15, maxAge: 80, when: function (s) { return s.age >= 20; }, place: '휴대폰',
     title: '택배 문자',
     text: '"주소 불일치로 반송 예정"이라는 문자가 왔습니다. 링크가 붙어 있습니다. 최근 주문한 것이 없습니다.',
     choices: [
@@ -673,7 +673,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_volunteer', stage: 'any', when: function (s) { return s.age >= 25; }, place: '지역아동센터',
+    id: 'any_volunteer', stage: 'any', minAge: 14, maxAge: 80, when: function (s) { return s.age >= 25; }, place: '지역아동센터',
     title: '봉사활동',
     text: '회사에서 봉사활동 참가자를 모집합니다. 하루 반나절. 신청서에는 "조식 배식"이라고 적혀 있습니다.',
     choices: [
@@ -682,7 +682,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_book_habit', stage: 'any', when: function (s) { return s.age >= 15; }, repeatable: true, place: '서점',
+    id: 'any_book_habit', stage: 'any', minAge: 8, maxAge: 80, when: function (s) { return s.age >= 15; }, repeatable: true, place: '서점',
     title: '책 한 권',
     text: '서점에 들렀습니다. 베스트셀러 코너에서 누군가 "인생이 바뀐다"고 써 붙인 책이 보입니다.',
     choices: [
@@ -692,7 +692,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_neighbor_help', stage: 'any', repeatable: true, place: '엘리베이터',
+    id: 'any_neighbor_help', stage: 'any', minAge: 20, maxAge: 80, repeatable: true, place: '엘리베이터',
     title: '이웃의 부탁',
     text: '옆집 사람이 택배를 대신 받아달라고 합니다. 가끔은 필요한 물건을 빌려가기도 합니다.',
     choices: [
@@ -701,7 +701,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'any_diet_home', stage: 'any', when: function (s) { return s.age >= 20; }, place: '집',
+    id: 'any_diet_home', stage: 'any', minAge: 20, maxAge: 80, when: function (s) { return s.age >= 20; }, place: '집',
     title: '자세 교정',
     text: '거울을 보니 어깨가 말려 있습니다. 목도 뻣뻣합니다. 사무실 생활 10년의 결과입니다.',
     choices: [

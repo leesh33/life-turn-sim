@@ -96,7 +96,7 @@
     if (!state) return;
     $('whoName').textContent = state.name;
     $('ageLabel').textContent = state.age + '세';
-    $('dayLabel').textContent = state.day + '일차';
+    $('dayLabel').textContent = state.month + '개월차';
     $('logCount').textContent = state.history.length;
     renderStats();
     renderEvent(false);
@@ -143,7 +143,7 @@
     var chosen = state.current ? state.current.chosen : null;
     var isChosen = chosen !== null && chosen !== undefined;
 
-    var badges = '<span class="badge age">' + state.age + '세 · ' + state.day + '일차</span>';
+    var badges = '<span class="badge age">' + state.age + '세 · ' + state.month + '개월차</span>';
     if (ev.milestone) badges += '<span class="badge milestone">★ 마일스톤</span>';
     badges += '<span class="badge place">' + esc(ev.place || stage.name) + '</span>';
 
@@ -170,7 +170,7 @@
         (deltaKeys.length
           ? '<div class="deltas">' + deltaKeys.map(function (k) { return badgeDelta(k, deltas[k]); }).join('') + '</div>'
           : '<div class="deltas"><span class="delta up">변화 없음</span></div>') +
-        '<p class="next-hint">아래 버튼으로 다음 30일을 진행하세요</p>' +
+        '<p class="next-hint">아래 버튼으로 다음 달로 넘어가세요</p>' +
         '</div>';
     }
 
@@ -194,7 +194,7 @@
   }
 
   function stageNote(stage) {
-    var lifePct = Math.min(100, Math.max(1, ((state.age - 1 + (state.day - 1) / 360) / (Life.END_AGE - 1)) * 100));
+    var lifePct = Math.min(100, Math.max(1, ((state.age - 1 + (state.month - 1) / 12) / (Life.END_AGE - 1)) * 100));
     return '<div class="stage-note">' +
       '<span>' + stage.emoji + ' ' + esc(stage.name) + '</span>' +
       '<span class="sn-bar"><i style="width:' + lifePct.toFixed(1) + '%"></i></span>' +
@@ -258,7 +258,7 @@
       if (!ev) { toast('되돌릴 기록이 없습니다'); renderRewards(); return; }
       renderGame();
       $('ageLabel').textContent = state.age + '세';
-      $('dayLabel').textContent = state.day + '일차';
+      $('dayLabel').textContent = state.month + '개월차';
       $('logCount').textContent = state.history.length;
       $('advanceBtn').disabled = true;
       toast('⏪ 직전 선택을 되돌렸습니다');
@@ -309,7 +309,7 @@
     if (!node) {
       node = document.createElement('div');
       node.className = 'timewarp';
-      node.innerHTML = '<span>30일이 지났습니다</span>';
+      node.innerHTML = '<span>한 달이 지났습니다</span>';
       $('app').appendChild(node);
     }
     node.classList.remove('run');
@@ -332,7 +332,7 @@
 
     setTimeout(function () {
       $('ageLabel').textContent = state.age + '세';
-      $('dayLabel').textContent = state.day + '일차';
+      $('dayLabel').textContent = state.month + '개월차';
       $('logCount').textContent = state.history.length;
       renderStats();
       renderEvent(true);
@@ -358,7 +358,7 @@
         }
         var dk = Object.keys(item.deltas || {});
         html += '<div class="tl-item">' +
-          '<div class="tl-when">' + item.age + '세 · ' + item.day + '일차' + (item.place ? ' · ' + esc(item.place) : '') + '</div>' +
+          '<div class="tl-when">' + item.age + '세 · ' + item.month + '개월차' + (item.place ? ' · ' + esc(item.place) : '') + '</div>' +
           '<div class="tl-title">' + esc(item.title) + '</div>' +
           '<span class="tl-choice">' + esc(item.choice) + '</span>' +
           '<div class="tl-result">' + esc(item.result) + '</div>' +
@@ -387,7 +387,7 @@
 
     var highlights = sum.highlights.map(function (hl) {
       return '<div class="highlight">' +
-        '<div class="h-when">' + hl.age + '세 · ' + hl.day + '일차 · ' + esc(hl.place || '') + '</div>' +
+        '<div class="h-when">' + hl.age + '세 · ' + hl.month + '개월차 · ' + esc(hl.place || '') + '</div>' +
         '<div class="h-title">' + esc(hl.title) + '</div>' +
         '<div class="h-text">' + esc(hl.result) + '</div>' +
         '</div>';

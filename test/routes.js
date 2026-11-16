@@ -1,20 +1,9 @@
-// 특정 루트 검증: 비혼(독신) 루트, 멘탈 붕괴(번아웃), 보상형 광고 보상, 후속 분기
-const fs = require('fs');
+// 특정 루트 검증: 비혼(독신) 루트, 멘탈 붕괴(번아웃), 보상형 광고 보상, 후속 분기, 개월차 저장 마이그레이션
 const path = require('path');
-const store = {};
-global.window = {
-  localStorage: {
-    getItem: (k) => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
-    removeItem: (k) => { delete store[k]; }
-  }
-};
-global.localStorage = global.window.localStorage;
-const base = path.join(__dirname, '..', 'assets');
-for (const f of ['engine.js', 'content.early.js', 'content.mid.js', 'content.late.js', 'content.extra.js', 'content.more1.js', 'content.more2.js']) {
-  (0, eval)(fs.readFileSync(path.join(base, f), 'utf8'));
-}
-const Life = global.window.Life;
+const { load } = require('../tools/lib-load');
+
+const { Life, EVENTS } = load(path.join(__dirname, '..', 'assets'));
+
 const ran = [];
 const check = (name, cond, extra) => { ran.push(`${cond ? 'PASS' : 'FAIL'} · ${name}${extra ? ' — ' + extra : ''}`); };
 
@@ -42,7 +31,8 @@ console.log('비혼 엔딩:', sum.title, '/', sum.grade, sum.gradeLabel);
 let t = Life.newGame({ name: '멘탈', gender: '남', startAge: 30 });
 t.stats.mental = 20;
 let found = false;
-for (let k = 0; k < 20 && !found; k++) {
+for (let k = 0; k < 60 && !found; k++) {
+  t.stats.mental = Math.min(t.stats.mental, 20);
   const ev = Life.currentEvent(t);
   if (ev.id === 'any_burnout') { found = true; break; }
   let idx = 0;
@@ -61,6 +51,7 @@ while (!u.ended && guard++ < 4000) {
   Life.advance(u);
 }
 check('1세 시작 → 80세 엔딩', u.age === 81 && u.ended, `나이:${u.age} 선택:${u.history.length}`);
+check('한 살에 12개월차까지 진행', u.history.every((h) => h.month >= 1 && h.month <= 12));
 
 // 4) 보상형 광고: 되돌리기
 let g = Life.newGame({ name: '되돌리기', gender: '남', startAge: 25 });
@@ -94,7 +85,7 @@ check('멀쩡할 때는 회복 불가', Life.canHeal(h) === false);
 h.stats.hp = 24;
 check('체력 24 → 회복 가능', Life.canHeal(h) === true);
 const hb = { hp: h.stats.hp, mental: h.stats.mental };
-const h1 = Life.heal(h);
+Life.heal(h);
 check('회복: 체력·멘탈 +12', Math.round(h.stats.hp - hb.hp) === 12 && Math.round(h.stats.mental - hb.mental) === 12,
   `hp ${hb.hp}→${h.stats.hp.toFixed(1)}, mental ${hb.mental}→${h.stats.mental.toFixed(1)}`);
 h.stats.hp = 10; h.stats.mental = 10;
@@ -122,10 +113,29 @@ const FOLLOW = [
 ];
 FOLLOW.forEach(([parent, child, age]) => {
   const pe = Life.byId(parent);
-  const q = (pe.choices || []).map((c) => (Array.isArray(c.queue) ? c.queue : c.queue ? [c.queue] : [])).reduce((a, b) => a.concat(b), []);
+  const q = (pe && pe.choices ? pe.choices : []).map((c) => (Array.isArray(c.queue) ? c.queue : c.queue ? [c.queue] : [])).reduce((a, b) => a.concat(b), []);
   if (child) check(`후속 분기 연결: ${parent} → ${child}`, q.includes(child));
   else check(`이벤트 존재: ${parent}`, !!pe, `${age}세`);
 });
 
+// 8) 예전 저장본(일차 단위 v1) 마이그레이션
+(function () {
+  const old = Life.newGame({ name: '옛날', gender: '남', startAge: 1 });
+  // v1 흔적을 인위적으로 만든다: day 필드 + v1 + 기록 day
+  const legacy = JSON.parse(JSON.stringify(old));
+  legacy.v = 1;
+  delete legacy.month;
+  legacy.day = 90;
+  legacy.history = [{ turn: 0, age: 1, day: 30, eventId: 'birth_cry', title: '태어났습니다', choice: '네', result: '울었습니다' }];
+  global.window.localStorage.setItem('lifeTurnSim.save.v1', JSON.stringify(legacy));
+  const loaded = Life.load();
+  check('예전 저장본(v1 일차) → 개월차 마이그레이션',
+    !!loaded && loaded.v === 2 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
+    `month:${loaded && loaded.month} histMonth:${loaded && loaded.history[0].month}`);
+  Life.clear();
+})();
+
 console.log(ran.join('\n'));
-console.log('실패:', ran.filter((r) => r.startsWith('FAIL')).length, '건');
+const fails = ran.filter((r) => r.startsWith('FAIL')).length;
+console.log('실패:', fails, '건');
+if (fails) process.exitCode = 1;

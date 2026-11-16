@@ -6,9 +6,10 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
+  var SAVE_VERSION = 2;      // v1(일차 단위) → v2(개월차 단위)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
-  var DAY = 30;              // 한 턴 = 30일
-  var LAST_DAY = 330;        // 한 살의 마지막 이벤트 일차
+  var MONTHS = 12;           // 한 살 = 12개월차
+  var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
 
   var STAGES = [
     { id: 'infancy',    name: '유아기',   emoji: '🍼', from: 1,  to: 7,  accent: '#E0653C' },
@@ -130,16 +131,24 @@
     return _index[id] || null;
   }
 
-  function matchesAt(ev, age, day) {
+  function matchesAt(ev, age, month) {
     if (!ev.at) return false;
     var list = Array.isArray(ev.at[0]) ? ev.at : [ev.at];
     for (var i = 0; i < list.length; i++) {
-      if (list[i][0] === age && list[i][1] === day) return true;
+      if (list[i][0] === age && list[i][1] === month) return true;
     }
     return false;
   }
 
+  // 나이 고증: minAge/maxAge 밖이면 아예 후보에서 뺀다 (새벽 수유가 3세에 나오지 않게)
+  function ageOk(ev, age) {
+    if (ev.minAge !== undefined && ev.minAge !== null && age < ev.minAge) return false;
+    if (ev.maxAge !== undefined && ev.maxAge !== null && age > ev.maxAge) return false;
+    return true;
+  }
+
   function passes(ev, s) {
+    if (!ageOk(ev, s.age)) return false;
     if (!ev.when) return true;
     try { return !!ev.when(s); } catch (err) { return false; }
   }
@@ -164,17 +173,17 @@
       { title: '조용한 한 달', text: '별일 없이 한 달이 지나갔습니다. 아무 일 없는 게 제일 좋은 일이라는 말도 있죠.', place: '일상' }
     ],
     school: [
-      { title: '지나간 30일', text: '학원, 학교, 숙제, 잠. 달력이 한 장 넘어갔는데 기억나는 건 별로 없습니다.', place: '일상' },
+      { title: '지나간 한 달', text: '학원, 학교, 숙제, 잠. 달력이 한 장 넘어갔는데 기억나는 건 별로 없습니다.', place: '일상' },
       { title: '시험 기간', text: '책상을 정리하고 계획표를 세웠습니다. 계획표의 절반은 지켜졌습니다.', place: '일상' },
       { title: '아무 일 없던 달', text: '친구들과 웃고, 선생님께 혼나고, 그렇게 한 달이 지나갔습니다.', place: '일상' }
     ],
     adult: [
-      { title: '평범한 30일', text: '출근하고, 밥 먹고, 집에 오고. 통장 잔고는 조금 바뀌고, 마음은 조금 닳았습니다.', place: '일상' },
+      { title: '평범한 한 달', text: '출근하고, 밥 먹고, 집에 오고. 통장 잔고는 조금 바뀌고, 마음은 조금 닳았습니다.', place: '일상' },
       { title: '숨 가쁜 한 달', text: '일정은 빽빽했는데 남은 건 피로뿐입니다. 이런 달도 인생입니다.', place: '일상' },
       { title: '조용한 달', text: '별일 없이 흘러갔습니다. 그런 달이 있어야 다음 달을 견딥니다.', place: '일상' }
     ],
     late: [
-      { title: '느린 30일', text: '아침에 일어나 걷고, 밥을 먹고, 누웠습니다. 요즘은 시간이 물처럼 흐릅니다.', place: '일상' },
+      { title: '느린 한 달', text: '아침에 일어나 걷고, 밥을 먹고, 누웠습니다. 요즘은 시간이 물처럼 흐릅니다.', place: '일상' },
       { title: '한 달이 지나고', text: 'TV를 켜두고 졸았습니다. 뉴스가 낯선 이름들로 채워져 있습니다.', place: '일상' },
       { title: '익숙한 하루', text: '약 먹을 시간을 세 번 확인했습니다. 익숙해지는 것들이 늘어납니다.', place: '일상' }
     ]
@@ -211,7 +220,7 @@
     var bucket = GENERIC[bucketId];
     var g = bucket[randInt(s, 0, bucket.length - 1)];
     return {
-      id: '__generic_' + s.age + '_' + s.day + '_' + s.turn,
+      id: '__generic_' + s.age + '_' + s.month + '_' + s.turn,
       stage: stage.id,
       place: g.place,
       title: g.title,
@@ -225,11 +234,11 @@
   function pickEvent(s) {
     var list = allEvents(), i, ev;
 
-    // 1) 마일스톤 (해당 나이·일차 고정 이벤트)
+    // 1) 마일스톤 (해당 나이·개월차 고정 이벤트)
     var milestones = [];
     for (i = 0; i < list.length; i++) {
       ev = list[i];
-      if (matchesAt(ev, s.age, s.day) && !used(s, ev.id) && passes(ev, s)) milestones.push(ev);
+      if (matchesAt(ev, s.age, s.month) && !used(s, ev.id) && passes(ev, s)) milestones.push(ev);
     }
     if (milestones.length) return weightedPick(s, milestones);
 
@@ -283,7 +292,7 @@
 
   function snapshotForUndo(s) {
     return {
-      age: s.age, day: s.day, turn: s.turn, ended: s.ended,
+      age: s.age, month: s.month, turn: s.turn, ended: s.ended,
       stats: Object.assign({}, s.stats),
       flags: Object.assign({}, s.flags),
       used: s.used.slice(),
@@ -300,7 +309,7 @@
     if (!canUndo(s)) return null;
     var snap = s.undo;
     s.undo = null;
-    s.age = snap.age; s.day = snap.day; s.turn = snap.turn; s.ended = false;
+    s.age = snap.age; s.month = snap.month; s.turn = snap.turn; s.ended = false;
     s.stats = Object.assign({}, snap.stats);
     s.flags = Object.assign({}, snap.flags);
     s.used = snap.used.slice();
@@ -374,12 +383,12 @@
       : opts.gender;
 
     var s = {
-      v: 1,
+      v: SAVE_VERSION,
       name: (opts.name || '').trim() || '나',
       gender: gender,
       startAge: startAge,
       age: startAge,
-      day: 1,
+      month: 1,
       turn: 0,
       rngState: rng,
       stats: Object.assign({}, preset.stats),
@@ -457,7 +466,7 @@
     var entry = {
       turn: s.turn,
       age: s.age,
-      day: s.day,
+      month: s.month,
       eventId: ev.id,
       title: typeof ev.title === 'function' ? ev.title(s) : (ev.title || ''),
       situation: typeof ev.text === 'function' ? ev.text(s) : (ev.text || ''),
@@ -473,15 +482,15 @@
   }
 
   /* ── 자연 변화(생활 소모) ──
-     매달 30일이 지나면 네 스탯은 각자의 기준선(baseline) 쪽으로 조금씩 당겨진다.
+     매달(1개월)이 지나면 네 스탯은 각자의 기준선(baseline) 쪽으로 조금씩 당겨진다.
      - 기준선보다 높으면 천천히 빠지고(관리하지 않은 호감도·체력이 그렇다),
      - 기준선보다 낮으면 아주 천천히 회복된다.
      그래서 100을 유지하려면 계속 신경 써야 하고, 한 선택으로 100을 찍어도 오래 못 간다. */
   var DRIFT = {
-    hp:     { base: 57, rate: 0.026, age: [[40, -2], [52, -4], [62, -7], [72, -10]] },
-    mental: { base: 55, rate: 0.033, age: [[45, -2], [60, -5]] },
-    charm:  { base: 53, rate: 0.016, age: [[55, -3], [70, -6]] },
-    social: { base: 55, rate: 0.028, age: [[65, -2]] }
+    hp:     { base: 57, rate: 0.030, age: [[40, -2], [52, -4], [62, -7], [72, -10]] },
+    mental: { base: 55, rate: 0.050, age: [[45, -2], [60, -5]] },
+    charm:  { base: 53, rate: 0.020, age: [[55, -3], [70, -6]] },
+    social: { base: 55, rate: 0.045, age: [[65, -2]] }
   };
 
   function driftTarget(key, age) {
@@ -522,9 +531,8 @@
     if (s.ended) return { ok: false };
 
     var birthday = false;
-    if (s.day >= LAST_DAY) { s.age += 1; s.day = 1; birthday = true; }
-    else if (s.day === 1) { s.day = DAY; }
-    else { s.day += DAY; }
+    if (s.month >= LAST_MONTH) { s.age += 1; s.month = 1; birthday = true; }
+    else { s.month += 1; }
     s.turn += 1;
     applyDrift(s);
     if (birthday) applyAging(s);
@@ -546,11 +554,37 @@
   function save(s) {
     try { global.localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) {}
   }
+
+  // 예전 저장본(일차 단위 v1)을 개월차 단위(v2)로 옮긴다.
+  function dayToMonth(d) {
+    if (typeof d !== 'number' || isNaN(d)) return 1;
+    if (d === 1) return 1;
+    return clamp(Math.round(d / 30) + 1, 1, MONTHS);
+  }
+
+  function migrate(s) {
+    if (!s) return s;
+    if (s.v === SAVE_VERSION && s.month !== undefined) return s;
+    if (s.month === undefined) s.month = dayToMonth(s.day);
+    s.month = clamp(s.month || 1, 1, MONTHS);
+    delete s.day;
+    (s.history || []).forEach(function (h) {
+      if (h && h.month === undefined) h.month = dayToMonth(h.day);
+      if (h) delete h.day;
+    });
+    if (s.undo && s.undo.month === undefined) {
+      s.undo.month = dayToMonth(s.undo.day);
+      delete s.undo.day;
+    }
+    s.v = SAVE_VERSION;
+    return s;
+  }
+
   function load() {
     try {
       var raw = global.localStorage.getItem(SAVE_KEY);
       if (!raw) return null;
-      var s = JSON.parse(raw);
+      var s = migrate(JSON.parse(raw));
       if (!s || !s.stats) return null;
       if (!s.ended && !s.current) return null;
       return s;
@@ -696,6 +730,9 @@
     START_AGES: START_AGES,
     STATS: STATS,
     END_AGE: END_AGE,
+    MONTHS: MONTHS,
+    ageOk: ageOk,
+    migrate: migrate,
     stageOf: stageOf,
     newGame: newGame,
     currentEvent: currentEvent,

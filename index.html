@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="인생 턴제" />
-<meta name="description" content="30일 버튼 한 번, 한 살 한 살. 선택이 쌓여 인생이 되는 턴제 시뮬레이션." />
+<meta name="description" content="한 달 버튼 한 번, 한 살 한 살. 선택이 쌓여 인생이 되는 턴제 시뮬레이션." />
 <title>인생 턴제 시뮬레이션</title>
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -23,8 +23,8 @@
         <div class="brand-mark" aria-hidden="true">🎲</div>
         <h1>인생 턴제<br /><em>시뮬레이션</em></h1>
         <p class="brand-sub">
-          30일 버튼 한 번, 한 살 한 살.<br />
-          당신의 선택이 다음 30년을 바꿉니다.
+          한 달 버튼 한 번, 한 살 한 살.<br />
+          당신의 선택이 다음 80년을 바꿉니다.
         </p>
       </header>
 
@@ -70,7 +70,7 @@
       <div class="sb-top">
         <div class="sb-who">
           <span class="sb-name" id="whoName">—</span>
-          <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1일차</span></span>
+          <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1개월차</span></span>
         </div>
         <div class="sb-actions">
           <button class="ghost-btn" id="summaryBtn">인생 요약</button>
@@ -109,7 +109,7 @@
 
     <footer class="bottombar">
       <button class="btn log" id="logBtn"><span class="log-emoji">📖</span> 인생 일지 <b id="logCount">0</b></button>
-      <button class="btn primary advance" id="advanceBtn" disabled>다음 30일 진행하기 →</button>
+      <button class="btn primary advance" id="advanceBtn" disabled>다음 1개월 진행하기 →</button>
     </footer>
 
   </section>
@@ -159,12 +159,27 @@
 </div>
 
 <script src="assets/engine.js"></script>
-<script src="assets/content.early.js"></script>
-<script src="assets/content.mid.js"></script>
-<script src="assets/content.late.js"></script>
-<script src="assets/content.extra.js"></script>
-<script src="assets/content.more1.js"></script>
-<script src="assets/content.more2.js"></script>
+<!-- 이벤트 모듈 (생애주기별) — _def.js 가 먼저, zz-finalize.js 가 마지막 -->
+<script src="assets/events/_def.js"></script>
+<script src="assets/events/legacy-early.js"></script>
+<script src="assets/events/legacy-mid.js"></script>
+<script src="assets/events/legacy-late.js"></script>
+<script src="assets/events/legacy-extra.js"></script>
+<script src="assets/events/legacy-more1.js"></script>
+<script src="assets/events/legacy-more2.js"></script>
+<script src="assets/events/infant.js"></script>
+<script src="assets/events/childhood.js"></script>
+<script src="assets/events/teen.js"></script>
+<script src="assets/events/campus.js"></script>
+<script src="assets/events/career.js"></script>
+<script src="assets/events/family.js"></script>
+<script src="assets/events/family2.js"></script>
+<script src="assets/events/midlife.js"></script>
+<script src="assets/events/midlife2.js"></script>
+<script src="assets/events/senior.js"></script>
+<script src="assets/events/senior2.js"></script>
+<script src="assets/events/extra.js"></script>
+<script src="assets/events/zz-finalize.js"></script>
 <script src="assets/ads.js"></script>
 <script src="assets/app.js"></script>
 </body>
