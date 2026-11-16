@@ -145,20 +145,21 @@ def run(url, outdir):
         if fb["fallback"]:
             problems.append("FAIL: 폴백 이벤트 발생")
 
-        # 3세 화면 스크린샷 (실제 UI)
-        page.evaluate("localStorage.clear()")
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
-        page.locator('.age-card[data-age="8"]').click()
-        page.fill("#nameInput", "상훈")
-        page.locator("#startBtn").click()
-        page.wait_for_timeout(500)
-        shot(page, "m07-elementary")
-
-        # 인생 요약 화면
-        page.locator("#summaryBtn").click()
-        page.wait_for_timeout(500)
-        shot(page, "m08-summary")
+        # 초등학교 화면 · 인생 요약 스크린샷 (실제 UI)
+        try:
+            page.evaluate("localStorage.clear()")
+            page.goto(url, wait_until="networkidle")
+            page.wait_for_timeout(500)
+            page.locator('.age-card[data-age="8"]').click()
+            page.fill("#nameInput", "상훈")
+            page.locator("#startBtn").click()
+            page.wait_for_timeout(700)
+            shot(page, "m07-elementary")
+            page.locator("#summaryBtn").click()
+            page.wait_for_timeout(600)
+            shot(page, "m08-summary")
+        except Exception as e:
+            problems.append("스크린샷 단계 실패: " + str(e)[:200])
 
         problems.append(f"콘솔 에러 {len(errors)}건" + (": " + json.dumps(errors[:5], ensure_ascii=False) if errors else ""))
         if errors:
