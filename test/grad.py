@@ -24,6 +24,19 @@ DRIVE = """(targetAge) => {
 }"""
 
 
+def fresh(page, url):
+    """새 문서로 열고 시작 화면이 그려질 때까지 기다린다 (라이브는 스크립트 28개 로딩)."""
+    for attempt in range(2):
+        page.goto(url, wait_until="networkidle")
+        try:
+            page.wait_for_selector("#ageGrid .age-card", timeout=30000)
+            page.wait_for_timeout(300)
+            return
+        except Exception:
+            if attempt == 1:
+                raise
+
+
 def run(url, outdir):
     os.makedirs(outdir, exist_ok=True)
     shots, problems = [], []
@@ -35,7 +48,7 @@ def run(url, outdir):
         return path
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox", "--disable-dev-shm-usage"])
         page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2,
                                 is_mobile=True, has_touch=True)
         errors = []
@@ -44,8 +57,7 @@ def run(url, outdir):
 
         page.goto(url, wait_until="networkidle")
         page.evaluate("localStorage.clear()")
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(400)
+        fresh(page, url)
 
         shot(page, "01-start")
         if page.title() != "인생 한 턴":
@@ -56,8 +68,7 @@ def run(url, outdir):
         # ── 7세 12개월차 → 졸업 결산 ──
         info = page.evaluate(DRIVE, 7)
         print("7세 12개월차 준비:", info)
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(400)
+        fresh(page, url)
         page.click("#resumeCard")
         page.wait_for_timeout(500)
         page.locator(".choice").first.click()
@@ -78,8 +89,7 @@ def run(url, outdir):
             problems.append(f"비교 행 수 이상: {rows}")
 
         # 결산 화면에서 새로고침해도 결산이 유지되는지
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
+        fresh(page, url)
         page.click("#resumeCard")
         page.wait_for_timeout(500)
         if page.locator(".grad-name").count() != 1:
@@ -100,8 +110,7 @@ def run(url, outdir):
 
         # ── 13세 12개월차 → 초등학교 졸업 결산 ──
         page.evaluate(DRIVE, 13)
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
+        fresh(page, url)
         page.click("#resumeCard")
         page.wait_for_timeout(400)
         page.locator(".choice").first.click()
@@ -137,8 +146,7 @@ def run(url, outdir):
         page.wait_for_timeout(400)
 
         # 시작 화면 → 전당
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
+        fresh(page, url)
         shot(page, "10-start-hallbtn")
         page.click("#hallBtnStart")
         page.wait_for_timeout(500)
@@ -146,8 +154,7 @@ def run(url, outdir):
         if page.locator(".hall-tab").count() != 7:
             problems.append("전당 탭 수 이상")
         page.evaluate("localStorage.clear()")
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
+        fresh(page, url)
 
         # ── 엔진 레벨: 5개 졸업 시점 모두 발동 + 80세 완주 ──
         seq = page.evaluate("""() => {
@@ -192,8 +199,7 @@ def run(url, outdir):
           }
           window.Life.save(s);
         }""")
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
+        fresh(page, url)
         page.click("#resumeCard")
         page.wait_for_timeout(600)
         shot(page, "12-life80-ending-top")
