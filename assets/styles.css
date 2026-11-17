@@ -2345,7 +2345,79 @@ body {
   border-radius: 3px;
   box-shadow: 0 0 0 2px #fff;
 }
+.mini-foot .mini-pick { padding: 14px 8px; font-size: 15px; font-weight: 800; }
 
+/* 동전 던지기 */
+.coin-wrap { display: flex; justify-content: center; align-items: center; padding: 10px 0 2px; perspective: 620px; }
+.coin {
+  position: relative;
+  width: 86px; height: 86px;
+  border-radius: 50%;
+  background: linear-gradient(155deg, #fbe59a 0%, #ecc55c 45%, #d3a12c 100%);
+  box-shadow: inset 0 0 0 4px #fff8e3, inset 0 0 0 5px rgba(160, 116, 24, 0.35), 0 8px 16px rgba(70, 50, 10, 0.2);
+  transform-style: preserve-3d;
+}
+.coin-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27px;
+  font-weight: 900;
+  color: #7d5310;
+  letter-spacing: -1px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.coin-face.back { transform: rotateY(180deg); }
+.coin.flipping { animation: coinFlipFront 0.8s cubic-bezier(0.3, 0.8, 0.4, 1) both; }
+.coin.flipping.show-back { animation-name: coinFlipBack; }
+@keyframes coinFlipFront {
+  0% { transform: rotateY(0deg) translateY(0); }
+  45% { transform: rotateY(540deg) translateY(-16px); }
+  100% { transform: rotateY(1080deg) translateY(0); }
+}
+@keyframes coinFlipBack {
+  0% { transform: rotateY(0deg) translateY(0); }
+  45% { transform: rotateY(540deg) translateY(-16px); }
+  100% { transform: rotateY(1260deg) translateY(0); }
+}
+
+/* 카드 하이로우 */
+.hl-row { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 2px 0; }
+.hl-card, .hl-next {
+  width: 74px; height: 102px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 12px rgba(30, 24, 16, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.hl-rank { font-size: 27px; font-weight: 900; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hl-suit { font-size: 15px; line-height: 1; color: #c0392b; }
+.hl-next { background: var(--card-2); border-style: dashed; color: var(--ink-4); font-size: 24px; font-weight: 800; }
+.hl-next.open { background: #fff; border-style: solid; animation: popIn 0.3s ease both; }
+
+/* 초스피드 암산 */
+.math-box {
+  padding: 18px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line-2);
+  background: var(--card-2);
+  text-align: center;
+}
+.math-q {
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
 /* 시작 화면 도감 버튼 (명예의 전당과 같은 모양) */
 .brand-top { gap: 5px; }
 .brand-title {

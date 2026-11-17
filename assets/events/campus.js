@@ -232,10 +232,42 @@ X('college', 'col23c', 23, '면접장', '첫 면접', '대기실에 여섯 명�
   ['솔직하게 말한다', '모르는 것은 모른다고 했습니다. 면접관이 고개를 끄덕였습니다.', { mental: 3, social: 1 }]
 ]);
 
-X('college', 'col23d', 23, '운전면허시험장', '운전면허', '기능시험이 오늘입니다. 주차가 어렵습니다.', [
-  ['한 번에 합격한다', '긴장했지만 통과했습니다. 면허증 사진이 마음에 안 듭니다.', { mental: 3, asset: -2 }],
-  ['떨어진다', '재시험 비용이 들었습니다. 두 번째에 붙었습니다.', { mental: 1, asset: -3 }]
-]);
+/* 운전면허 기능시험 — 합격/불합격을 고르는 선택지 대신, 시험장에서의 태도로 결과가 갈린다 */
+(function () {
+  function licenseScore(s) {
+    var st = s.stats || {};
+    var f = s.flags || {};
+    var q = (st.mental || 0) * 0.35 + (st.hp || 0) * 0.35 + (st.charm || 0) * 0.05;
+    if (f.꼼꼼함) q += 8;
+    if (f.자기조절) q += 5;
+    if (f.야근러) q -= 4;
+    if (f.게임고수) q += 3;   // 손끝 감각
+    return q;
+  }
+  var PASS = 62;
+  function passed(s) { return licenseScore(s) >= PASS; }
+
+  var ev = X('college', 'col23d', 23, '운전면허시험장', '운전면허',
+    '기능시험이 오늘입니다. 주차가 어렵습니다. 지금까지 연습한 만큼만 나옵니다.', [
+      ['천천히, 한 동작씩 한다', '속도를 줄이고 사이드미러를 다시 맞췄습니다.', { mental: 1 }],
+      ['빨리 끝내고 나온다', '시간을 아끼려고 서둘렀습니다.', { hp: -1 }]
+    ]);
+  ev.choices[0].result = function (s) {
+    return passed(s)
+      ? '주차선 안에 정확히 들어갔습니다. 긴장했지만 통과했습니다. 면허증 사진이 마음에 안 듭니다.'
+      : '마지막 주차에서 선을 밟았습니다. 재시험을 잡고 시험장을 나왔습니다.';
+  };
+  ev.choices[0].effects = function (s) { return passed(s) ? { mental: 3, asset: -2 } : { mental: -1, asset: -3 }; };
+  ev.choices[0].set = function (s) { return passed(s) ? { 면허: true } : null; };
+
+  ev.choices[1].result = function (s) {
+    return passed(s)
+      ? '서두른 게 오히려 운이 좋았습니다. 한 번에 통과했고, 면허증을 손에 쥐었습니다.'
+      : '급하게 돌다가 기어를 잘못 넣었습니다. 재시험 비용이 들었고, 두 번째에 붙었습니다.';
+  };
+  ev.choices[1].effects = function (s) { return passed(s) ? { mental: 2, asset: -2 } : { mental: 1, asset: -3 }; };
+  ev.choices[1].set = function (s) { return passed(s) ? { 면허: true } : null; };
+})();
 
 X('college', 'col23e', 23, '친구 자취방', '친구의 취업', '친구가 대기업 최종 합격을 알렸습니다. 축하하면서 마음이 복잡합니다.', [
   ['진심으로 축하한다', '배가 아팠지만 웃었습니다. 자극이 됐습니다.', { social: 2, mental: 1 }],

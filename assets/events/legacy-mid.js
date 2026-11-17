@@ -114,7 +114,8 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'high_enter', stage: 'high', at: [17, 1], place: '고등학교', milestone: true, weight: 6,
     title: '고등학교 입학',
-    text: '원서 결과가 나왔습니다. 세 선택지가 눈앞에 있습니다.\n교복의 색에 따라 3년의 난이도가 달라진다고 합니다.',
+    text: '원서 결과가 나왔습니다. 세 선택지 눈앞에 있습니다.\n교복의 색에 따라 3년의 난이도가 달라진다고 합니다.',
+    when: function (s) { return !s.flags.예고_준비 && !s.flags.체육고_준비; },
     choices: [
       { label: '특목고 · 자사고에 도전한다', result: '기숙사에 들어갑니다. 방학이 없어졌지만, 같이 크는 친구들이 생겼습니다.', effects: { mental: -1, hp: -2, social: 3 }, set: { 특목고: true, 고등학생: true } },
       { label: '집 앞 일반고에 간다', result: '걸어서 10분. 학교가 끝나면 바로 집입니다. 여유가 있습니다.', effects: { mental: 2, hp: 1, social: 2 }, set: { 일반고: true, 고등학생: true } },

@@ -506,6 +506,16 @@
   }
 
   /* ── 선택 처리 ── */
+  /* ── 선택 효과 ──
+     스탯은 0~100이고, 높은 구간에서는 같은 +3도 덜 오른다(고수준 체감).
+     그래서 한 번 잘 골랐다고 100에 붙지 않고, 노력이 계속 필요하다. */
+  function gainFactor(before) {
+    if (before >= 95) return 0.25;
+    if (before >= 88) return 0.5;
+    if (before >= 80) return 0.8;
+    return 1;
+  }
+
   function resolveEffects(s, spec) {
     var deltas = {};
     if (!spec) return deltas;
@@ -519,7 +529,8 @@
         deltas.asset = (deltas.asset || 0) + v;
       } else if (s.stats[k] !== undefined) {
         var before = s.stats[k];
-        s.stats[k] = clamp(before + v, 0, 100);
+        var add = v > 0 ? v * gainFactor(before) : v;
+        s.stats[k] = clamp(before + add, 0, 100);
         var diff = Math.round(s.stats[k] - before);
         if (diff) deltas[k] = (deltas[k] || 0) + diff;
       }
@@ -554,6 +565,15 @@
     return miniWin ? choice.mini.win : choice.mini.lose;
   }
 
+  // set 은 객체 또는 function(s) → 객체 (결과에 따라 플래그가 갈리는 선택지용)
+  function setOf(spec, s) {
+    if (!spec) return null;
+    if (typeof spec === 'function') {
+      try { spec = spec(s) || {}; } catch (e) { return null; }
+    }
+    return spec;
+  }
+
   function choose(s, index, opts) {
     var ev = currentEvent(s);
     if (!ev || s.current.chosen !== null) return null;
@@ -567,11 +587,13 @@
     s.undo = snapshotForUndo(s);
 
     // 플래그 먼저 (결과 문구가 플래그를 참조할 수 있음)
-    if (choice.set) {
-      Object.keys(choice.set).forEach(function (k) { s.flags[k] = choice.set[k]; });
+    var setSpec = setOf(choice.set, s);
+    if (setSpec) {
+      Object.keys(setSpec).forEach(function (k) { s.flags[k] = setSpec[k]; });
     }
-    if (branch && branch.set) {
-      Object.keys(branch.set).forEach(function (k) { s.flags[k] = branch.set[k]; });
+    var branchSet = branch ? setOf(branch.set, s) : null;
+    if (branchSet) {
+      Object.keys(branchSet).forEach(function (k) { s.flags[k] = branchSet[k]; });
     }
     var deltas = resolveEffects(s, choice.effects);
     if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects));
@@ -596,7 +618,7 @@
       choice: typeof choice.label === 'function' ? choice.label(s) : choice.label,
       result: resultText || '',
       deltas: deltas,
-      setKeys: (choice.set ? Object.keys(choice.set) : []).concat(branch && branch.set ? Object.keys(branch.set) : []),
+      setKeys: (setSpec ? Object.keys(setSpec) : []).concat(branchSet ? Object.keys(branchSet) : []),
       mini: choice.mini && typeof miniWin === 'boolean' ? { type: choice.mini.type, win: miniWin } : null
     };
     s.history.push(entry);
@@ -635,34 +657,14 @@
     return null;
   }
 
-  /* ── 자연 변화(생활 소모) ──
-     매달(1개월)이 지나면 네 스탯은 각자의 기준선(baseline) 쪽으로 조금씩 당겨진다.
-     - 기준선보다 높으면 천천히 빠지고(관리하지 않은 호감도·체력이 그렇다),
-     - 기준선보다 낮으면 아주 천천히 회복된다.
-     그래서 100을 유지하려면 계속 신경 써야 하고, 한 선택으로 100을 찍어도 오래 못 간다. */
-  var DRIFT = {
-    hp:     { base: 57, rate: 0.030, age: [[40, -2], [52, -4], [62, -7], [72, -10]] },
-    mental: { base: 55, rate: 0.050, age: [[45, -2], [60, -5]] },
-    charm:  { base: 53, rate: 0.020, age: [[55, -3], [70, -6]] },
-    social: { base: 55, rate: 0.045, age: [[65, -2]] }
-  };
-
-  function driftTarget(key, age) {
-    var d = DRIFT[key];
-    var target = d.base;
-    for (var i = 0; i < d.age.length; i++) if (age >= d.age[i][0]) target = d.base + d.age[i][1];
-    return target;
-  }
-
-  function applyDrift(s) {
-    Object.keys(DRIFT).forEach(function (key) {
-      var cur = s.stats[key];
-      if (cur === undefined) return;
-      var target = driftTarget(key, s.age);
-      var next = cur + (target - cur) * DRIFT[key].rate;
-      s.stats[key] = clamp(next, 0, 100);
-    });
-  }
+  /* ── 자연 변화 ──
+     예전에는 달이 바뀔 때마다 네 스탯을 기준선(53~57) 쪽으로 당기는
+     '생활 소모(applyDrift)'가 있었다. 아무 선택도 하지 않았는데 매달 스탯이
+     깎여 억울하다는 제보가 있어 그 기능은 없앴다.
+     - 보통 범위(88 미만)의 스탯은 선택의 효과로만 변한다. 달이 바뀌어도 그대로다.
+     - 88 이상의 최고치는 달마다 아주 조금씩 '유지 노력'만큼 내려간다(아래 applyUpkeep).
+       이게 없으면 10년쯤 지나 네 스탯이 모두 100에 붙어 버려 선택이 의미를 잃는다.
+     - 45세부터는 생일에만 아주 조금씩 자연 노화가 더해진다. */
 
   var AGING = [
     { from: 45, hp: 1, mental: 0, charm: 0 },
@@ -670,7 +672,7 @@
     { from: 72, hp: 1, mental: 1, charm: 1 }
   ];
 
-  // 생일마다 자연 노화 — 스탯이 저절로 100에 달라붙지 않게
+  // 생일마다 자연 노화 — 45세부터 해가 바뀔 때만 조금씩
   function applyAging(s) {
     var rule = null;
     for (var i = 0; i < AGING.length; i++) if (s.age >= AGING[i].from) rule = AGING[i];
@@ -678,6 +680,18 @@
     s.stats.hp = clamp(s.stats.hp - rule.hp, 0, 100);
     s.stats.mental = clamp(s.stats.mental - rule.mental, 0, 100);
     s.stats.charm = clamp(s.stats.charm - rule.charm, 0, 100);
+  }
+
+  /* ── 최고치 유지 ──
+     88을 넘긴 스탯만 아주 천천히 88 쪽으로 내려간다.
+     (한 달에 최대 1.4 정도 · 보통 스탯에는 전혀 영향이 없다.) */
+  var UPKEEP = { from: 88, rate: 0.12 };
+  function applyUpkeep(s) {
+    ['hp', 'mental', 'charm', 'social'].forEach(function (key) {
+      var cur = s.stats[key];
+      if (cur === undefined || cur <= UPKEEP.from) return;
+      s.stats[key] = clamp(cur + (UPKEEP.from - cur) * UPKEEP.rate, 0, 100);
+    });
   }
 
   function advance(s) {
@@ -689,7 +703,8 @@
     if (s.month >= LAST_MONTH) { s.age += 1; s.month = 1; birthday = true; }
     else { s.month += 1; }
     s.turn += 1;
-    applyDrift(s);
+    // 보통 범위의 스탯은 건드리지 않는다 — 선택의 결과만 남긴다
+    applyUpkeep(s);
     if (birthday) applyAging(s);
 
     if (s.age > END_AGE) {

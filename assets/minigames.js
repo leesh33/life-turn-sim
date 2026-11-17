@@ -1,20 +1,27 @@
 /* ─────────────────────────────────────────────
-   minigames.js — 청년기의 10초 미니 승부
+   minigames.js — 5~10초 미니 승부 (전 연령)
    ─────────────────────────────────────────────
-   소개팅·면접·알바·운명 분기 같은 선택지에 붙는 짧은 승부.
+   소개팅·면접·알바·시합·손주 놀이 같은 선택지에 붙는 짧은 승부.
      MiniGame.open(cfg, state, function (win) { ... })
-   · cfg.type : 'dice' | 'timing' | 'rps'
+   · cfg.type : 'dice' | 'timing' | 'rps' | 'coin' | 'highlow' | 'math'
    · cfg.win / cfg.lose : { result, effects, set } — 엔진이 그대로 적용한다
-   · 제한 시간 10초. 시간이 다 지나면 패배로 처리한다.
+   · 제한 시간은 기본 10초, math(암산)는 7초. 시간이 다 지나면 패배로 처리한다.
    · 미니 승부가 도는 동안에는 5초 자동 넘김 타이머가 없다(결과가 아직 없다).
    ───────────────────────────────────────────── */
 (function (global) {
   'use strict';
 
-  var LIMIT = 10000;          // 10초
-  var state = null;           // { cfg, done, ended, timer, tick, playing }
+  var DEFAULT_LIMIT = 10000;          // 10초
+  var TYPE_LIMIT = { math: 7000 };    // 암산은 7초
+  var state = null;                   // { cfg, done, ended, timer, tick, limit, playing }
 
   function $(id) { return document.getElementById(id); }
+
+  function limitOf(cfg) {
+    if (cfg && typeof cfg.limit === 'number' && cfg.limit > 0) return cfg.limit;
+    if (cfg && TYPE_LIMIT[cfg.type]) return TYPE_LIMIT[cfg.type];
+    return DEFAULT_LIMIT;
+  }
 
   function ensureDom() {
     if ($('miniModal')) return;
@@ -34,7 +41,7 @@
         '<div class="mini-stage" id="miniStage"></div>' +
         '<div class="mini-foot" id="miniFoot"></div>' +
         '<div class="mini-track"><i id="miniBar"></i></div>' +
-        '<p class="mini-note">10초 안에 승부를 내세요 · 결과에 따라 스탯과 갈래가 달라집니다</p>' +
+        '<p class="mini-note" id="miniNote">10초 안에 승부를 내세요 · 결과에 따라 스탯과 갈래가 달라집니다</p>' +
       '</div>';
     document.getElementById('app').appendChild(wrap);
   }
@@ -42,8 +49,9 @@
   function setClock(ms) {
     var clock = $('miniClock');
     var bar = $('miniBar');
+    var limit = state && state.limit ? state.limit : DEFAULT_LIMIT;
     if (clock) clock.textContent = Math.max(0, Math.ceil(ms / 1000)) + '초';
-    if (bar) bar.style.width = Math.max(0, (ms / LIMIT) * 100).toFixed(1) + '%';
+    if (bar) bar.style.width = Math.max(0, (ms / limit) * 100).toFixed(1) + '%';
   }
 
   function stopClock() {
@@ -55,17 +63,22 @@
   function open(cfg, gameState, done) {
     ensureDom();
     state = { cfg: cfg || {}, done: done, ended: false, timer: null, tick: null, playing: false };
+    state.limit = limitOf(state.cfg);
 
     var modal = $('miniModal');
-    $('miniTitle').textContent = cfg.title || '미니 승부';
-    $('miniDesc').textContent = cfg.desc || '짧은 승부가 이번 달의 방향을 바꿉니다.';
+    $('miniTitle').textContent = state.cfg.title || '미니 승부';
+    $('miniDesc').textContent = state.cfg.desc || '짧은 승부가 이번 달의 방향을 바꿉니다.';
     $('miniStage').innerHTML = '';
     $('miniStage').className = 'mini-stage';
+    $('miniFoot').className = 'mini-foot';   // 이전 승부의 3열 클래스가 남지 않게
     $('miniFoot').innerHTML = '';
+    if ($('miniNote')) {
+      $('miniNote').textContent = (state.limit / 1000) + '초 안에 승부를 내세요 · 결과에 따라 스탯과 갈래가 달라집니다';
+    }
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
 
-    var left = LIMIT;
+    var left = state.limit;
     setClock(left);
     var last = Date.now();
     state.tick = setInterval(function () {
@@ -73,11 +86,14 @@
       left -= (now - last);
       last = now;
       setClock(left);
-      if (left <= 0) finish(false, '10초가 지나 기회를 놓쳤습니다');
+      if (left <= 0) finish(false, (state ? state.limit / 1000 : 10) + '초가 지나 기회를 놓쳤습니다');
     }, 100);
 
-    if (cfg.type === 'timing') buildTiming();
-    else if (cfg.type === 'rps') buildRps();
+    if (state.cfg.type === 'timing') buildTiming();
+    else if (state.cfg.type === 'rps') buildRps();
+    else if (state.cfg.type === 'coin') buildCoin();
+    else if (state.cfg.type === 'highlow') buildHighlow();
+    else if (state.cfg.type === 'math') buildMath();
     else buildDice();
   }
 
@@ -90,7 +106,10 @@
 
     var stage = $('miniStage');
     var foot = $('miniFoot');
-    if (foot) foot.innerHTML = '';
+    if (foot) {
+      foot.innerHTML = '';
+      foot.className = 'mini-foot';
+    }
     if (stage) {
       var banner = document.createElement('div');
       banner.className = 'mini-out ' + (win ? 'win' : 'lose');
@@ -109,6 +128,11 @@
       state = null;
       if (typeof done === 'function') done(!!win);
     }, wait);
+  }
+
+  function lockButtons(scope) {
+    if (!scope) return;
+    Array.prototype.forEach.call(scope.querySelectorAll('button'), function (b) { b.disabled = true; });
   }
 
   /* ── 주사위 2개 대결 ── */
@@ -139,6 +163,7 @@
       btn.textContent = '굴리는 중…';
       var ticks = 0;
       var spin = setInterval(function () {
+        if (!state || state.ended) { clearInterval(spin); return; }
         ticks += 1;
         renderDice(randD2(), randD2());
         if (ticks >= 9) {
@@ -199,10 +224,10 @@
       '</div>' +
       '<p class="mini-line" id="rpsLine">손을 고르세요</p>';
     var foot = $('miniFoot');
+    foot.classList.add('three');
     foot.innerHTML = Object.keys(RPS).map(function (k) {
       return '<button type="button" class="btn mini-pick" data-hand="' + k + '">' + RPS[k] + ' ' + k + '</button>';
     }).join('');
-    foot.classList.add('three');
     Array.prototype.forEach.call(foot.querySelectorAll('.mini-pick'), function (b) {
       b.addEventListener('click', function () {
         if (!state || state.playing || state.ended) return;
@@ -227,17 +252,168 @@
     });
   }
 
+  /* ── 동전 던지기 (앞/뒤 양자택일) ── */
+  function buildCoin() {
+    var stage = $('miniStage');
+    stage.innerHTML =
+      '<div class="coin-wrap"><div class="coin" id="coinEl"><span class="coin-face front">앞</span>' +
+        '<span class="coin-face back">뒤</span></div></div>' +
+      '<p class="mini-line" id="coinLine">앞면일지 뒷면일지, 마음을 정하세요</p>';
+    var foot = $('miniFoot');
+    foot.innerHTML =
+      '<button type="button" class="btn mini-pick" data-side="앞">앞면</button>' +
+      '<button type="button" class="btn mini-pick" data-side="뒤">뒷면</button>';
+    Array.prototype.forEach.call(foot.querySelectorAll('.mini-pick'), function (b) {
+      b.addEventListener('click', function () {
+        if (!state || state.playing || state.ended) return;
+        state.playing = true;
+        var picked = b.dataset.side;
+        lockButtons(foot);
+        if ($('coinLine')) $('coinLine').textContent = picked + '면을 골랐습니다 · 동전이 떠오릅니다…';
+        var coin = $('coinEl');
+        var landed = Math.random() < 0.5 ? '앞' : '뒤';
+        if (coin) {
+          coin.classList.add('flipping');
+          if (landed === '뒤') coin.classList.add('show-back');
+        }
+        state.timer = setTimeout(function () {
+          if (!state || state.ended) return;
+          state.timer = null;
+          if (coin) coin.classList.remove('flipping');
+          var win = picked === landed;
+          if ($('coinLine')) $('coinLine').textContent = '동전은 ' + landed + '면이 나왔습니다';
+          finish(win, picked + '면을 골랐고 ' + landed + '면이 나왔습니다');
+        }, 800);
+      });
+    });
+  }
+
+  /* ── 카드 하이로우 ── */
+  var CARD_RANK = function (n) {
+    if (n === 1) return 'A';
+    if (n === 11) return 'J';
+    if (n === 12) return 'Q';
+    if (n === 13) return 'K';
+    return String(n);
+  };
+
+  function buildHighlow() {
+    var cur = 1 + Math.floor(Math.random() * 13);
+    state.highlow = { cur: cur, ties: 0 };
+    var stage = $('miniStage');
+    stage.innerHTML =
+      '<div class="hl-row">' +
+        '<div class="hl-card" id="hlCard"><span class="hl-rank">' + CARD_RANK(cur) + '</span>' +
+          '<span class="hl-suit">♠</span></div>' +
+        '<div class="hl-next" id="hlNext">?</div>' +
+      '</div>' +
+      '<p class="mini-line" id="hlLine">다음 카드가 더 높을까요, 낮을까요?</p>';
+    var foot = $('miniFoot');
+    foot.innerHTML =
+      '<button type="button" class="btn mini-pick" data-guess="high">높다 ▲</button>' +
+      '<button type="button" class="btn mini-pick" data-guess="low">낮다 ▼</button>';
+    Array.prototype.forEach.call(foot.querySelectorAll('.mini-pick'), function (b) {
+      b.addEventListener('click', function () {
+        if (!state || state.playing || state.ended) return;
+        state.playing = true;
+        lockButtons(foot);
+        var guess = b.dataset.guess;
+        var next = 1 + Math.floor(Math.random() * 13);
+        state.highlow.ties += 1;
+        // 같은 숫자가 나오면 한 번만 다시 뽑는다 (그래도 같으면 무승부 → 패배)
+        if (next === state.highlow.cur && state.highlow.ties < 2) {
+          next = 1 + Math.floor(Math.random() * 13);
+        }
+        if ($('hlNext')) {
+          $('hlNext').className = 'hl-next open';
+          $('hlNext').innerHTML = '<span class="hl-rank">' + CARD_RANK(next) + '</span><span class="hl-suit">♥</span>';
+        }
+        var line = $('hlLine');
+        var win;
+        if (next === state.highlow.cur) {
+          win = false;
+          if (line) line.textContent = '같은 숫자가 나왔습니다 (' + CARD_RANK(next) + ')';
+          return finish(false, CARD_RANK(state.highlow.cur) + ' 다음에 ' + CARD_RANK(next));
+        }
+        win = (guess === 'high' && next > state.highlow.cur) || (guess === 'low' && next < state.highlow.cur);
+        if (line) line.textContent = CARD_RANK(state.highlow.cur) + ' → ' + CARD_RANK(next) + (win ? ' · 맞혔습니다' : ' · 틀렸습니다');
+        finish(win, CARD_RANK(state.highlow.cur) + ' 다음은 ' + CARD_RANK(next));
+      });
+    });
+  }
+
+  /* ── 초스피드 암산 (3지선다) ── */
+  function buildMath() {
+    state.math = makeMathQuestion();
+    var q = state.math;
+    var stage = $('miniStage');
+    stage.innerHTML =
+      '<div class="math-box"><span class="math-q">' + q.text + '</span></div>' +
+      '<p class="mini-line" id="mathLine">정답을 고르세요</p>';
+    var foot = $('miniFoot');
+    foot.classList.add('three');
+    foot.innerHTML = q.options.map(function (v) {
+      return '<button type="button" class="btn mini-pick math-pick" data-v="' + v + '">' + v + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(foot.querySelectorAll('.math-pick'), function (b) {
+      b.addEventListener('click', function () {
+        if (!state || state.playing || state.ended) return;
+        state.playing = true;
+        lockButtons(foot);
+        var picked = Number(b.dataset.v);
+        var win = picked === q.answer;
+        if ($('mathLine')) $('mathLine').textContent = win ? '정답!' : '정답은 ' + q.answer + '입니다';
+        finish(win, q.text + ' 정답 ' + q.answer + (win ? '' : ' · 내 답 ' + picked));
+      });
+    });
+  }
+
+  function makeMathQuestion() {
+    var kind = Math.floor(Math.random() * 3);
+    var a, b, answer, text;
+    if (kind === 0) {
+      a = 11 + Math.floor(Math.random() * 78);
+      b = 11 + Math.floor(Math.random() * 78);
+      answer = a + b;
+      text = a + ' + ' + b + ' = ?';
+    } else if (kind === 1) {
+      a = 30 + Math.floor(Math.random() * 69);
+      b = 11 + Math.floor(Math.random() * Math.min(28, a - 10));
+      answer = a - b;
+      text = a + ' − ' + b + ' = ?';
+    } else {
+      a = 2 + Math.floor(Math.random() * 8);
+      b = 2 + Math.floor(Math.random() * 8);
+      answer = a * b;
+      text = a + ' × ' + b + ' = ?';
+    }
+    var options = [answer];
+    var guard = 0;
+    while (options.length < 3 && guard++ < 80) {
+      var delta = (Math.floor(Math.random() * 8) + 1) * (Math.random() < 0.5 ? -1 : 1);
+      var cand = answer + delta;
+      if (cand > 0 && options.indexOf(cand) === -1) options.push(cand);
+    }
+    while (options.length < 3) options.push(answer + options.length * 3 + 1);
+    // 섞기
+    for (var i = options.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = options[i]; options[i] = options[j]; options[j] = t;
+    }
+    return { text: text, answer: answer, options: options };
+  }
+
   /* ── 타이밍 게이지 ── */
   function buildTiming() {
     var stage = $('miniStage');
     stage.innerHTML =
       '<div class="gauge"><div class="gauge-zone" id="gaugeZone"></div>' +
         '<i class="gauge-marker" id="gaugeMarker"></i></div>' +
-      '<p class="mini-line" id="rpsLine">초록 구간에서 멈추세요</p>';
+      '<p class="mini-line" id="timingLine">초록 구간에서 멈추세요</p>';
     var foot = $('miniFoot');
     foot.innerHTML = '<button type="button" class="btn primary mini-action" id="miniStop">멈추기</button>';
 
-    var pos = 0, dir = 1, speed = 0.028, raf = null, last = null;
+    var pos = 0, dir = 1, speed = 0.028, last = null;
     function loop(ts) {
       if (!state || state.ended) return;
       if (last === null) last = ts;
@@ -250,7 +426,6 @@
       if (marker) marker.style.left = pos.toFixed(2) + '%';
       state.raf = requestAnimationFrame(loop);
     }
-    state.pos = function () { return pos; };
     state.raf = requestAnimationFrame(loop);
 
     $('miniStop').addEventListener('click', function () {
@@ -264,7 +439,8 @@
   }
 
   global.MiniGame = {
-    LIMIT: LIMIT,
+    LIMIT: DEFAULT_LIMIT,
+    limitOf: limitOf,
     open: open
   };
 })(typeof window !== 'undefined' ? window : globalThis);

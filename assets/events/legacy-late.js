@@ -214,7 +214,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '청약 당첨',
     text: '문자가 왔습니다. "당첨자 발표 — 축하합니다."\n계약금이 필요합니다. 잔금 일정도 2년 남았습니다.',
     choices: [
-      { label: '당첨을 받는다', result: '계약금을 냈습니다. 2년 뒤를 위해 매달 저축을 시작합니다.', effects: { asset: -2000, mental: 3, social: 3 }, set: { 청약당첨: true }, queue: ['mortgage'] },
+      { label: '계약금을 낸다 — 받는다', result: '계약금을 냈습니다. 2년 뒤를 위해 매달 저축을 시작합니다.', effects: { asset: -2000, mental: 3, social: 3 }, set: { 청약당첨: true }, queue: ['mortgage'] },
       { label: '포기한다 · 감당이 안 된다', result: '후보 번호가 다음 사람에게 넘어갔습니다. 다시 몇 년을 기다려야 합니다.', effects: { mental: -3, social: -1 } }
     ]
   },

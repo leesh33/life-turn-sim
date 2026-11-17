@@ -61,10 +61,10 @@ const missingFlags = titleFlags.filter((f) => !settable.has(f));
 check('칭호 조건 플래그가 실제로 생김', missingFlags.length === 0, missingFlags.join(',') || '전부 존재');
 check('인연 갈래 포함', TitleBook.LIST.filter((t) => t.kind === '인연').length >= 4);
 
-/* ═════════ ② 10초 미니 승부 ═════════ */
+/* ═════════ ② 5~10초 미니 승부 (전 연령) ═════════ */
 const miniEvents = EVENTS.filter((e) => e.choices.some((c) => c.mini));
-check('미니 승부 이벤트 수', miniEvents.length >= 7, miniEvents.length + '개');
-const MINI_TYPES = new Set(['dice', 'timing', 'rps']);
+check('미니 승부 이벤트 수', miniEvents.length >= 35, miniEvents.length + '개');
+const MINI_TYPES = new Set(['dice', 'timing', 'rps', 'coin', 'highlow', 'math']);
 const seenTypes = new Set();
 miniEvents.forEach((ev) => {
   ev.choices.forEach((c) => {
@@ -72,10 +72,20 @@ miniEvents.forEach((ev) => {
     seenTypes.add(c.mini.type);
     check(`미니 종류: ${ev.id}`, MINI_TYPES.has(c.mini.type), c.mini.type);
     check(`미니 승/패 갈래: ${ev.id}`, !!(c.mini.win && c.mini.lose && c.mini.win.result && c.mini.lose.result));
-    check(`미니 나이 20~35: ${ev.id}`, ev.minAge >= 20 && ev.maxAge <= 35, `${ev.minAge}~${ev.maxAge}`);
+    check(`미니 나이 창: ${ev.id}`, ev.minAge >= 6 && ev.maxAge <= 80, `${ev.minAge}~${ev.maxAge}`);
   });
 });
-check('미니 3종 모두 등장', seenTypes.size === 3, [...seenTypes].join(','));
+check('미니 6종 모두 등장', seenTypes.size === 6, [...seenTypes].join(','));
+// 연령대별로 미니 승부가 하나 이상 있는지 (유년~노년)
+const MINI_BANDS = [['유년 6~7', 6, 7], ['초등 8~13', 8, 13], ['중등 14~16', 14, 16],
+  ['고등 17~19', 17, 19], ['대학 20~24', 20, 24], ['사회 25~34', 25, 34],
+  ['가정 35~49', 35, 49], ['중년 50~64', 50, 64], ['노년 65~80', 65, 80]];
+MINI_BANDS.forEach(([label, lo, hi]) => {
+  const n = miniEvents.filter((e) => e.minAge <= hi && e.maxAge >= lo).length;
+  check(`미니 승부가 있는 연령대: ${label}`, n >= 2, n + '개');
+});
+const miniIds = miniEvents.map((e) => e.id);
+check('미니 이벤트 id 중복 없음', new Set(miniIds).size === miniIds.length, miniIds.length + '개');
 
 function playMini(id, choiceIdx, win) {
   const s = Life.newGame({ name: '승부', gender: '남', startAge: 26 });
@@ -166,6 +176,85 @@ boomEvents.forEach((e) => {
   const list = Array.isArray(e.callback) ? e.callback : [e.callback];
   check(`부메랑 콜백이 청년 이전 선택: ${e.id}`, list.some((f) => youngFlags.has(f)), list.join(','));
 });
+
+/* ═════════ ⑤ 매달 스탯이 저절로 줄지 않음 ═════════ */
+// 예전에는 달이 바뀔 때마다 스탯을 53~57 쪽으로 당기는 '생활 소모'가 있었다.
+// 선택한 효과 말고는 스탯이 변하지 않아야 한다.
+const nd = Life.newGame({ name: '무변화', gender: '남', startAge: 30 });
+nd.stats = { hp: 84, mental: 78, charm: 71, social: 66, asset: 500 };
+const beforeSix = JSON.parse(JSON.stringify(nd.stats));
+for (let i = 0; i < 6; i++) {
+  nd.current = { eventId: 'none', chosen: 0 };
+  Life.advance(nd);
+}
+const sixDelta = ['hp', 'mental', 'charm', 'social', 'asset'].filter((k) => Math.abs(nd.stats[k] - beforeSix[k]) > 0.001);
+check('6개월을 그냥 보내도 스탯이 줄지 않음', sixDelta.length === 0,
+  sixDelta.map((k) => `${k} ${beforeSix[k]}→${nd.stats[k]}`).join(', ') || '변화 없음');
+check('6개월 진행 후에도 30세', nd.age === 30 && nd.month === 7, `${nd.age}세 ${nd.month}개월차`);
+
+// 최고치(88 초과)만 아주 조금씩 내려간다 — 100에 붙지 않게
+const top = Life.newGame({ name: '최고치', gender: '남', startAge: 30 });
+top.stats = { hp: 100, mental: 60, charm: 60, social: 60, asset: 0 };
+top.current = { eventId: 'none', chosen: 0 };
+Life.advance(top);
+check('최고치는 한 달에 조금만 내려감', top.stats.hp < 100 && top.stats.hp > 97,
+  `체력 100→${top.stats.hp.toFixed(2)}`);
+check('보통 스탯은 그대로', top.stats.mental === 60 && top.stats.charm === 60 && top.stats.social === 60,
+  `${top.stats.mental}/${top.stats.charm}/${top.stats.social}`);
+
+// 45세 이상은 생일(해가 바뀌는 달)에만 아주 조금 노화한다
+const ag = Life.newGame({ name: '노화', gender: '여', startAge: 45 });
+ag.month = 12;
+ag.current = { eventId: 'none', chosen: 0 };
+const hpBefore = ag.stats.hp, mentalBefore = ag.stats.mental;
+Life.advance(ag);
+check('생일에는 노화만큼만 (체력 -1)', ag.age === 46 && Math.abs((hpBefore - ag.stats.hp) - 1) < 0.001,
+  `체력 ${hpBefore}→${ag.stats.hp}`);
+check('생일에 멘탈은 깎이지 않음 (45세)', Math.abs(ag.stats.mental - mentalBefore) < 0.001,
+  `멘탈 ${mentalBefore}→${ag.stats.mental}`);
+
+/* ═════════ ⑥ 제보 반영 — 결과를 고르는 선택지·진로 갈래 모순 ═════════ */
+// “합격한다 / 불합격한다를 내가 정하는 건가요?” — 시험·입시 결과를 직접 고르는 선택지가 없어야 한다.
+const OUTCOME_LABEL = /^(합격한다|불합격한다|합격|불합격|떨어진다|붙는다|당첨된다|낙첨된다|당첨|낙첨)$/;
+const outcomePicks = [];
+EVENTS.forEach((e) => e.choices.forEach((c) => {
+  const label = typeof c.label === 'string' ? c.label.trim() : '';
+  if (OUTCOME_LABEL.test(label)) outcomePicks.push(e.id + ':' + label);
+}));
+check('결과를 직접 고르는 선택지 없음', outcomePicks.length === 0, outcomePicks.slice(0, 5).join(' / ') || '없음');
+const admission = byId('tn_h50');
+check('합격 발표는 결과가 함수로 정해짐', !!admission && typeof admission.choices[0].result === 'function');
+function passRun(mental, flags) {
+  const g = Life.newGame({ name: '발표', gender: '남', startAge: 19 });
+  g.current = { eventId: 'tn_h50', chosen: null, event: null };
+  g.stats.mental = mental;
+  Object.assign(g.flags, flags || {});
+  const res = Life.choose(g, 0);
+  return { res, g };
+}
+const good = passRun(90, { 성실함: true, 성적_상승: true });
+const bad = passRun(40, { 도전_경험: true, 수능_지방: true });
+check('공부를 쌓은 사람은 합격', /합격/.test(good.res.result) && !!good.g.flags['대학_진학'], good.res.result.slice(0, 20));
+check('준비가 부족하면 불합격', /불합격/.test(bad.res.result) && !bad.g.flags['대학_진학'], bad.res.result.slice(0, 20));
+
+// “중학생 때 체육 특기생인데 고등학생 때 예술 특기생” — 두 갈래가 동시에 서지 않아야 한다.
+let bothTracks = 0, crossEvents = 0;
+for (let i = 0; i < 12; i++) {
+  const s = Life.newGame({ name: '갈래', gender: i % 2 ? '남' : '여', startAge: 14 });
+  let guard = 0;
+  while (!s.ended && s.age <= 19 && guard++ < 200) {
+    const e = Life.currentEvent(s);
+    if (s.flags['진로_체육'] && !s.flags['진로_예술'] && /^(tn_m41|tn_h90|tn_h53|tn_m21)$/.test(e.id)) crossEvents++;
+    if (s.flags['진로_예술'] && !s.flags['진로_체육'] && /^(tn_m24|tn_m42|tn_h91|tn_h54)$/.test(e.id)) crossEvents++;
+    Life.choose(s, Math.floor(Math.random() * e.choices.length));
+    Life.advance(s);
+  }
+  if (s.flags['진로_체육'] && s.flags['진로_예술']) bothTracks++;
+}
+check('진로 갈래는 하나만 (체육+예술 동시 없음)', bothTracks === 0, bothTracks + '판');
+check('다른 갈래 이벤트가 섞여 나오지 않음', crossEvents === 0, crossEvents + '건');
+check('예고·체육고 입학 이벤트 존재', !!byId('tn_h90') && !!byId('tn_h91'));
+check('고입 선택지는 예고·체고 준비생에게 숨김', !!byId('high_enter').when);
 
 /* ── 출력 ── */
 console.log(results.join('\n'));

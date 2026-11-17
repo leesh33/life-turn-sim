@@ -48,4 +48,44 @@
 
   global.X = X;
   if (typeof globalThis !== 'undefined') globalThis.X = X;
+
+  /* ── 진로 갈래(트랙) 도우미 ──
+     중·고등에서 한 번 정한 갈래가 다른 갈래로 슬쩍 바뀌지 않게 한다.
+     (예: 체육 특기생이던 학생이 어느새 예술 특기생 이벤트를 받는 문제)
+       LifeTracks.trackOf(s)      → 지금 갈래 플래그 이름 또는 null
+       LifeTracks.exclusive(name) → 그 갈래만 true, 나머지 갈래는 false 인 set 객체
+       LifeTracks.noTrack(s)      → 아직 갈래를 정하지 않았는가
+       LifeTracks.only(name)      → 갈래가 없거나 그 갈래인가 (이벤트 when 조건용) */
+  var TRACKS = ['진로_예술', '진로_체육', '진로_공학', '진로_의학',
+    '진로_인문', '진로_교육', '진로_미디어', '진로_창업'];
+
+  function trackOf(s) {
+    var flags = (s && s.flags) || {};
+    for (var i = 0; i < TRACKS.length; i++) if (flags[TRACKS[i]]) return TRACKS[i];
+    return null;
+  }
+
+  function exclusive(name) {
+    var out = {};
+    for (var i = 0; i < TRACKS.length; i++) out[TRACKS[i]] = (TRACKS[i] === name);
+    return out;
+  }
+
+  function noTrack(s) { return !trackOf(s); }
+
+  function only(name) {
+    return function (s) {
+      var cur = trackOf(s);
+      return !cur || cur === name;
+    };
+  }
+
+  global.LifeTracks = {
+    LIST: TRACKS.slice(),
+    trackOf: trackOf,
+    exclusive: exclusive,
+    noTrack: noTrack,
+    only: only
+  };
+  if (typeof globalThis !== 'undefined') globalThis.LifeTracks = global.LifeTracks;
 })(typeof window !== 'undefined' ? window : globalThis);
