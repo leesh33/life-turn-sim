@@ -78,6 +78,40 @@ INFANT_ONLY.forEach((id) => {
   if (maxAge > 1) problems.push(`영아기 이벤트가 2세 이상에 노출: ${id} (maxAge ${maxAge})`);
 });
 
+// ── 텍스트 검사: 영문 혼합 오타·비한글 문자 ──
+// (예전 '총Student회' 같은 사고를 자동으로 잡는다. 단위·등급·고유명사는 허용)
+const ALLOW_LATIN = new Set([
+  'TV', 'PC', 'AI', 'LED', 'MRI', 'IRP', 'NCS', 'OT', 'VIP', 'STAR', 'A4', 'FM',
+  'kg', 'cm', 'km', 'ml', 'vs', 'N', 'p', 'D-day', 'D-1', 'D-100', 'B', 'C', 'A'
+]);
+const latinBad = /[\u4e00-\u9fff\u3040-\u30ff]/;
+function checkText(label, text) {
+  if (typeof text !== 'string') return;
+  if (latinBad.test(text)) problems.push(`한자·일본어 문자: ${label} — ${text.slice(0, 40)}`);
+  const tokens = text.match(/[A-Za-z]+(?:-[A-Za-z0-9]+)*/g) || [];
+  tokens.forEach((tok) => {
+    if (ALLOW_LATIN.has(tok)) return;
+    if (/^[A-F]$/.test(tok) || /^D-(day|\d+)$/.test(tok)) return; // 학점·디데이
+    problems.push(`영문 혼합 의심: ${label} — '${tok}' (${text.slice(0, 34)})`);
+  });
+  // 한글-영문이 븙어붙은 단어 (예: 총Student회)
+  const glued = text.match(/[가-힣][A-Za-z]{2,}[가-힣]/g) || [];
+  glued.forEach((g) => {
+    if (/[가-힣](?:cm|kg|km|ml|TV|PC|AI)[가-힣]/.test(g)) return;
+    problems.push(`한글·영문 븙어붙음: ${label} — '${g}'`);
+  });
+}
+
+EVENTS.forEach((ev) => {
+  checkText(ev.id + '.title', ev.title);
+  checkText(ev.id + '.text', ev.text);
+  checkText(ev.id + '.place', ev.place);
+  (ev.choices || []).forEach((c, i) => {
+    checkText(`${ev.id}[${i}].label`, c.label);
+    checkText(`${ev.id}[${i}].result`, c.result);
+  });
+});
+
 const stages = {};
 EVENTS.forEach((e) => { stages[e.stage] = (stages[e.stage] || 0) + 1; });
 

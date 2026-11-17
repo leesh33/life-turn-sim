@@ -174,7 +174,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══ 비혼·독신 루트 보강 ══ */
   {
-    id: 'solo_apartment', stage: 'family', minAge: 35, maxAge: 49, when: function (s) { return !s.flags.결혼; }, place: '내 집',
+    id: 'solo_apartment', stage: 'family', minAge: 35, maxAge: 49, at: [37, 4], when: function (s) { return !s.flags.결혼; }, place: '내 집',
     title: '나만의 집',
     text: '오래 살던 원룸을 정리하고 오피스텔을 알아보고 있습니다. 명의는 나 혼자입니다.',
     choices: [
@@ -183,7 +183,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'solo_hobby', stage: 'family', minAge: 35, maxAge: 49, repeatable: true, when: function (s) { return !s.flags.결혼; }, place: '주중 저녁',
+    id: 'solo_hobby', stage: 'family', minAge: 35, maxAge: 49, at: [41, 9], when: function (s) { return !s.flags.결혼; }, place: '주중 저녁',
     title: '혼자만의 저녁',
     text: '퇴근하고 집에 오니 8시입니다. 냉장고에 아무것도 없습니다.',
     choices: [

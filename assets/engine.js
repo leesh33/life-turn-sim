@@ -161,20 +161,91 @@
     return true;
   }
 
+  /* ── 조건 판정 도우미 ──
+     이벤트는 나이(minAge/maxAge)뿐 아니라 플래그와 스탯으로도 갈래를 나눈다.
+       requireFlags : '책벌레' | ['책벌레','동아리_주도'] | { 진로_예술: true, 성별: '여' }
+       excludeFlags : 같은 모양. 하나라도 걸리면 후보에서 빠진다.
+       minStat/maxStat : { charm: 62 } 처럼 스탯 하한/상한
+       weight       : 숫자 또는 function (s) → 숫자 (같은 나이대 안에서도 확률이 달라진다) */
+  function flagMatch(cond, flags) {
+    if (!cond) return true;
+    if (typeof cond === 'string') return !!flags[cond];
+    if (Array.isArray(cond)) {
+      for (var i = 0; i < cond.length; i++) { if (!flags[cond[i]]) return false; }
+      return true;
+    }
+    if (typeof cond === 'object') {
+      for (var k in cond) {
+        if (cond[k] === true) { if (!flags[k]) return false; }
+        else if (flags[k] !== cond[k]) return false;
+      }
+      return true;
+    }
+    return true;
+  }
+
+  function flagAny(cond, flags) {
+    if (!cond) return false;
+    if (typeof cond === 'string') return !!flags[cond];
+    if (Array.isArray(cond)) {
+      for (var i = 0; i < cond.length; i++) { if (flags[cond[i]]) return true; }
+      return false;
+    }
+    if (typeof cond === 'object') {
+      for (var k in cond) {
+        if (cond[k] === true) { if (flags[k]) return true; }
+        else if (flags[k] === cond[k]) return true;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  function minStatOk(bounds, stats) {
+    if (!bounds) return true;
+    for (var k in bounds) {
+      var v = stats[k];
+      if (v === undefined) return false;
+      if (v < bounds[k]) return false;
+    }
+    return true;
+  }
+
+  function maxStatOk(bounds, stats) {
+    if (!bounds) return true;
+    for (var k in bounds) {
+      var v = stats[k];
+      if (v === undefined) return false;
+      if (v > bounds[k]) return false;
+    }
+    return true;
+  }
+
   function passes(ev, s) {
     if (!ageOk(ev, s.age)) return false;
+    if (ev.requireFlags && !flagMatch(ev.requireFlags, s.flags)) return false;
+    if (ev.excludeFlags && flagAny(ev.excludeFlags, s.flags)) return false;
+    if (ev.minStat && !minStatOk(ev.minStat, s.stats)) return false;
+    if (ev.maxStat && !maxStatOk(ev.maxStat, s.stats)) return false;
     if (!ev.when) return true;
     try { return !!ev.when(s); } catch (err) { return false; }
   }
 
   function used(s, id) { return s.used.indexOf(id) !== -1; }
 
+  // weight 는 숫자 또는 function(s). 스탯·플래그에 따라 같은 이벤트도 확률이 달라진다.
+  function weightOf(ev, s) {
+    var w = ev.weight;
+    if (typeof w === 'function') { try { w = w(s); } catch (e) { w = 1; } }
+    return (typeof w === 'number' && w > 0) ? w : 1;
+  }
+
   function weightedPick(s, list) {
     var total = 0, i;
-    for (i = 0; i < list.length; i++) total += (list[i].weight || 1);
+    for (i = 0; i < list.length; i++) total += weightOf(list[i], s);
     var r = rand(s) * total;
     for (i = 0; i < list.length; i++) {
-      r -= (list[i].weight || 1);
+      r -= weightOf(list[i], s);
       if (r <= 0) return list[i];
     }
     return list[list.length - 1];
@@ -254,7 +325,12 @@
       ev = list[i];
       if (matchesAt(ev, s.age, s.month) && !used(s, ev.id) && passes(ev, s)) milestones.push(ev);
     }
-    if (milestones.length) return weightedPick(s, milestones);
+    if (milestones.length) {
+      // 인생의 갈림길(fork)은 같은 달의 다른 마일스톤보다 먼저 내민다
+      var forks = [];
+      for (i = 0; i < milestones.length; i++) if (milestones[i].fork) forks.push(milestones[i]);
+      return weightedPick(s, forks.length ? forks : milestones);
+    }
 
     // 2) 예약된 후속 이벤트 (앞선 선택의 결과)
     while (s.queue && s.queue.length) {
@@ -637,8 +713,123 @@
     '교사': 'K-교사',
     '의사': 'K-의사',
     '연구원': 'K-연구원',
+    '예술가': 'K-예술가',
+    '작가': 'K-작가',
+    '요리사': 'K-셰프',
+    '프로게이머': 'K-게이머',
+    '체육인': 'K-체육인',
+    '스타트업 창업자': 'K-창업가',
+    '대학원생': 'K-대학원생',
+    '군인': 'K-군인',
     '무직': 'K-백수'
   };
+
+  /* ── 인생의 갈래(아키타입) ──
+     플레이 중 실제로 남긴 플래그를 보고 엔딩의 얼굴을 고른다.
+     위에서부터 먼저 맞는 것을 쓴다(구체적인 갈래가 일반론보다 앞). */
+  var ARCHETYPES = [
+    { key: 'artist',   emoji: '🎨', label: '평생 붓을 놓지 않은 화가',
+      variants: ['팔리지 않아도 계속 그린 화가', '마지막까지 물감 냄새가 나던 화가'],
+      signals: ['예술가_길', '작품활동', '전시회', '그림_재능'],
+      when: function (f) { return !!(f.예술가_길 && (f.작품활동 || f.전시회)); } },
+    { key: 'musician', emoji: '🎻', label: '마지막까지 무대에 선 연주자',
+      variants: ['줄이 끊어져도 계속 친 연주자', '연습실 형광등을 그리워한 연주자'],
+      signals: ['음악가_길', '밴드', '밴드_활동', '음악_재능'],
+      when: function (f) { return !!(f.음악가_길 || f.밴드_활동); } },
+    { key: 'writer',   emoji: '✍️', label: '원고지를 마지막까지 채운 작가',
+      variants: ['버린 원고가 더 많은 작가', '누군가의 책장에 꽂힌 작가'],
+      signals: ['글쓰기_길', '책_출간', '글_습관', '글쓰기_재능'],
+      when: function (f) { return !!(f.글쓰기_길 || f.책_출간); } },
+    { key: 'researcher', emoji: '🔬', label: '실험실에서 늙은 연구자',
+      variants: ['실패한 실험이 더 많았던 연구자', '논문 한 편에 몇 해를 넣은 연구자'],
+      signals: ['연구원_길', '학회_논문', '대학원_진학', '과학_영재', '진로_공학'],
+      when: function (f) { return !!(f.연구원_길 || f.학회_논문); } },
+    { key: 'doctor',   emoji: '🩺', label: '진료실을 지킨 의사',
+      variants: ['새벽 호출에 달려간 의사', '환자 이름을 기억하는 의사'],
+      signals: ['의사_길', '의대_진학', '진로_의학'],
+      when: function (f) { return !!(f.의사_길 || f.의대_진학); } },
+    { key: 'teacher',  emoji: '📖', label: '제자 이름을 다 기억하는 교사',
+      variants: ['칠판 가루가 묻은 교사', '마지막 졸업생을 보낸 교사'],
+      signals: ['교사_길', '교육_길', '진로_교육'],
+      when: function (f) { return !!(f.교사_길 || f.교육_길); } },
+    { key: 'public',   emoji: '🏛️', label: '민원실 삼십 년의 공직자',
+      variants: ['서류 한 장으로 하루를 바꾼 공직자', '정년 날 도장을 선물받은 공직자'],
+      signals: ['공무원_길', '공직_길'],
+      when: function (f) { return !!(f.공무원_길 || f.공직_길); } },
+    { key: 'founder',  emoji: '🚀', label: '회사를 세 번 일으킨 창업가',
+      variants: ['문을 닫을 뻔한 가게를 지킨 창업가', '월급날을 한 번도 놓치지 않은 창업가'],
+      signals: ['창업_길', '창업', '사업체', '창업준비'],
+      when: function (f) { return !!(f.창업_길 || f.창업 || f.사업체) && !f.창업_실패; } },
+    { key: 'engineer', emoji: '💻', label: '코드로 세상을 만진 개발자',
+      variants: ['밤새 빌드를 돌린 개발자', '내 코드가 나보다 오래 산 개발자'],
+      signals: ['개발_길', '코딩', '코딩_전문', '진로_공학'],
+      when: function (f) { return !!(f.개발_길 || f.코딩_전문 || f.전공_공학); } },
+    { key: 'athlete',  emoji: '🏃', label: '몸으로 살아온 체육인',
+      variants: ['기록보다 습관이 오래간 체육인', '무릎이 망가져도 아침마다 뛴 체육인'],
+      signals: ['체육_길', '선수_경력', '진로_체육', '축구부'],
+      when: function (f) { return !!(f.체육_길 || f.선수_경력 || f.진로_체육); } },
+    { key: 'chef',     emoji: '🍳', label: '주방을 지킨 요리사',
+      variants: ['새벽 시장에서 하루를 연 요리사', '손등에 화상 자국이 남은 요리사'],
+      signals: ['요리_길', '식당_운영', '요리_씨앗'],
+      when: function (f) { return !!(f.요리_길 || f.식당_운영); } },
+    { key: 'pro',      emoji: '🎮', label: '게임으로 밥 먹고산 사람',
+      variants: ['새벽까지 랭크를 올린 사람', '손목이 욱신거리는 프로게이머'],
+      signals: ['프로게이머_길', '게임_전문', '게임고수'],
+      when: function (f) { return !!(f.프로게이머_길 || f.게임_전문); } },
+    { key: 'fisher',   emoji: '🎣', label: '강가에서 하루를 보내는 낚시광',
+      variants: ['안개 낀 강가에 앉아 있던 낚시광', '잡은 것보다 버린 시간이 많던 낚시광'],
+      signals: ['낚시광', '낚시_취미'],
+      when: function (f) { return !!(f.낚시광 || f.낚시_취미); } },
+    { key: 'gardener', emoji: '🌱', label: '손에 흙 묻은 정원사',
+      variants: ['심은 나무가 자기보다 커진 정원사', '봄마다 새싹을 기다린 정원사'],
+      signals: ['정원사', '텃밭'],
+      when: function (f) { return !!(f.정원사 || f.텃밭); } },
+    { key: 'traveler', emoji: '✈️', label: '지도를 들고 다닌 여행가',
+      variants: ['낯선 공항에서 표를 다시 짜던 여행가', '짐을 싸며 버리는 법을 배운 여행가'],
+      signals: ['여행가', '세계일주', '유학_경험'],
+      when: function (f) { return !!(f.여행가 || f.세계일주); } },
+    { key: 'youtuber', emoji: '📹', label: '구독자와 함께 늙은 크리에이터',
+      variants: ['카메라 앞에서 혼잣말하던 크리에이터', '댓글 한 줄에 계속 찍은 크리에이터'],
+      signals: ['유튜버', '크리에이터_길', '영상_씨앗'],
+      when: function (f) { return !!(f.유튜버 || f.크리에이터_길); } },
+    { key: 'volunteer', emoji: '🤝', label: '남을 돕다 늙은 사람',
+      variants: ['고맙다는 말에 더 도운 사람', '남의 일에 하루를 쓴 사람'],
+      signals: ['봉사_길', '기부'],
+      when: function (f) { return !!(f.봉사_길 || f.기부); } },
+    { key: 'villager', emoji: '🏞️', label: '산골에서 살아낸 사람',
+      variants: ['서울을 떠나 짐을 줄인 사람', '마당에 채소를 심은 사람'],
+      signals: ['귀촌', '전원생활'],
+      when: function (f) { return !!(f.귀촌 || f.전원생활); } },
+    { key: 'family',   emoji: '🏠', label: '가족만 바라보고 산 사람',
+      variants: ['식탁의 얼굴들을 평생 본 사람', '아이들 키우다 내 이름을 잊은 사람'],
+      signals: ['자녀수', '자녀', '결혼', '가족_화합'],
+      when: function (f) { return (f.자녀수 || 0) >= 2 && !f.창업 && !f.예술가_길; } }
+  ];
+
+  // 같은 갈래라도 판마다 다른 얼굴이 나오게 — 이름·시작점으로 정해지는 고정 추첨
+  function titleHash(s) {
+    var str = [s && s.name, s && s.createdAt, s && s.startAge, s && s.age].join('|');
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0);
+  }
+
+  // 얼굴은 '가장 많이 남긴 흔적'이 정한다. (축구부·진로_체육·체육_길 3개 > 글쓰기_길 1개)
+  function archetypeOf(s) {
+    if (!s || !s.flags) return null;
+    var best = null, bestScore = -1;
+    for (var i = 0; i < ARCHETYPES.length; i++) {
+      var a = ARCHETYPES[i], hit = false;
+      try { hit = !!a.when(s.flags); } catch (e) { hit = false; }
+      if (!hit) continue;
+      var score = 0, sig = a.signals || [];
+      for (var j = 0; j < sig.length; j++) { if (s.flags[sig[j]]) score++; }
+      if (score > bestScore) { best = a; bestScore = score; }
+    }
+    if (!best) return null;
+    var labels = [best.label].concat(best.variants || []);
+    return { key: best.key, emoji: best.emoji, label: labels[titleHash(s) % labels.length] };
+  }
 
   function originPhrase(s) {
     var f = s.flags;
@@ -657,6 +848,7 @@
     var f = s.flags, st = s.stats;
     if (f.은퇴 && st.asset >= 40000) return '조기 은퇴한';
     if (f.집있음 && f.청약당첨) return '청약 한 방으로 집주인이 된';
+    if (f.창업_실패) return '창업의 쓴맛을 본';
     if (f.창업) return '창업의 쓴맛을 본';
     if (f.야근러 && st.mental < 40) return '야근에 인생을 갈아넣은';
     if (f.야근러) return '밤샘을 밥 먹듯 한';
@@ -664,6 +856,12 @@
     if ((f.자녀수 || 0) >= 2) return '두 아이를 키워낸';
     if ((f.자녀수 || 0) === 1) return '한 아이를 키워낸';
     if (f.주식손실) return '주식에 재산을 맡긴';
+    if (f.사업체 && st.asset >= 20000) return '가게를 일군';
+    if (f.임원) return '임원까지 오른';
+    if (f.부모_간병) return '부모를 마지막까지 간병한';
+    if (f.유학_경험) return '낯선 나라에서 살아본';
+    if (f.일탈_경험) return '한 번 크게 넘어진';
+    if (f.첫사랑_기억 && f.결혼) return '첫사랑을 잊지 못한';
     if (st.social >= 80) return '인맥 하나로 먹고사는';
     if (st.mental >= 85) return '멘탈이 강철인';
     if (f.재수생) return '한 번 더 도전한';
@@ -677,6 +875,8 @@
   }
 
   function buildTitle(s) {
+    var arch = archetypeOf(s);
+    if (arch) return originPhrase(s) + ' ' + arch.label;
     return originPhrase(s) + ' ' + modifierPhrase(s) + ' ' + careerPhrase(s);
   }
 
@@ -699,12 +899,30 @@
     '군필': '군필', '청약통장': '청약통장', '청약당첨': '청약 당첨', '집있음': '내 집 마련',
     '결혼': '결혼', '자녀': '자녀', '야근러': '야근러', '워라밸러': '워라밸 수호자',
     '주식': '주식투자', '주식손실': '주식 손실', '은퇴': '은퇴', '창업': '창업',
-    '유튜버': '유튜브 채널', '승진': '승진', '명퇴': '명예퇴직'
+    '유튜버': '유튜브 채널', '승진': '승진', '명퇴': '명예퇴직',
+    '책벌레': '책벌레', '골목대장': '골목대장', '예체능': '예체능', '코딩': '코딩',
+    '과학영재': '과학 영재', '축구부': '축구부', '밴드': '밴드', '학생회': '학생회',
+    '게임고수': '게임 고수', '첫사랑_기억': '첫사랑', '진로_예술': '예술 진로',
+    '진로_공학': '공학 진로', '진로_의학': '의학 진로', '진로_인문': '인문 진로',
+    '진로_체육': '체육 진로', '진로_창업': '창업 진로', '진로_교육': '교육 진로',
+    '진로_미디어': '미디어 진로', '일탈_경험': '한 번의 일탈', '동아리_주도': '동아리 주도',
+    '예술가_길': '예술가의 길', '연구원_길': '연구자의 길', '창업_길': '창업가의 길',
+    '교사_길': '교사의 길', '의사_길': '의사의 길', '공무원_길': '공직의 길',
+    '개발_길': '개발자의 길', '체육_길': '체육인의 길', '요리_길': '요리사의 길',
+    '음악가_길': '음악가의 길', '글쓰기_길': '글쓰는 삶', '프로게이머_길': '프로게이머',
+    '유학_경험': '유학', '인턴_경험': '인턴', '학회_논문': '학회 논문',
+    '사업체': '가게 운영', '임원': '임원', '부모_간병': '부모 간병',
+    '자녀_독립': '자녀 독립', '손주': '손주', '연금': '연금 생활',
+    '낚시광': '낚시광', '정원사': '정원사', '여행가': '여행가', '회고록': '회고록',
+    '기부': '기부', '봉사_길': '봉사', '귀촌': '귀촌', '텃밭': '텃밭',
+    '투자_경험': '투자', '건강_관리': '건강 관리', '건강_경고': '건강 경고',
+    '작품활동': '작품 활동', '전시회': '전시회', '책_출간': '책 출간'
   };
 
   function summary(s) {
     var g = gradeOf(s);
     var st = s.stats;
+    var arch = archetypeOf(s);
     var tags = [];
     Object.keys(FLAG_LABEL).forEach(function (k) {
       if (s.flags[k]) tags.push(FLAG_LABEL[k]);
@@ -725,6 +943,7 @@
 
     return {
       title: buildTitle(s),
+      archetype: arch ? { key: arch.key, emoji: arch.emoji, label: arch.label } : null,
       grade: g.grade,
       gradeLabel: g.label,
       score: Math.round(g.score),
@@ -1095,6 +1314,86 @@
     ]
   };
 
+  /* 갈래별 회고 한 줄 — 실제로 그 길을 걸은 사람에게만 나온다 */
+  var BRANCH_LINES = {
+    artist: [
+      '손끝에 물감이 마르기 전에 또 다른 색을 올리던 밤들이 있었습니다. 그 밤들이 벽에 걸려 있습니다.',
+      '팔리지 않는 그림도 계속 그렸습니다. 이제 와서 보니, 그 시간이 나를 지탱했습니다.'
+    ],
+    musician: [
+      '줄이 끊어진 악기를 몇 번이나 고쳤습니다. 무대의 조명보다 연습실 형광등이 더 그립습니다.',
+      '박자가 틀려도 멈추지 않았습니다. 인생도 그렇게 연주했습니다.'
+    ],
+    writer: [
+      '원고를 세 번 버렸고 네 번째에야 마쳤습니다. 그 원고가 아직 책장에 꽂혀 있습니다.',
+      '누군가 내 문장을 따라 읽어 주던 밤. 그 한 사람 덕분에 계속 썼습니다.'
+    ],
+    researcher: [
+      '실패한 실험이 성공보다 많았습니다. 그래도 다음 날 다시 실험실 문을 열었습니다.',
+      '논문 한 편에 내 인생 몇 년이 들어갔습니다. 그 숫자를 나는 후회하지 않습니다.'
+    ],
+    doctor: [
+      '새벽 호출에 몇 번이나 뛰어나갔습니까. 그때 잡은 손의 온도가 아직 남아 있습니다.',
+      '환자 이름을 다 기억하지는 못해도, 나를 찾아온 사람은 기억합니다.'
+    ],
+    teacher: [
+      '칠판을 지우던 손에 분필 가루가 앉았습니다. 교실 창가 자리는 늘 누군가의 자리였습니다.',
+      '졸업생이 찾아와 “선생님”이라고 불러 줄 때, 그게 내 월급이었습니다.'
+    ],
+    public: [
+      '민원실 창구에서 삼십 년을 보냈습니다. 서류 한 장으로 사람의 하루가 바뀌는 걸 봤습니다.',
+      '정년 날, 후배들이 도장을 선물했습니다. 그 도장은 아직 서랍에 있습니다.'
+    ],
+    founder: [
+      '문을 닫을 뻔한 가게가 세 번이었습니다. 그때마다 다시 간판을 닦았습니다.',
+      '직원들의 월급날을 한 번도 놓치지 않았습니다. 그게 내가 자랑할 수 있는 전부입니다.'
+    ],
+    engineer: [
+      '밤새 돌린 빌드가 아침에 초록불이 되던 순간, 그게 내가 좋아한 순간입니다.',
+      '내가 짠 코드는 나보다 오래 살아남았습니다. 그것도 한 방식의 불멸입니다.'
+    ],
+    athlete: [
+      '무릎이 망가진 뒤에도 아침마다 뛰었습니다. 기록보다 습관이 오래 갔습니다.',
+      '몸이 기억하는 것들이 있습니다. 그 감각은 은퇴 후에도 사라지지 않았습니다.'
+    ],
+    chef: [
+      '새벽 시장에서 시작한 하루가 스물다섯 해였습니다. 손등의 화상 자국이 이력서입니다.',
+      '단골이 “오늘도 그 맛”이라고 할 때, 그 한마디로 버텼습니다.'
+    ],
+    pro: [
+      '새벽까지 랭크를 올렸습니다. 그 시절의 손목은 지금도 비 오는 날이면 욱신거립니다.',
+      '게임을 그만두라는 말을 수도 없이 들었지만, 그 세계에서 나는 누군가였습니다.'
+    ],
+    fisher: [
+      '낚싯대를 드리우고 반나절을 앉아 있었습니다. 잡은 것보다 버린 시간이 많았고, 그게 좋았습니다.',
+      '물소리를 들으면 마음이 가라앉습니다. 그 소리를 평생 들었습니다.'
+    ],
+    gardener: [
+      '손에 흙이 묻지 않는 날이 없었습니다. 심은 나무는 나보다 키가 커졌습니다.',
+      '봄마다 새싹이 올라오는 걸 봤습니다. 그 반복이 내 인생의 답이었습니다.'
+    ],
+    traveler: [
+      '낯선 공항에서 표를 다시 짜던 밤이 여러 번 있었습니다. 그 밤들이 내 지도가 됐습니다.',
+      '짐을 싸는 법을 배우면서, 버리는 법도 배웠습니다.'
+    ],
+    youtuber: [
+      '카메라 앞에서 혼잣말을 하던 시절이 있었습니다. 그 영상은 아직 서버 어딘가에 있습니다.',
+      '구독자 한 명이 남긴 댓글을 아직 기억합니다. 그 문장이 계속하게 했습니다.'
+    ],
+    volunteer: [
+      '남의 일에 하루를 쓰는 게 처음엔 어색했습니다. 어느새 내 하루가 그쪽으로 기울어 있었습니다.',
+      '고맙다는 말을 받으려 한 게 아니었는데, 받고 나면 이상하게 마음이 따뜻했습니다.'
+    ],
+    villager: [
+      '서울을 떠나던 날, 짐은 차 한 대에 다 들었습니다. 그 뒤로 사는 게 가벼워졌습니다.',
+      '마당에 채소를 심고 이웃과 나눴습니다. 그 소소함이 마지막 자존심이 됐습니다.'
+    ],
+    family: [
+      '아이들 키우느라 내 이름을 잠시 잊었습니다. 그래도 그 시간이 내 인생의 본론이었습니다.',
+      '식탁에 앉은 네 사람의 얼굴을 평생 봤습니다. 그게 내가 고른 하루였습니다.'
+    ]
+  };
+
   // 실제 스탯·플래그·선택 기록으로 만드는 8~10줄 회고
   function recallLines(s, mode, info) {
     var key = mode === 'life' ? 'life80' : (info ? info.key : 'kindergarten');
@@ -1150,18 +1449,30 @@
       lines.push('곁은 조용했습니다. 그 조용함이 편할 때도, 서운할 때도 있었습니다.');
     }
 
-    // 8줄: 그 시절에 남은 이름표(플래그)
+    // 8줄: 이 인생의 갈래 — 실제로 걸어온 길이 있으면 그 길의 문장을 쓴다
+    var arch = mode === 'life' ? archetypeOf(s) : null;
+    var branchPushed = false;
+    if (arch) {
+      var branchPool = BRANCH_LINES[arch.key];
+      lines.push(branchPool ? recallPick(rnd, branchPool)
+        : '한 갈래 길을 끝까지 걸었습니다. 돌아보니 그 길이 곧 나였습니다.');
+      branchPushed = true;
+    }
+
+    // 8~9줄: 그 시절에 남은 이름표(플래그)
     var traitKeys = [];
     (s.history || []).forEach(function (h) {
       if (h.age > age) return;
       (h.setKeys || []).forEach(function (k) { if (s.flags[k] && traitKeys.indexOf(k) === -1) traitKeys.push(k); });
     });
     var traitKey = traitKeys.length ? traitKeys[traitKeys.length - 1] : null;
-    if (traitKey) {
-      var traitName = FLAG_LABEL[traitKey] || (s.flags[traitKey] === true ? traitKey : String(s.flags[traitKey]));
-      lines.push('그 시절을 설명하는 이름표가 하나 있었습니다 — ‘' + traitName + '’.');
-    } else if (s.flags.직업 && mode === 'life') {
-      lines.push('한때는 ‘' + s.flags.직업 + '’이라는 이름으로 불렸습니다. 그 이름도 이제는 추억입니다.');
+    if (!branchPushed) {
+      if (traitKey) {
+        var traitName = FLAG_LABEL[traitKey] || (s.flags[traitKey] === true ? traitKey : String(s.flags[traitKey]));
+        lines.push('그 시절을 설명하는 이름표가 하나 있었습니다 — ‘' + traitName + '’.');
+      } else if (s.flags.직업 && mode === 'life') {
+        lines.push('한때는 ‘' + s.flags.직업 + '’이라는 이름으로 불렸습니다. 그 이름도 이제는 추억입니다.');
+      }
     }
 
     // 9줄: 남은 돈에 대한 한 줄
@@ -1218,6 +1529,9 @@
     load: load,
     clear: clear,
     summary: summary,
+    archetypeOf: archetypeOf,
+    ARCHETYPES: ARCHETYPES,
+    flagMatch: flagMatch,
     formatAsset: formatAsset,
     compactAsset: compactAsset,
     displayStat: displayStat,

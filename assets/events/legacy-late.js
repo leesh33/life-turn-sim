@@ -322,7 +322,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'single_life', stage: 'family', minAge: 35, maxAge: 49, repeatable: true, when: function (s) { return !s.flags.결혼; }, place: '주말',
+    id: 'single_life', stage: 'family', minAge: 35, maxAge: 49, at: [45, 6], when: function (s) { return !s.flags.결혼; }, place: '주말',
     title: '혼자의 주말',
     text: '토요일 아침, 아무 약속이 없습니다. 하루가 온전히 내 것입니다.',
     choices: [

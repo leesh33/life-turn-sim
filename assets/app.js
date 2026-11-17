@@ -659,6 +659,7 @@
       '</div>' +
       '<div class="ending-card">' +
         '<div class="end-kicker">' + (isFinal ? '당신의 인생은' : '지금까지의 인생은') + '</div>' +
+        (sum.archetype ? '<div class="end-arch">' + sum.archetype.emoji + ' ' + esc(sum.archetype.label) + '</div>' : '') +
         '<h2 class="end-title">' + esc(sum.title) + '</h2>' +
         '<p class="end-summary">' + esc(sum.oneLiner) + '</p>' +
         '<div class="end-stats">' +
