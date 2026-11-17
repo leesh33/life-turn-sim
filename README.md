@@ -237,6 +237,7 @@ node tools/fallback.js 20
 # 390×844 실서버 검증 — 5초 자동 넘김(카운트다운·일시정지·졸업/엔딩 정지) · 칭호 도감 · 미니 승부 · 부메랑 · 콘솔 오류 0
 python3 test/fun_ui.py --serve .
 python3 test/fun_ui.py --url https://life-turn-sim.vercel.app/ --out /workspace/browser/life-sim-fun/live
+# → 390×844 48항목 통과(카운트다운·일시정지·졸업/엔딩 정지·미니 승부·칭호 도감·부메랑·재테크·콘솔 오류 0)
 
 # 실제 브라우저(390×844) 검증 — 5개 졸업 결산·능력치 비교·전당 등록/계속 살기·콘솔 에러 0건
 python3 test/grad.py --url https://life-turn-sim.vercel.app/

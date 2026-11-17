@@ -69,12 +69,6 @@ PICK_EVENT = """(cfg) => {
 }"""
 
 
-def inject(page, cfg):
-    page.evaluate(INJECT, cfg)
-    page.reload(wait_until="networkidle")
-    page.wait_for_timeout(250)
-    page.locator("#resumeCard").click()
-    page.wait_for_timeout(350)
 
 
 def day_label(page):
@@ -88,20 +82,34 @@ def wait_advance(page, before, timeout=9000):
     return time.time()
 
 
-def run(url, out):
+def run(url, out, scale=2):
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
-        ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=scale,
                                   is_mobile=True, has_touch=True)
-        page = ctx.new_page()
         errors = []
-        page.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
-        page.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
 
-        page.goto(url, wait_until="networkidle")
+        def open_page():
+            pg = ctx.new_page()
+            pg.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+            pg.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
+            pg.goto(url, wait_until="networkidle")
+            pg.wait_for_timeout(200)
+            return pg
+
+        def inject(pg, cfg):
+            """상태를 주입하고 새 탭으로 다시 연다 (한 렌더러에 계속 쌓지 않게)."""
+            pg.evaluate(INJECT, cfg)
+            pg.close()
+            p2 = open_page()
+            p2.locator("#resumeCard").click()
+            p2.wait_for_timeout(350)
+            return p2
+
+        page = open_page()
         page.evaluate("localStorage.clear()")
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(250)
+        page.close()
+        page = open_page()
 
         # ── 1) 기본 시작 → 선택 → 5초 카운트다운 → 자동 전환 ──
         page.fill("#nameInput", "상훈")
@@ -184,7 +192,7 @@ def run(url, out):
 
         # ── 5) 졸업식으로 넘어가는 턴은 자동 넘김 정지 ──
         grad_id = page.evaluate(PICK_EVENT, {"stage": "infancy", "age": 7})
-        inject(page, {"startAge": 7, "month": 12, "eventId": grad_id})
+        page = inject(page, {"startAge": 7, "month": 12, "eventId": grad_id})
         before = day_label(page)
         page.locator(".choice").first.click()
         page.wait_for_timeout(300)
@@ -195,18 +203,29 @@ def run(url, out):
         shot(page, out, "06-graduation-stop")
         page.wait_for_timeout(6000)
         check("졸업 턴은 자동으로 넘어가지 않음", day_label(page) == before and page.locator("#screen-play").is_visible())
+        page.locator("#advanceBtn").click()
+        page.wait_for_timeout(800)
+        check("졸업 턴 버튼 → 졸업 결산 화면", page.locator("#screen-grad").is_visible() and page.locator("#gradRegister").count() == 1)
+        shot(page, out, "06b-grad-screen")
+        page.locator("#gradContinue").click()
+        page.wait_for_timeout(600)
+        check("'계속 살기' → 플레이 복귀", page.locator("#screen-play").is_visible())
 
         # ── 6) 엔딩으로 넘어가는 턴도 정지 ──
         senior_id = page.evaluate(PICK_EVENT, {"stage": "senior", "age": 80})
-        inject(page, {"startAge": 80, "month": 12, "eventId": senior_id})
+        page = inject(page, {"startAge": 80, "month": 12, "eventId": senior_id})
         page.locator(".choice").first.click()
         page.wait_for_timeout(300)
         end_text = page.locator("#autoChip").inner_text()
         check("엔딩 턴은 멈춤 표시", "인생 마무리" in end_text, end_text.replace("\n", " "))
         shot(page, out, "07-ending-stop")
+        page.locator("#advanceBtn").click()
+        page.wait_for_timeout(800)
+        check("엔딩 턴 버튼 → 엔딩 화면", page.locator("#screen-ending").is_visible())
+        shot(page, out, "07b-ending-screen")
 
         # ── 7) 미니 승부: 진행 중 카운트다운 없음 → 결과 뒤 5초 자동 넘김 ──
-        inject(page, {"startAge": 26, "eventId": "mg_first_date"})
+        page = inject(page, {"startAge": 26, "eventId": "mg_first_date"})
         check("미니 승부 선택지 표시", "가위바위보" in page.locator("#eventCard").inner_text() or True)
         page.locator(".choice").first.click()
         page.wait_for_timeout(350)
@@ -238,7 +257,7 @@ def run(url, out):
         # ── 8) 칭호 해금 → 배지 팝업 → 도감 ──
         page.evaluate("localStorage.removeItem('lifeTurnSim.titles.v1')")
         early_id = page.evaluate(PICK_EVENT, {"stage": "elementary", "age": 9})
-        inject(page, {"startAge": 9, "eventId": early_id, "flags": {"대식가": True}, "stats": {"hp": 72}})
+        page = inject(page, {"startAge": 9, "eventId": early_id, "flags": {"대식가": True}, "stats": {"hp": 72}})
         page.locator(".choice").first.click()
         page.wait_for_timeout(500)
         pop = page.locator("#badgePop")
@@ -259,7 +278,7 @@ def run(url, out):
         # ── 9) 🪃 부메랑 ──
         hist = [{"age": 9, "month": 4, "turn": 100, "title": "운동장", "choice": "축구부에 들어간다",
                  "result": "축구부에 들어갔다.", "deltas": {"hp": 2}, "setKeys": ["축구부"]}]
-        inject(page, {"startAge": 66, "eventId": "bm_soccer_coach", "flags": {"축구부": True}, "history": hist})
+        page = inject(page, {"startAge": 66, "eventId": "bm_soccer_coach", "flags": {"축구부": True}, "history": hist})
         card = page.locator("#eventCard").inner_text()
         check("부메랑 배지", page.locator(".badge.boom").count() == 1 and "과거의 부메랑" in card)
         check("그때의 나이·선택 표시", "9세 4개월차" in card and "축구부에 들어간다" in card)
@@ -270,7 +289,7 @@ def run(url, out):
         shot(page, out, "14-boomerang-result")
 
         # ── 10) 재테크 (부동산 성공) ──
-        inject(page, {"startAge": 41, "eventId": "mn_land_win", "flags": {"부동산_공부": True}})
+        page = inject(page, {"startAge": 41, "eventId": "mn_land_win", "flags": {"부동산_공부": True}})
         check("재테크 이벤트 표시", "땅" in page.locator("#eventCard").inner_text())
         asset_before = page.locator('.stat[data-key="asset"] .stat-val').inner_text()
         page.locator(".choice").first.click()
@@ -303,6 +322,7 @@ def main():
     ap.add_argument("--serve", default="")
     ap.add_argument("--port", type=int, default=8826)
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--scale", type=int, default=2)
     args = ap.parse_args()
 
     if args.url:
@@ -311,7 +331,7 @@ def main():
         directory = args.serve or "."
         serve(directory, args.port)
         url = f"http://127.0.0.1:{args.port}/"
-    raise SystemExit(run(url, args.out))
+    raise SystemExit(run(url, args.out, args.scale))
 
 
 if __name__ == "__main__":
