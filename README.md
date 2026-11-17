@@ -44,6 +44,24 @@
 - **회고 편지**: 실제 스탯 구간·플래그·`history`의 마일스톤을 조합해 8~10줄의 문장을 매 판 새로 만듭니다
   (`Life.recall(s, 'grad' | 'life')`). 80세 엔딩에서는 평생을 돌아보는 회고로 나옵니다.
 
+## 💬 제안·제보 게시판
+
+플레이어가 **이벤트 아이디어**와 **버그·오타**를 바로 올릴 수 있는 게시판입니다. 로그인 없이 쓰고, 글은 Supabase에 쌓입니다.
+
+- **진입**: 시작 화면 상단 `💬 제안·제보`(명예의 전당 옆) · 플레이 화면 상단 바 `💬 제안·제보`. 390px 한 줄에 4개 버튼이 들어가도록 플레이 바 버튼은 압축 스타일(`.sb-actions .ghost-btn`), 379px 이하에서는 이름(`.sb-name`)을 접습니다.
+- **두 탭**: `💡 이벤트 제안` · `🐛 버그·오타 제보`. 정렬은 `최신순` / `공감순`.
+- **글 작성**
+  - 제안: 나이대(1~7·8~13·14~19·20~24·25~34·35세~·전체) + 제목(40자) + 상황·선택지 아이디어(600자) + 닉네임(선택)
+  - 제보: **발생 위치·나이를 지금 플레이 중인 나이·개월차·사건 제목으로 자동 채움**(예: `14세 · 3개월차 · 「전학 첫날」`) + 내용 + 닉네임
+  - 닉네임 기본값은 지금 플레이 중인 이름, 비우면 `익명`.
+  - 검증: 빈 글·5자 미만·40/600자 초과 차단, **20초에 1건 · 하루 5건** 제한과 같은 글 재전송 차단(`localStorage`).
+- **목록 · 👍 공감**: 카드마다 상태 배지(`접수됨`/`반영됨`/`수정됨`), 나이대, 작성 시각, 작성자, `👍 공감 n`. 공감은 기기별 1회(`localStorage` `lifeTurnSim.feedback.likes.v1`)이며 두 번째 누름은 `이미 공감한 글이에요`로 막힙니다. 4줄을 넘는 글은 카드를 눌러 펼칩니다.
+- **저장**: Supabase 프로젝트 `zdcdvjlssncsawpqsjwe`(릴스핀과 공용)의 `public.life_sim_feedback` 테이블. 스키마·RLS·공감 RPC는 `supabase/life_sim_feedback.sql`(다시 실행해도 안전).
+  - 공개 `SELECT` · 공개 `INSERT`(단 `likes=0`·`status='open'`·제목 2~80자·본문 5~1200자·닉네임 1~12자만 통과), `UPDATE`/`DELETE` 정책 없음.
+  - 공감은 `increment_life_sim_feedback_like(row_id)` **security definer** RPC로만 +1 — 앱에서 `likes`를 직접 조작할 수 없습니다.
+  - 운영자는 대시보드에서 `status`를 `open → applied / fixed`로 바꿔 배지를 갱신합니다.
+- **오프라인**: 목록을 못 불러오면 `다시 불러오기` 버튼과 안내 문구를 보여 주고, 작성 중이던 글은 지우지 않습니다.
+
 ## 스탯
 
 | 스탯 | 의미 |
@@ -87,6 +105,8 @@
   - `tools/refdist.js` — 기준 분포 · 시드 생성기 (`node tools/refdist.js 150 180`)
   - `tools/` — 이벤트 커버리지·폴백 측정, 레거시 변환 스크립트
   - `assets/ads.js` — 보상형 광고 훅 `showRewardedAd(reason, onReward)` (프로토타입 모달)
+  - `assets/feedback.js` — 💬 제안·제보 게시판(목록·작성·공감, Supabase REST)
+  - `supabase/life_sim_feedback.sql` — 게시판 테이블·RLS·공감 RPC (SQL Editor에서 실행)
   - `assets/app.js` — 렌더링/조작
 - **시작 화면 한 화면 맞춤**: 아이폰 사파리는 주소창·하단바 때문에 390×844 기기에서도 실사용 뷰포트가 약 660~700px입니다. `styles.css`의 `@media (max-height: 760px / 660px / 580px)` 3단계로 여백·카드 높이를 줄여, 타이틀·나이 카드 7개·이름/성별·시작 버튼이 스크롤 없이 한 화면에 들어옵니다(390×664 기준 문서 스크롤 0, 390×844는 기존 여백 그대로). 저장된 인생이 있어 `이어하기` 카드가 뜬 상태에서는 `#screen-start.has-resume`으로 머리 부분(부제·로고 크기)을 한 단계 더 압축합니다.
 - **이벤트 엔진**: 마일스톤(나이·일차 고정) → 앞선 선택이 예약한 후속 이벤트(`queue`) → 돌발 이벤트 → 해당 생애 단계의 미사용 이벤트 순으로 고릅니다. 한 번 쓴 이벤트는 다시 나오지 않고, 반복 이벤트는 5턴 쿨다운을 둡니다.
@@ -147,6 +167,12 @@ python3 test/start_fit.py --serve . --resume --sizes 390x664
 
 # 시작 → 플레이 스모크(콘솔 에러 0)
 python3 test/smoke.py
+
+# 💬 제안·제보 — 390×664/390×844에서 진입 버튼 배치·모달·탭·정렬·작성·공감·중복 방지
+python3 test/feedback.py --serve . --sizes 390x664,390x844
+
+# 라이브 서버로 같은 검증 (실제 Supabase 저장까지 확인 — 검증용 글 1건이 남습니다)
+python3 test/feedback.py --url https://life-turn-sim.vercel.app/ --sizes 390x844
 ```
 
 > Chromium 실행에 `libatk` 등이 없다면 `LD_LIBRARY_PATH=/workspace/.tools/libs/extract/usr/lib/x86_64-linux-gnu`를 붙입니다.

@@ -20,7 +20,10 @@
   <section id="screen-start" class="screen active">
     <div class="start-scroll">
       <header class="brand">
-        <button type="button" class="brand-hall" id="hallBtnStart">🏆 명예의 전당</button>
+        <div class="brand-top">
+          <button type="button" class="brand-hall" id="hallBtnStart">🏆 명예의 전당</button>
+          <button type="button" class="brand-fb" id="fbBtnStart">💬 제안·제보</button>
+        </div>
         <div class="brand-mark" aria-hidden="true">🎲</div>
         <h1>인생 한 <em>턴</em></h1>
         <p class="brand-sub">
@@ -75,7 +78,8 @@
         </div>
         <div class="sb-actions">
           <button class="ghost-btn" id="hallBtnPlay">🏆 전당</button>
-          <button class="ghost-btn" id="summaryBtn">인생 요약</button>
+          <button class="ghost-btn" id="fbBtnPlay">💬 제안·제보</button>
+          <button class="ghost-btn" id="summaryBtn" aria-label="인생 요약">요약</button>
           <button class="ghost-btn danger" id="resetBtn">새로 시작</button>
         </div>
       </div>
@@ -155,6 +159,69 @@
 
   <div class="toast" id="toast" hidden></div>
 
+  <!-- ───────────── 💬 제안·제보 게시판 ───────────── -->
+  <div class="fb-modal" id="fbModal" hidden aria-hidden="true">
+    <header class="fb-top">
+      <button type="button" class="fb-close" id="fbClose" aria-label="닫기">✕</button>
+      <div class="fb-title-box">
+        <h2>💬 제안·제보</h2>
+        <p id="fbCaption">이런 상황·선택지가 있으면 좋겠다 싶은 걸 들려주세요</p>
+      </div>
+    </header>
+
+    <div class="fb-tabs" role="tablist" aria-label="게시판 종류">
+      <button type="button" class="fb-tab active" id="fbTabIdea" data-tab="idea" role="tab" aria-selected="true">💡 이벤트 제안</button>
+      <button type="button" class="fb-tab" id="fbTabBug" data-tab="bug" role="tab" aria-selected="false">🐛 버그·오타 제보</button>
+    </div>
+
+    <div class="fb-toolbar">
+      <div class="fb-sort" id="fbSort" role="group" aria-label="정렬">
+        <button type="button" class="fb-sort-btn active" data-sort="new">최신순</button>
+        <button type="button" class="fb-sort-btn" data-sort="like">공감순</button>
+      </div>
+      <button type="button" class="fb-write" id="fbWrite">✍️ 글쓰기</button>
+    </div>
+
+    <div class="fb-scroll">
+      <div class="fb-list" id="fbList"></div>
+      <p class="fb-note">올린 글은 누구나 볼 수 있어요. 이름·연락처 같은 개인정보는 적지 말아 주세요.</p>
+    </div>
+
+    <form class="fb-form" id="fbForm" hidden>
+      <div class="fb-form-head">
+        <h3 id="fbFormTitle">💡 이벤트 제안</h3>
+        <button type="button" class="fb-form-close" id="fbFormClose" aria-label="작성 취소">✕</button>
+      </div>
+      <div class="fb-form-body">
+        <div class="fb-field" id="fbAgeField">
+          <span class="fb-label">나이대</span>
+          <div class="fb-chips" id="fbAgeChips"></div>
+        </div>
+        <label class="fb-field">
+          <span class="fb-label" id="fbHeadLabel">제목</span>
+          <input id="fbHead" type="text" maxlength="40" autocomplete="off" placeholder="예: 첫 자취방 구하기" />
+          <span class="fb-count" id="fbHeadCount">0/40</span>
+        </label>
+        <label class="fb-field">
+          <span class="fb-label" id="fbBodyLabel">상황·선택지 아이디어</span>
+          <textarea id="fbContent" rows="5" maxlength="600" placeholder="예: 22세, 원룸 계약 앞에서 보증금·월세·거리 중 무엇을 우선할지 고르는 이벤트"></textarea>
+          <span class="fb-count" id="fbContentCount">0/600</span>
+        </label>
+        <label class="fb-field">
+          <span class="fb-label">닉네임 <em>선택</em></span>
+          <input id="fbAuthor" type="text" maxlength="12" autocomplete="off" placeholder="익명" />
+        </label>
+        <p class="fb-error" id="fbError" hidden></p>
+      </div>
+      <div class="fb-form-foot">
+        <button type="button" class="btn fb-cancel" id="fbCancel">취소</button>
+        <button type="submit" class="btn primary" id="fbSubmit">제안 보내기</button>
+      </div>
+    </form>
+
+    <div class="fb-toast" id="fbToast" hidden></div>
+  </div>
+
   <!-- ───────────── 보상형 광고 모달 (프로토타입) ───────────── -->
   <div class="ad-modal" id="adModal" hidden aria-hidden="true">
     <div class="ad-modal-card" role="dialog" aria-modal="true" aria-labelledby="adTitle">
@@ -203,6 +270,7 @@
 <script src="assets/refdist.js"></script>
 <script src="assets/hall-seeds.js"></script>
 <script src="assets/ads.js"></script>
+<script src="assets/feedback.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

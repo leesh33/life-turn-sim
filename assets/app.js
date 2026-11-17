@@ -89,6 +89,26 @@
       renderGame();
     });
     $('hallBtnStart').addEventListener('click', openHall);
+    var fbStart = $('fbBtnStart');
+    if (fbStart) fbStart.addEventListener('click', openFeedback);
+  }
+
+  /* ── 💬 제안·제보 게시판 ──
+     지금 플레이 중인 이름·나이·개월차·사건 제목을 넘겨
+     버그 제보의 '발생 위치/나이'를 자동으로 채운다. */
+  function openFeedback() {
+    if (!window.Feedback) { toast('게시판을 불러오지 못했습니다'); return; }
+    var ctx = { screen: screenName, name: '익명', age: null, month: null, eventTitle: '' };
+    if (state) {
+      ctx.name = state.name || '익명';
+      ctx.age = state.age;
+      ctx.month = state.month;
+      try {
+        var ev = Life.currentEvent(state);
+        if (ev) ctx.eventTitle = typeof ev.title === 'function' ? ev.title(state) : ev.title;
+      } catch (e) { /* 이벤트를 못 찾아도 나이·개월차는 넘긴다 */ }
+    }
+    window.Feedback.open(ctx);
   }
 
   function startGame() {
@@ -778,6 +798,8 @@
     });
     $('resetBtn').addEventListener('click', resetGame);
     $('hallBtnPlay').addEventListener('click', function () { openHall('play'); });
+    var fbPlay = $('fbBtnPlay');
+    if (fbPlay) fbPlay.addEventListener('click', openFeedback);
 
     ['rewardUndo', 'rewardReroll', 'rewardHeal'].forEach(function (id) {
       var btn = $(id);
