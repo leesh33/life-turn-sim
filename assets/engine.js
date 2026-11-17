@@ -6,7 +6,7 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
-  var SAVE_VERSION = 3;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당)
+  var SAVE_VERSION = 4;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
   var MONTHS = 12;           // 한 살 = 12개월차
   var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
@@ -33,13 +33,29 @@
     { age: 35, label: '결혼',            emoji: '💍', wide: 1, desc: '두 사람의 시작' }
   ];
 
+  /* ── 일곱 능력치 ──
+     체력·멘탈·매력·호감도에 역량(🧠)과 행운(🍀)을 더했다.
+     앞의 여섯 개는 0~100 게이지(선택의 효과·고수준 체감·최고치 유지가 모두 적용)이고,
+     재산만 별도의 로그 눈금이다. 화면 순서도 이 순서를 그대로 쓴다. */
   var STATS = [
-    { key: 'hp',     label: '체력' },
-    { key: 'mental', label: '멘탈' },
-    { key: 'charm',  label: '매력' },
-    { key: 'asset',  label: '재산' },
-    { key: 'social', label: '호감도' }
+    { key: 'hp',     label: '체력',   emoji: '💪' },
+    { key: 'mental', label: '멘탈',   emoji: '🧘' },
+    { key: 'charm',  label: '매력',   emoji: '✨' },
+    { key: 'social', label: '호감도', emoji: '🤝' },
+    { key: 'intel',  label: '역량',   emoji: '🧠' },
+    { key: 'luck',   label: '행운',   emoji: '🍀' },
+    { key: 'asset',  label: '재산',   emoji: '💰' }
   ];
+  var STAT_META = {};
+  STATS.forEach(function (st) { STAT_META[st.key] = st; });
+
+  // 0~100 게이지로 다루는 능력치 (재산 제외) — 유지·감쇠·종합 점수가 모두 이 목록을 쓴다
+  var GAUGE_KEYS = ['hp', 'mental', 'charm', 'social', 'intel', 'luck'];
+  function gaugeAvg(st) {
+    var sum = 0;
+    for (var i = 0; i < GAUGE_KEYS.length; i++) sum += (st[GAUGE_KEYS[i]] || 0);
+    return sum / GAUGE_KEYS.length;
+  }
 
   /* ── 졸업 결산 체크포인트 ──
      각 나이의 12개월차 턴을 마치고 다음 나이로 넘어가는 순간, 졸업 결산이 열린다.
@@ -55,20 +71,22 @@
   GRADUATIONS.forEach(function (g) { GRAD_BY_AGE[g.age] = g; GRAD_BY_KEY[g.key] = g; });
 
   // 시작 스탯은 50~60대 — 한두 번의 선택으로 100이 되지 않게 낮게 잡는다
+  /* 역량(intel)은 나이가 들수록 조금씩 올라 출발하고(배운 것이 쌓인다),
+     행운(luck)은 어느 시작점에서나 50 근처에서 흔들린다 — 타고나는 값에 가깝다. */
   var PRESETS = {
-    1:  { stats: { hp: 60, mental: 62, charm: 52, social: 58, asset: 0 },
+    1:  { stats: { hp: 60, mental: 62, charm: 52, social: 58, intel: 44, luck: 52, asset: 0 },
           flags: {} },
-    8:  { stats: { hp: 62, mental: 58, charm: 54, social: 56, asset: 5 },
+    8:  { stats: { hp: 62, mental: 58, charm: 54, social: 56, intel: 48, luck: 50, asset: 5 },
           flags: { 초등학생: true } },
-    14: { stats: { hp: 64, mental: 54, charm: 57, social: 54, asset: 12 },
+    14: { stats: { hp: 64, mental: 54, charm: 57, social: 54, intel: 52, luck: 51, asset: 12 },
           flags: { 중학생: true } },
-    17: { stats: { hp: 62, mental: 51, charm: 59, social: 54, asset: 20 },
+    17: { stats: { hp: 62, mental: 51, charm: 59, social: 54, intel: 55, luck: 49, asset: 20 },
           flags: { 고등학생: true } },
-    20: { stats: { hp: 61, mental: 55, charm: 60, social: 57, asset: 60 },
+    20: { stats: { hp: 61, mental: 55, charm: 60, social: 57, intel: 60, luck: 52, asset: 60 },
           flags: { 대학생: true, 문과: true } },
-    25: { stats: { hp: 59, mental: 54, charm: 59, social: 58, asset: 850 },
+    25: { stats: { hp: 59, mental: 54, charm: 59, social: 58, intel: 62, luck: 50, asset: 850 },
           flags: { 대졸: true, 문과: true, 직업: '대기업 기획자' } },
-    35: { stats: { hp: 56, mental: 55, charm: 58, social: 60, asset: 9500 },
+    35: { stats: { hp: 56, mental: 55, charm: 58, social: 60, intel: 64, luck: 51, asset: 9500 },
           flags: { 대졸: true, 문과: true, 직업: '대기업 기획자' } }
   };
 
@@ -682,16 +700,38 @@
     s.stats.charm = clamp(s.stats.charm - rule.charm, 0, 100);
   }
 
+  /* ── 해마다 바뀌는 운 ──
+     행운은 선택으로만 오르내리면 거의 움직이지 않는 값이 된다(50 근처에 머문다).
+     생일마다 ±3 정도 흔들리고, 흔들린 값은 50 쪽으로 조금씩 당겨진다.
+     (운이 계속 극단으로 달리지 않으면서도 사람마다 다른 폭을 갖게 하는 장치) */
+  var LUCK_DRIFT = 3;
+  function applyLuckDrift(s) {
+    if (s.stats.luck === undefined) return;
+    var pull = (50 - s.stats.luck) * 0.12;
+    s.stats.luck = clamp(s.stats.luck + pull + randInt(s, -LUCK_DRIFT, LUCK_DRIFT), 0, 100);
+  }
+
   /* ── 최고치 유지 ──
      88을 넘긴 스탯만 아주 천천히 88 쪽으로 내려간다.
-     (한 달에 최대 1.4 정도 · 보통 스탯에는 전혀 영향이 없다.) */
+     (한 달에 최대 1.4 정도 · 보통 스탯에는 전혀 영향이 없다.)
+     역량·행운도 같은 규칙을 따른다 — 머리도 운도 방치하면 조금씩 식는다. */
   var UPKEEP = { from: 88, rate: 0.12 };
   function applyUpkeep(s) {
-    ['hp', 'mental', 'charm', 'social'].forEach(function (key) {
+    GAUGE_KEYS.forEach(function (key) {
       var cur = s.stats[key];
       if (cur === undefined || cur <= UPKEEP.from) return;
       s.stats[key] = clamp(cur + (UPKEEP.from - cur) * UPKEEP.rate, 0, 100);
     });
+  }
+
+  /* ── 행운의 몫 ──
+     미니 승부(동전·가위바위보·주사위·카드)에서 행운 50을 기준으로
+     승률을 -0.25 ~ +0.25 만큼 밀어 준다. 행운 100 이면 승률 75%, 0 이면 25%.
+     (미니게임 화면과 테스트가 같은 함수를 쓴다) */
+  var LUCK_SPAN = 0.25;
+  function luckBias(stats) {
+    var v = stats && typeof stats.luck === 'number' ? stats.luck : 50;
+    return clamp((v - 50) / 50, -1, 1) * LUCK_SPAN;
   }
 
   function advance(s) {
@@ -705,7 +745,7 @@
     s.turn += 1;
     // 보통 범위의 스탯은 건드리지 않는다 — 선택의 결과만 남긴다
     applyUpkeep(s);
-    if (birthday) applyAging(s);
+    if (birthday) { applyAging(s); applyLuckDrift(s); }
 
     if (s.age > END_AGE) {
       s.ended = true;
@@ -733,16 +773,25 @@
     try { global.localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) {}
   }
 
-  // 예전 저장본(일차 단위 v1)을 개월차 단위(v2)로 옮긴다.
+  // 예전 저장본을 지금 모양으로 옮긴다 (v1 일차 → v2 개월차 → v3 졸업 결산 → v4 역량·행운)
   function dayToMonth(d) {
     if (typeof d !== 'number' || isNaN(d)) return 1;
     if (d === 1) return 1;
     return clamp(Math.round(d / 30) + 1, 1, MONTHS);
   }
 
+  // 역량·행운이 없던 저장본은 50으로 채운다 (진행 중이던 인생이 끊기지 않게)
+  function backfillStats(st) {
+    if (!st) return st;
+    if (typeof st.intel !== 'number' || isNaN(st.intel)) st.intel = 50;
+    if (typeof st.luck !== 'number' || isNaN(st.luck)) st.luck = 50;
+    st.intel = clamp(st.intel, 0, 100);
+    st.luck = clamp(st.luck, 0, 100);
+    return st;
+  }
+
   function migrate(s) {
     if (!s) return s;
-    if (s.v === SAVE_VERSION && s.month !== undefined) return s;
     if (s.month === undefined) s.month = dayToMonth(s.day);
     s.month = clamp(s.month || 1, 1, MONTHS);
     delete s.day;
@@ -757,6 +806,9 @@
       s.undo.month = dayToMonth(s.undo.day);
       delete s.undo.day;
     }
+    backfillStats(s.stats);
+    if (s.undo) backfillStats(s.undo.stats);
+    if (s.grad && s.grad.stats) backfillStats(s.grad.stats);
     s.v = SAVE_VERSION;
     return s;
   }
@@ -876,7 +928,23 @@
     { key: 'family',   emoji: '🏠', label: '가족만 바라보고 산 사람',
       variants: ['식탁의 얼굴들을 평생 본 사람', '아이들 키우다 내 이름을 잊은 사람'],
       signals: ['자녀수', '자녀', '결혼', '가족_화합'],
-      when: function (f) { return (f.자녀수 || 0) >= 2 && !f.창업 && !f.예술가_길; } }
+      when: function (f) { return (f.자녀수 || 0) >= 2 && !f.창업 && !f.예술가_길; } },
+
+    /* ── 능력치로 갈리는 얼굴 ──
+       역량·행운은 플래그와 다른 축이라 whenState 로 본다.
+       플래그만으로 정해지는 갈래가 있으면 그쪽이 먼저다(신호 개수가 같으면 위가 이긴다). */
+    { key: 'genius',   emoji: '🧠', label: '머리로 길을 만든 사람',
+      variants: ['한 번 익힌 것은 잊지 않은 사람', '모르는 것을 끝까지 파고든 사람'],
+      signals: ['코딩_전문', '학회_논문', '개발_길', '연구원_길'],
+      whenState: function (s) { return s.stats.intel >= 90; } },
+    { key: 'lucky',    emoji: '🍀', label: '행운을 끝까지 들고 간 사람',
+      variants: ['마지막 한 수가 늘 통한 사람', '운이 한 번씩 문을 열어 준 사람'],
+      signals: ['청약당첨', '복권', '투자_경험'],
+      whenState: function (s) { return s.stats.luck >= 90; } },
+    { key: 'rainy',    emoji: '🌧️', label: '운이 비켜 갈 때 버틴 사람',
+      variants: ['한 끗이 늘 모자랐던 사람', '복은 남에게 갔지만 하루는 내가 산 사람'],
+      signals: ['주식손실', '창업_실패', '청약_포기'],
+      whenState: function (s) { return s.stats.luck <= 22; } }
   ];
 
   // 같은 갈래라도 판마다 다른 얼굴이 나오게 — 이름·시작점으로 정해지는 고정 추첨
@@ -893,7 +961,10 @@
     var best = null, bestScore = -1;
     for (var i = 0; i < ARCHETYPES.length; i++) {
       var a = ARCHETYPES[i], hit = false;
-      try { hit = !!a.when(s.flags); } catch (e) { hit = false; }
+      try {
+        hit = !!(typeof a.when === 'function' ? a.when(s.flags) : false) ||
+          !!(typeof a.whenState === 'function' && s.stats ? a.whenState(s) : false);
+      } catch (e) { hit = false; }
       if (!hit) continue;
       var score = 0, sig = a.signals || [];
       for (var j = 0; j < sig.length; j++) { if (s.flags[sig[j]]) score++; }
@@ -936,6 +1007,8 @@
     if (f.일탈_경험) return '한 번 크게 넘어진';
     if (f.첫사랑_기억 && f.결혼) return '첫사랑을 잊지 못한';
     if (st.social >= 80) return '인맥 하나로 먹고사는';
+    if (st.luck <= 32) return '운이 비켜 간';
+    if (st.intel >= 85) return '머리로 풀어낸';
     if (st.mental >= 85) return '멘탈이 강철인';
     if (f.재수생) return '한 번 더 도전한';
     return '평범하게 살아낸';
@@ -955,7 +1028,7 @@
 
   function gradeOf(s) {
     var st = s.stats;
-    var gauge = (st.hp + st.mental + st.charm + st.social) / 4;
+    var gauge = gaugeAvg(st);
     var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
     var score = gauge * 0.55 + assetScore + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
     score = clamp(score, 0, 100);
@@ -1035,8 +1108,13 @@
     var parts = [];
     parts.push('체력 ' + Math.round(st.hp) + ', 멘탈 ' + Math.round(st.mental) +
       ', 매력 ' + Math.round(st.charm) + ', 호감도 ' + Math.round(st.social));
+    parts.push('역량 ' + Math.round(st.intel) + ', 행운 ' + Math.round(st.luck));
     parts.push('남은 재산은 ' + formatAsset(st.asset));
     var tail = [];
+    if (st.intel >= 80) tail.push('머리로 풀어낸 일이 많고');
+    else if (st.intel <= 35) tail.push('머리보다 몸으로 부딪혀 왔고');
+    if (st.luck >= 80) tail.push('웃을 일이 한 번씩은 생겼습니다');
+    else if (st.luck <= 30) tail.push('운은 유난히 비켜 갔습니다');
     if (st.mental <= 30) tail.push('멘탈은 조금 상했지만');
     else if (st.mental >= 80) tail.push('멘탈은 아직 쌩쌩하고');
     if (st.social >= 80) tail.push('주변에 사람이 많습니다');
@@ -1050,9 +1128,9 @@
 
   /* ═════════════ 졸업 결산 · 능력치 비교 · 명예의 전당 ═════════════ */
 
-  // 종합 점수(0~100) — 네 스탯 평균 55점 + 재산 45점. 졸업 시점 비교·전당 점수에 공통으로 쓴다.
+  // 종합 점수(0~100) — 여섯 게이지 평균 55점 + 재산 45점. 졸업 비교·전당 점수에 공통으로 쓴다.
   function scoreOfStats(st) {
-    var gauge = (st.hp + st.mental + st.charm + st.social) / 4;
+    var gauge = gaugeAvg(st);
     var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
     return clamp(gauge * 0.55 + assetScore, 0, 100);
   }
@@ -1104,7 +1182,8 @@
   }
 
   function statSnapshot(st) {
-    return { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social, asset: st.asset };
+    return { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social,
+      intel: st.intel, luck: st.luck, asset: st.asset };
   }
 
   function diffText(key, diff) {
@@ -1464,6 +1543,18 @@
     family: [
       '아이들 키우느라 내 이름을 잠시 잊었습니다. 그래도 그 시간이 내 인생의 본론이었습니다.',
       '식탁에 앉은 네 사람의 얼굴을 평생 봤습니다. 그게 내가 고른 하루였습니다.'
+    ],
+    genius: [
+      '모르는 것이 있으면 잠을 줄여서라도 알아냈습니다. 그 습관 하나가 평생의 무기가 됐습니다.',
+      '한 번 이해한 것은 오래 남았습니다. 남들이 외울 때 나는 이해했고, 그래서 안 잊었습니다.'
+    ],
+    lucky: [
+      '중요한 순간에 한 번씩 운이 왔습니다. 그 문이 열렸을 때 들어갈 수 있게 준비해 둔 것은 나였습니다.',
+      '복권처럼 우연은 잘 오지 않았지만, 이상하게 마지막 한 수는 늘 통했습니다.'
+    ],
+    rainy: [
+      '한 끗씩 모자란 일이 많았습니다. 그래도 다음 날 아침은 어김없이 왔고, 나는 또 나갔습니다.',
+      '운은 끝까지 비켜 갔습니다. 대신 버티는 법을 배웠고, 그건 아무도 빼앗지 못했습니다.'
     ]
   };
 
@@ -1499,17 +1590,35 @@
       lines.push(mem[1].age + '세 ' + mem[1].month + '개월차의 ' + mem[1].title + ' — 그때는 그게 전부인 줄 알았습니다.');
     }
 
-    // 5~6줄: 마음과 몸
+    // 5줄: 마음과 몸 (한 문장으로 묶어 역량·행운 줄 자리를 낸다)
     var mental = st.mental, hp = st.hp;
-    lines.push(mental >= 78 ? '마음은 대체로 맑았습니다. 웃음이 잘 나는 사람이었고, 그 웃음이 하루를 버티게 했습니다.'
+    var mindLine = mental >= 78 ? '마음은 대체로 맑았습니다. 웃음이 잘 나는 사람이었고, 그 웃음이 하루를 버티게 했습니다.'
       : mental >= 58 ? '마음은 잔잔한 편이었습니다. 큰 파도 없이도 여기까지 왔습니다.'
       : mental >= 42 ? '마음이 눅눅해지는 날이 있었습니다. 다음 날이면 조금 말랐습니다.'
       : mental >= 26 ? '혼자 삼키는 밤이 많았습니다. 아무도 모르는, 그런 밤이었습니다.'
-      : '마음의 바닥을 몇 번 보았습니다. 그래도 아침이면 다시 일어났습니다.');
-    lines.push(hp >= 72 ? '몸은 말을 잘 들었습니다. 뛰어도 다음 날 아침은 어김없이 왔습니다.'
-      : hp >= 52 ? '몸은 그럭저럭이었습니다. 아픈 날보다 괜찮은 날이 조금 많았습니다.'
-      : hp >= 36 ? '몸이 자주 신호를 보냈지만, 대부분 모른 척 지나갔습니다.'
-      : '몸이 먼저 지친 날들이 있었습니다. 그때는 그게 당연한 줄 알았습니다.');
+      : '마음의 바닥을 몇 번 봤습니다. 그래도 아침이면 다시 일어났습니다.';
+    var bodyLine = hp >= 72 ? '몸은 말을 잘 들었습니다.'
+      : hp >= 52 ? '몸은 그럭저럭이었습니다.'
+      : hp >= 36 ? '몸이 자주 신호를 보냈습니다.'
+      : '몸이 먼저 지친 날들이 있었습니다.';
+    lines.push(bodyLine + ' ' + mindLine);
+
+    // 6줄: 머리와 운 — 새로 더한 두 능력치가 인생의 결을 어떻게 바꿨는지
+    var intel = st.intel === undefined ? 50 : st.intel;
+    var luck = st.luck === undefined ? 50 : st.luck;
+    if (intel >= 80 && luck >= 72) {
+      lines.push('머리로 길을 만들었고, 결정적인 순간엔 운이 문을 열어 주었습니다. 둘 다 내 것이었습니다.');
+    } else if (intel >= 80) {
+      lines.push('무엇이든 이해하고 익히는 데 오래 걸리지 않았습니다. 그 머리가 나를 여기까지 데려왔습니다.');
+    } else if (intel <= 38) {
+      lines.push('머리로 앞서는 편은 아니었습니다. 대신 몸으로 부딪혀서 배웠고, 그 배움은 잘 잊지 않았습니다.');
+    } else if (luck >= 80) {
+      lines.push('막힌 일이 마지막에 한 번씩은 풀렸습니다. 그게 행운이라는 걸 한참 뒤에 알았습니다.');
+    } else if (luck <= 32) {
+      lines.push('유난히 운이 비켜 가는 해가 있었습니다. 그때 배운 건, 운은 기다리는 게 아니라는 것이었습니다.');
+    } else {
+      lines.push('머리도 운도 평범한 편이었습니다. 그래서 매달 한 번씩, 직접 골라야 했습니다.');
+    }
 
     // 7줄: 사람과의 거리
     if (st.social >= 72) {
@@ -1575,6 +1684,9 @@
     STAGES: STAGES,
     START_AGES: START_AGES,
     STATS: STATS,
+    STAT_META: STAT_META,
+    GAUGE_KEYS: GAUGE_KEYS,
+    luckBias: luckBias,
     END_AGE: END_AGE,
     MONTHS: MONTHS,
     GRADUATIONS: GRADUATIONS,

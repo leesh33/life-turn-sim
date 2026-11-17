@@ -138,7 +138,7 @@ FOLLOW.forEach(([parent, child, age]) => {
   global.window.localStorage.setItem('lifeTurnSim.save.v1', JSON.stringify(legacy));
   const loaded = Life.load();
   check('예전 저장본(v1 일차) → 개월차 마이그레이션',
-    !!loaded && loaded.v === 3 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
+    !!loaded && loaded.v === 4 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
     `month:${loaded && loaded.month} histMonth:${loaded && loaded.history[0].month}`);
   Life.clear();
 })();
@@ -165,7 +165,7 @@ FOLLOW.forEach(([parent, child, age]) => {
     `grad:${grad} age:${g.age}`);
   const info = Life.gradInfo(g);
   check('졸업 결산 정보(능력치 비교 · 백분위 · 회고)',
-    !!info && info.rows.length === 5 && info.rows.every((r) => typeof r.top === 'number') &&
+    !!info && info.rows.length === 7 && info.rows.every((r) => typeof r.top === 'number') &&
     info.total.top !== null && info.hall.count >= 0,
     `rows:${info && info.rows.length} top:${info && info.total.top} hall:${info && info.hall.count}`);
   const recall = Life.recall(g, 'grad');

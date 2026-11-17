@@ -101,7 +101,7 @@ def run(phase, outdir):
             page.locator(".cmp-card").scroll_into_view_if_needed()
             page.wait_for_timeout(300)
             shot(page, "03-grad7-compare")
-            if page.locator(".cmp-row").count() != 6:
+            if page.locator(".cmp-row").count() != 8:
                 problems.append("비교 행 수 이상")
             page.locator("#gradContinue").scroll_into_view_if_needed()
             page.wait_for_timeout(300)

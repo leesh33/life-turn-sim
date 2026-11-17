@@ -23,6 +23,20 @@
     return DEFAULT_LIMIT;
   }
 
+  /* ── 행운(luck)이 승부 확률을 민다 ──
+     행운 50 이면 정직한 확률, 100 이면 +25%p, 0 이면 -25%p.
+     엔진의 Life.luckBias 와 같은 식을 쓴다(한 곳에서 정의). */
+  function luckOf(gameState) {
+    var st = gameState && gameState.stats ? gameState.stats : null;
+    if (!st) return null;
+    if (global.Life && typeof global.Life.luckBias === 'function') return global.Life.luckBias(st);
+    var v = typeof st.luck === 'number' ? st.luck : 50;
+    return Math.max(-0.25, Math.min(0.25, (v - 50) / 50 * 0.25));
+  }
+  function biasNow() { return state && typeof state.bias === 'number' ? state.bias : 0; }
+  // 앞면/뒷면, 가위바위보처럼 '고른 쪽이 이기는가'를 확률로 정하는 승부
+  function luckWin() { return Math.random() < 0.5 + biasNow(); }
+
   function ensureDom() {
     if ($('miniModal')) return;
     var wrap = document.createElement('div');
@@ -64,6 +78,9 @@
     ensureDom();
     state = { cfg: cfg || {}, done: done, ended: false, timer: null, tick: null, playing: false };
     state.limit = limitOf(state.cfg);
+    state.bias = luckOf(gameState) || 0;
+    state.luck = gameState && gameState.stats && typeof gameState.stats.luck === 'number'
+      ? Math.round(gameState.stats.luck) : null;
 
     var modal = $('miniModal');
     $('miniTitle').textContent = state.cfg.title || '미니 승부';
@@ -73,7 +90,8 @@
     $('miniFoot').className = 'mini-foot';   // 이전 승부의 3열 클래스가 남지 않게
     $('miniFoot').innerHTML = '';
     if ($('miniNote')) {
-      $('miniNote').textContent = (state.limit / 1000) + '초 안에 승부를 내세요 · 결과에 따라 스탯과 갈래가 달라집니다';
+      $('miniNote').textContent = (state.limit / 1000) + '초 안에 승부를 내세요 · 결과에 따라 스탯과 갈래가 달라집니다' +
+        (state.luck === null || state.luck === undefined ? '' : ' · 🍀 행운 ' + state.luck + ' 이 승률에 반영됩니다');
     }
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
@@ -168,22 +186,40 @@
         renderDice(randD2(), randD2());
         if (ticks >= 9) {
           clearInterval(spin);
-          var mine = randD2(), theirs = randD2();
-          renderDice(mine, theirs);
-          if (mine === theirs) {
-            btn.textContent = '동점 — 한 번 더';
-            setTimeout(function () {
-              if (!state || state.ended) return;
-              var m2 = randD2(), t2 = randD2();
-              renderDice(m2, t2);
-              var a = m2[0] + m2[1], b = t2[0] + t2[1];
-              if (a === b) finish(false, '두 번 다 비겼습니다 · 내 ' + a + ' · 상대 ' + b);
-              else if (a > b) finish(true, '한 번 더 굴려 내 ' + a + ' · 상대 ' + b);
-              else finish(false, '한 번 더 굴렀지만 내 ' + a + ' · 상대 ' + b);
-            }, 800);
-            return;
+          var my = randD2();
+          // 행운이 높으면 한 번 더 굴려 좋은 쪽을, 낮으면 나쁜 쪽을 쓴다
+          var lucky = false;
+          if (biasNow() > 0 && Math.random() < biasNow()) {
+            var better = randD2();
+            if (better[0] + better[1] > my[0] + my[1]) { my = better; lucky = true; }
+          } else if (biasNow() < 0 && Math.random() < -biasNow()) {
+            var worse = randD2();
+            if (worse[0] + worse[1] < my[0] + my[1]) { my = worse; lucky = true; }
           }
-          settle(mine, theirs);
+          var theirs = randD2();
+          renderDice(my, theirs);
+          if (lucky && $('miniNote')) {
+            $('miniNote').textContent = biasNow() > 0
+              ? '🍀 행운이 주사위를 한 번 더 굴렸습니다'
+              : '🌧️ 행운이 손을 놓았습니다';
+          }
+          (function (mine, op) {
+            var a = mine[0] + mine[1], b = op[0] + op[1];
+            if (a === b) {
+              btn.textContent = '동점 — 한 번 더';
+              setTimeout(function () {
+                if (!state || state.ended) return;
+                var m2 = randD2(), t2 = randD2();
+                renderDice(m2, t2);
+                var a2 = m2[0] + m2[1], b2 = t2[0] + t2[1];
+                if (a2 === b2) finish(false, '두 번 다 비겼습니다 · 내 ' + a2 + ' · 상대 ' + b2);
+                else if (a2 > b2) finish(true, '한 번 더 굴려 내 ' + a2 + ' · 상대 ' + b2);
+                else finish(false, '한 번 더 굴렀지만 내 ' + a2 + ' · 상대 ' + b2);
+              }, 800);
+              return;
+            }
+            settle(mine, op);
+          })(my, theirs);
         }
       }, 80);
     });
@@ -234,7 +270,11 @@
         state.playing = true;
         var mine = b.dataset.hand;
         var keys = Object.keys(RPS);
-        var theirs = keys[Math.floor(Math.random() * keys.length)];
+        // 행운이 높으면 상대가 지는 손을, 낮으면 이기는 손을 낸다 (가끔 비긴다)
+        var roll = Math.random(), p = 0.5 + biasNow(), theirs;
+        if (roll < 0.06) theirs = mine;
+        else if (roll < 0.06 + 0.94 * p) theirs = RPS_BEATS[mine];
+        else theirs = RPS_BEATS[RPS_BEATS[mine]] || keys[Math.floor(Math.random() * keys.length)];
         if ($('myHand')) $('myHand').textContent = RPS[mine];
         if ($('opHand')) $('opHand').textContent = RPS[theirs];
         var line = $('rpsLine');
@@ -271,7 +311,8 @@
         lockButtons(foot);
         if ($('coinLine')) $('coinLine').textContent = picked + '면을 골랐습니다 · 동전이 떠오릅니다…';
         var coin = $('coinEl');
-        var landed = Math.random() < 0.5 ? '앞' : '뒤';
+        // 행운이 앞면/뒷면을 고른 쪽으로 민다 (행운 100 → 75%)
+        var landed = luckWin() ? picked : (picked === '앞' ? '뒤' : '앞');
         if (coin) {
           coin.classList.add('flipping');
           if (landed === '뒤') coin.classList.add('show-back');
@@ -297,6 +338,18 @@
     return String(n);
   };
 
+  // 행운이 높으면 고른 쪽(높다/낮다)의 카드가 나올 확률이 올라간다
+  function luckyCard(cur, guess) {
+    var hi = [], lo = [], n;
+    for (n = 1; n <= 13; n++) { if (n > cur) hi.push(n); else if (n < cur) lo.push(n); }
+    var want = guess === 'high' ? hi : lo;
+    var other = guess === 'high' ? lo : hi;
+    var roll = Math.random();
+    if (roll < 0.5 + biasNow() && want.length) return want[Math.floor(Math.random() * want.length)];
+    if (other.length) return other[Math.floor(Math.random() * other.length)];
+    return cur;
+  }
+
   function buildHighlow() {
     var cur = 1 + Math.floor(Math.random() * 13);
     state.highlow = { cur: cur, ties: 0 };
@@ -318,11 +371,11 @@
         state.playing = true;
         lockButtons(foot);
         var guess = b.dataset.guess;
-        var next = 1 + Math.floor(Math.random() * 13);
+        var next = luckyCard(state.highlow.cur, guess);
         state.highlow.ties += 1;
         // 같은 숫자가 나오면 한 번만 다시 뽑는다 (그래도 같으면 무승부 → 패배)
         if (next === state.highlow.cur && state.highlow.ties < 2) {
-          next = 1 + Math.floor(Math.random() * 13);
+          next = luckyCard(state.highlow.cur, guess);
         }
         if ($('hlNext')) {
           $('hlNext').className = 'hl-next open';

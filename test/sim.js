@@ -16,7 +16,7 @@ Life.STAGES.forEach((s) => { STAGES[s.id] = s; });
 const problems = [];
 const ids = new Set();
 const KNOWN_STAGES = new Set(Life.STAGES.map((s) => s.id).concat(['any']));
-const KNOWN_KEYS = new Set(['hp', 'mental', 'charm', 'social', 'asset']);
+const KNOWN_KEYS = new Set(['hp', 'mental', 'charm', 'social', 'intel', 'luck', 'asset']);
 
 for (const ev of EVENTS) {
   if (!ev.id) problems.push('id 없음: ' + JSON.stringify(ev).slice(0, 60));
@@ -186,17 +186,17 @@ for (const startAge of [2, 3, 5, 7]) {
 }
 
 // ── 밸런스: 세대별 스탯 분포 ──
-const KEYS = ['hp', 'mental', 'charm', 'social'];
+const KEYS = ['hp', 'mental', 'charm', 'social', 'intel', 'luck'];
 const RUNS = 12;
 const buckets = {};
-const peaks = { hp: [], mental: [], charm: [], social: [] };
+const peaks = { hp: [], mental: [], charm: [], social: [], intel: [], luck: [] };
 let statSamples = 0, at100 = 0, at90 = 0, rapid100 = 0;
 
 for (let run = 0; run < RUNS; run++) {
-  const maxed = { hp: 0, mental: 0, charm: 0, social: 0 };
+  const maxed = { hp: 0, mental: 0, charm: 0, social: 0, intel: 0, luck: 0 };
 
   const s2 = Life.newGame({ name: '초반', gender: '남', startAge: 1 });
-  const early = { hp: 0, mental: 0, charm: 0, social: 0 };
+  const early = { hp: 0, mental: 0, charm: 0, social: 0, intel: 0, luck: 0 };
   for (let i = 0; i < 3; i++) {
     const ev = Life.currentEvent(s2);
     Life.choose(s2, randomPick(ev));
@@ -219,7 +219,7 @@ for (let run = 0; run < RUNS; run++) {
     });
     const age = s3.age;
     if (age % 10 === 0 && age >= 10) {
-      if (!buckets[age]) buckets[age] = { hp: [], mental: [], charm: [], social: [] };
+      if (!buckets[age]) buckets[age] = { hp: [], mental: [], charm: [], social: [], intel: [], luck: [] };
       KEYS.forEach((k) => buckets[age][k].push(s3.stats[k]));
     }
     Life.advance(s3);

@@ -1,6 +1,6 @@
 const { load } = require('./lib-load');
 const { EVENTS } = load(require('path').join(__dirname, '..', 'assets'));
-const sum = { hp:0, mental:0, charm:0, social:0, asset:0 };
+const sum = { hp:0, mental:0, charm:0, social:0, intel:0, luck:0, asset:0 };
 let n=0;
 for (const ev of EVENTS) for (const c of ev.choices) {
   const e = c.effects; if (!e || typeof e === 'function') continue;

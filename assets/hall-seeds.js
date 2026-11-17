@@ -6,20 +6,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "kindergarten",
   "stageLabel": "유치원 졸업",
   "age": 7,
-  "score": 64.5,
+  "score": 57.2,
   "grade": "S",
   "top": 4,
   "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "김도윤",
   "stats": {
-   "hp": 89,
-   "mental": 92,
-   "charm": 86,
-   "social": 90,
-   "asset": 37
+   "hp": 87,
+   "mental": 94,
+   "charm": 89,
+   "social": 89,
+   "intel": 50,
+   "luck": 49,
+   "asset": 35
   },
   "seed": true,
-  "ts": 1794604955936
+  "ts": 1794608945531
  },
  {
   "id": "seed-kindergarten-1",
@@ -27,20 +29,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "kindergarten",
   "stageLabel": "유치원 졸업",
   "age": 7,
-  "score": 63.8,
+  "score": 56.4,
   "grade": "A",
   "top": 11,
   "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
   "name": "이서연",
   "stats": {
-   "hp": 88,
-   "mental": 92,
-   "charm": 83,
-   "social": 91,
-   "asset": 34
+   "hp": 82,
+   "mental": 93,
+   "charm": 89,
+   "social": 92,
+   "intel": 49,
+   "luck": 51,
+   "asset": 30
   },
   "seed": true,
-  "ts": 1794432155937
+  "ts": 1794436145531
  },
  {
   "id": "seed-kindergarten-2",
@@ -48,20 +52,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "kindergarten",
   "stageLabel": "유치원 졸업",
   "age": 7,
-  "score": 62.8,
+  "score": 55,
   "grade": "B",
   "top": 22,
   "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "박준호",
   "stats": {
-   "hp": 78,
-   "mental": 93,
-   "charm": 89,
-   "social": 91,
+   "hp": 83,
+   "mental": 94,
+   "charm": 84,
+   "social": 89,
+   "intel": 45,
+   "luck": 47,
    "asset": 29
   },
   "seed": true,
-  "ts": 1794172955937
+  "ts": 1794176945531
  },
  {
   "id": "seed-kindergarten-3",
@@ -69,20 +75,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "kindergarten",
   "stageLabel": "유치원 졸업",
   "age": 7,
-  "score": 59.1,
+  "score": 51,
   "grade": "B",
   "top": 38,
   "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
   "name": "최지우",
   "stats": {
-   "hp": 90,
+   "hp": 82,
    "mental": 93,
-   "charm": 85,
-   "social": 91,
+   "charm": 86,
+   "social": 90,
+   "intel": 51,
+   "luck": 48,
    "asset": 9
   },
   "seed": true,
-  "ts": 1794086555937
+  "ts": 1794090545531
  },
  {
   "id": "seed-kindergarten-4",
@@ -90,20 +98,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "kindergarten",
   "stageLabel": "유치원 졸업",
   "age": 7,
-  "score": 56,
+  "score": 48.3,
   "grade": "C",
   "top": 58,
   "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "정하윤",
   "stats": {
-   "hp": 80,
-   "mental": 92,
-   "charm": 89,
-   "social": 91,
+   "hp": 74,
+   "mental": 94,
+   "charm": 86,
+   "social": 92,
+   "intel": 48,
+   "luck": 51,
    "asset": 5
   },
   "seed": true,
-  "ts": 1793913755937
+  "ts": 1793917745531
  },
  {
   "id": "seed-elementary-0",
@@ -111,20 +121,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "elementary",
   "stageLabel": "초등학교 졸업",
   "age": 13,
-  "score": 62,
+  "score": 56,
   "grade": "S",
   "top": 4,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
   "name": "강민재",
   "stats": {
-   "hp": 89,
-   "mental": 93,
+   "hp": 88,
+   "mental": 91,
    "charm": 88,
-   "social": 92,
-   "asset": 17
+   "social": 90,
+   "intel": 52,
+   "luck": 56,
+   "asset": 22
   },
   "seed": true,
-  "ts": 1793827355937
+  "ts": 1793831345531
  },
  {
   "id": "seed-elementary-1",
@@ -132,20 +144,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "elementary",
   "stageLabel": "초등학교 졸업",
   "age": 13,
-  "score": 57.2,
+  "score": 52.8,
   "grade": "A",
   "top": 11,
-  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "윤서진",
   "stats": {
-   "hp": 78,
-   "mental": 94,
-   "charm": 71,
+   "hp": 85,
+   "mental": 93,
+   "charm": 88,
    "social": 91,
-   "asset": 13
+   "intel": 63,
+   "luck": 54,
+   "asset": 8
   },
   "seed": true,
-  "ts": 1793654555937
+  "ts": 1793658545531
  },
  {
   "id": "seed-elementary-2",
@@ -153,20 +167,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "elementary",
   "stageLabel": "초등학교 졸업",
   "age": 13,
-  "score": 49.8,
+  "score": 48,
   "grade": "B",
   "top": 22,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 K-청년",
   "name": "임채원",
   "stats": {
-   "hp": 89,
+   "hp": 80,
    "mental": 93,
-   "charm": 89,
-   "social": 91,
-   "asset": -44
+   "charm": 69,
+   "social": 92,
+   "intel": 51,
+   "luck": 48,
+   "asset": 6
   },
   "seed": true,
-  "ts": 1793395355937
+  "ts": 1793399345531
  },
  {
   "id": "seed-elementary-3",
@@ -174,20 +190,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "elementary",
   "stageLabel": "초등학교 졸업",
   "age": 13,
-  "score": 49.2,
+  "score": 42.8,
   "grade": "B",
   "top": 38,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
   "name": "한지호",
   "stats": {
-   "hp": 84,
-   "mental": 94,
-   "charm": 89,
+   "hp": 87,
+   "mental": 93,
+   "charm": 88,
    "social": 91,
-   "asset": -22
+   "intel": 56,
+   "luck": 52,
+   "asset": 0
   },
   "seed": true,
-  "ts": 1793308955937
+  "ts": 1793312945531
  },
  {
   "id": "seed-elementary-4",
@@ -195,20 +213,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "elementary",
   "stageLabel": "초등학교 졸업",
   "age": 13,
-  "score": 46.6,
+  "score": 40.6,
   "grade": "C",
   "top": 58,
   "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 K-청년",
   "name": "오예린",
   "stats": {
-   "hp": 81,
-   "mental": 92,
-   "charm": 74,
+   "hp": 80,
+   "mental": 93,
+   "charm": 73,
    "social": 91,
-   "asset": -26
+   "intel": 55,
+   "luck": 52,
+   "asset": -36
   },
   "seed": true,
-  "ts": 1793136155937
+  "ts": 1793140145531
  },
  {
   "id": "seed-middle-0",
@@ -216,20 +236,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "middle",
   "stageLabel": "중학교 졸업",
   "age": 16,
-  "score": 64.9,
+  "score": 57,
   "grade": "S",
   "top": 4,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "교복을 입던 날부터 인맥 하나로 먹고사는 K-청년",
   "name": "서준혁",
   "stats": {
-   "hp": 79,
-   "mental": 92,
-   "charm": 90,
-   "social": 93,
-   "asset": 45
+   "hp": 52,
+   "mental": 90,
+   "charm": 73,
+   "social": 82,
+   "intel": 53,
+   "luck": 52,
+   "asset": 113
   },
   "seed": true,
-  "ts": 1793049755937
+  "ts": 1793053745531
  },
  {
   "id": "seed-middle-1",
@@ -237,20 +259,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "middle",
   "stageLabel": "중학교 졸업",
   "age": 16,
-  "score": 57.4,
+  "score": 53.1,
   "grade": "A",
   "top": 11,
   "title": "교복을 입던 날부터 멘탈이 강철인 K-청년",
   "name": "신유나",
   "stats": {
-   "hp": 62,
-   "mental": 88,
-   "charm": 64,
-   "social": 72,
-   "asset": 69
+   "hp": 61,
+   "mental": 89,
+   "charm": 70,
+   "social": 73,
+   "intel": 54,
+   "luck": 51,
+   "asset": 48
   },
   "seed": true,
-  "ts": 1792876955937
+  "ts": 1792880945531
  },
  {
   "id": "seed-middle-2",
@@ -258,20 +282,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "middle",
   "stageLabel": "중학교 졸업",
   "age": 16,
-  "score": 49.7,
+  "score": 43.7,
   "grade": "B",
   "top": 22,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 몸으로 살아온 체육인",
   "name": "권태호",
   "stats": {
-   "hp": 84,
-   "mental": 93,
-   "charm": 90,
-   "social": 94,
-   "asset": -267
+   "hp": 85,
+   "mental": 92,
+   "charm": 89,
+   "social": 91,
+   "intel": 61,
+   "luck": 59,
+   "asset": -6
   },
   "seed": true,
-  "ts": 1792617755937
+  "ts": 1792621745531
  },
  {
   "id": "seed-middle-3",
@@ -279,20 +305,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "middle",
   "stageLabel": "중학교 졸업",
   "age": 16,
-  "score": 48.5,
+  "score": 42.4,
   "grade": "B",
   "top": 38,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
   "name": "황보라",
   "stats": {
    "hp": 81,
-   "mental": 91,
+   "mental": 92,
    "charm": 89,
-   "social": 92,
-   "asset": -13
+   "social": 93,
+   "intel": 56,
+   "luck": 52,
+   "asset": -103
   },
   "seed": true,
-  "ts": 1792531355937
+  "ts": 1792535345531
  },
  {
   "id": "seed-middle-4",
@@ -300,20 +328,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "middle",
   "stageLabel": "중학교 졸업",
   "age": 16,
-  "score": 46.2,
+  "score": 41.1,
   "grade": "C",
   "top": 58,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "문가온",
   "stats": {
-   "hp": 64,
-   "mental": 92,
+   "hp": 75,
+   "mental": 90,
    "charm": 88,
-   "social": 92,
-   "asset": -179
+   "social": 90,
+   "intel": 57,
+   "luck": 48,
+   "asset": -56
   },
   "seed": true,
-  "ts": 1792358555937
+  "ts": 1792362545531
  },
  {
   "id": "seed-high-0",
@@ -321,20 +351,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "high",
   "stageLabel": "고등학교 졸업",
   "age": 19,
-  "score": 66.5,
+  "score": 58.7,
   "grade": "S",
   "top": 4,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
   "name": "백서준",
   "stats": {
    "hp": 77,
-   "mental": 89,
+   "mental": 90,
    "charm": 88,
-   "social": 91,
-   "asset": 83
+   "social": 89,
+   "intel": 69,
+   "luck": 50,
+   "asset": 44
   },
   "seed": true,
-  "ts": 1792272155937
+  "ts": 1792276145531
  },
  {
   "id": "seed-high-1",
@@ -342,20 +374,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "high",
   "stageLabel": "고등학교 졸업",
   "age": 19,
-  "score": 58.1,
+  "score": 55.1,
   "grade": "A",
   "top": 11,
-  "title": "교복을 입던 날부터 멘탈이 강철인 K-청년",
+  "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 K-청년",
   "name": "유하린",
   "stats": {
-   "hp": 64,
+   "hp": 60,
    "mental": 91,
-   "charm": 63,
-   "social": 78,
-   "asset": 60
+   "charm": 70,
+   "social": 76,
+   "intel": 62,
+   "luck": 48,
+   "asset": 64
   },
   "seed": true,
-  "ts": 1792099355937
+  "ts": 1792103345531
  },
  {
   "id": "seed-high-2",
@@ -369,14 +403,16 @@ window.LIFE_HALL_SEEDS = [
   "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 K-청년",
   "name": "남지완",
   "stats": {
-   "hp": 56,
-   "mental": 83,
-   "charm": 64,
-   "social": 66,
-   "asset": 34
+   "hp": 61,
+   "mental": 92,
+   "charm": 62,
+   "social": 70,
+   "intel": 57,
+   "luck": 50,
+   "asset": 45
   },
   "seed": true,
-  "ts": 1791840155937
+  "ts": 1791844145531
  },
  {
   "id": "seed-high-3",
@@ -384,20 +420,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "high",
   "stageLabel": "고등학교 졸업",
   "age": 19,
-  "score": 48,
+  "score": 43.6,
   "grade": "B",
   "top": 38,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 기록보다 습관이 오래간 체육인",
   "name": "심예린",
   "stats": {
-   "hp": 80,
-   "mental": 92,
-   "charm": 88,
+   "hp": 79,
+   "mental": 93,
+   "charm": 89,
    "social": 89,
-   "asset": -207
+   "intel": 80,
+   "luck": 45,
+   "asset": -64
   },
   "seed": true,
-  "ts": 1791753755937
+  "ts": 1791757745531
  },
  {
   "id": "seed-high-4",
@@ -405,20 +443,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "high",
   "stageLabel": "고등학교 졸업",
   "age": 19,
-  "score": 46.2,
+  "score": 42.1,
   "grade": "C",
   "top": 58,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 밤샘을 밥 먹듯 한 K-청년",
   "name": "노건우",
   "stats": {
-   "hp": 65,
-   "mental": 93,
+   "hp": 66,
+   "mental": 90,
    "charm": 88,
    "social": 91,
-   "asset": -133
+   "intel": 73,
+   "luck": 52,
+   "asset": -36
   },
   "seed": true,
-  "ts": 1791580955937
+  "ts": 1791584945531
  },
  {
   "id": "seed-college-0",
@@ -426,20 +466,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "college",
   "stageLabel": "대학교 졸업",
   "age": 24,
-  "score": 73.1,
+  "score": 68.2,
   "grade": "S",
   "top": 4,
-  "title": "우렁찬 울음으로 시작해 기록보다 습관이 오래간 체육인",
+  "title": "우렁찬 울음으로 시작해 내 코드가 나보다 오래 산 개발자",
   "name": "하은채",
   "stats": {
-   "hp": 76,
-   "mental": 93,
-   "charm": 88,
-   "social": 90,
-   "asset": 391
+   "hp": 73,
+   "mental": 95,
+   "charm": 89,
+   "social": 92,
+   "intel": 82,
+   "luck": 49,
+   "asset": 306
   },
   "seed": true,
-  "ts": 1791494555937
+  "ts": 1791498545531
  },
  {
   "id": "seed-college-1",
@@ -447,20 +489,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "college",
   "stageLabel": "대학교 졸업",
   "age": 24,
-  "score": 70.7,
+  "score": 66.5,
   "grade": "A",
   "top": 11,
-  "title": "우렁찬 울음으로 시작해 기록보다 습관이 오래간 체육인",
+  "title": "우렁찬 울음으로 시작해 내 코드가 나보다 오래 산 개발자",
   "name": "구본재",
   "stats": {
-   "hp": 66,
+   "hp": 50,
    "mental": 92,
-   "charm": 87,
-   "social": 90,
-   "asset": 319
+   "charm": 89,
+   "social": 92,
+   "intel": 69,
+   "luck": 53,
+   "asset": 422
   },
   "seed": true,
-  "ts": 1791321755937
+  "ts": 1791325745532
  },
  {
   "id": "seed-college-2",
@@ -468,20 +512,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "college",
   "stageLabel": "대학교 졸업",
   "age": 24,
-  "score": 67.2,
+  "score": 64.1,
   "grade": "B",
   "top": 22,
-  "title": "캠퍼스에서 인생을 시작해 월급날을 한 번도 놓치지 않은 창업가",
+  "title": "캠퍼스에서 인생을 시작해 기록보다 습관이 오래간 체육인",
   "name": "진소율",
   "stats": {
-   "hp": 46,
+   "hp": 54,
    "mental": 93,
-   "charm": 74,
-   "social": 86,
-   "asset": 471
+   "charm": 78,
+   "social": 92,
+   "intel": 62,
+   "luck": 54,
+   "asset": 317
   },
   "seed": true,
-  "ts": 1791062555937
+  "ts": 1791066545532
  },
  {
   "id": "seed-college-3",
@@ -489,20 +535,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "college",
   "stageLabel": "대학교 졸업",
   "age": 24,
-  "score": 64,
+  "score": 60.6,
   "grade": "B",
   "top": 38,
-  "title": "캠퍼스에서 인생을 시작해 월급날을 한 번도 놓치지 않은 창업가",
+  "title": "조용한 아기로 태어나 코드로 세상을 만진 개발자",
   "name": "표민서",
   "stats": {
-   "hp": 40,
-   "mental": 90,
-   "charm": 71,
-   "social": 87,
-   "asset": 309
+   "hp": 61,
+   "mental": 93,
+   "charm": 88,
+   "social": 89,
+   "intel": 84,
+   "luck": 62,
+   "asset": 51
   },
   "seed": true,
-  "ts": 1790976155937
+  "ts": 1790980145532
  },
  {
   "id": "seed-college-4",
@@ -510,20 +558,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "college",
   "stageLabel": "대학교 졸업",
   "age": 24,
-  "score": 48,
+  "score": 43.6,
   "grade": "C",
   "top": 58,
-  "title": "우렁찬 울음으로 시작해 몸으로 살아온 체육인",
+  "title": "우렁찬 울음으로 시작해 내 코드가 나보다 오래 산 개발자",
   "name": "김도윤",
   "stats": {
-   "hp": 78,
+   "hp": 70,
    "mental": 93,
-   "charm": 88,
-   "social": 90,
-   "asset": -259
+   "charm": 89,
+   "social": 89,
+   "intel": 83,
+   "luck": 51,
+   "asset": -122
   },
   "seed": true,
-  "ts": 1790803355937
+  "ts": 1790807345532
  },
  {
   "id": "seed-life80-0",
@@ -531,20 +581,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "life80",
   "stageLabel": "80세 완주",
   "age": 80,
-  "score": 49.8,
+  "score": 46.5,
   "grade": "C",
   "top": null,
-  "title": "캠퍼스에서 인생을 시작해 기록보다 습관이 오래간 체육인",
+  "title": "조용한 아기로 태어나 월급날을 한 번도 놓치지 않은 창업가",
   "name": "이서연",
   "stats": {
-   "hp": 88,
+   "hp": 86,
    "mental": 94,
-   "charm": 88,
-   "social": 92,
-   "asset": -37830
+   "charm": 83,
+   "social": 93,
+   "intel": 88,
+   "luck": 63,
+   "asset": -38270
   },
   "seed": true,
-  "ts": 1790630555938
+  "ts": 1790634545532
  },
  {
   "id": "seed-life80-1",
@@ -552,20 +604,22 @@ window.LIFE_HALL_SEEDS = [
   "key": "life80",
   "stageLabel": "80세 완주",
   "age": 80,
-  "score": 49.7,
+  "score": 46.4,
   "grade": "C",
   "top": null,
-  "title": "캠퍼스에서 인생을 시작해 누군가의 책장에 꽂힌 작가",
+  "title": "책가방을 처음 멘 날부터 월급날을 한 번도 놓치지 않은 창업가",
   "name": "박준호",
   "stats": {
-   "hp": 88,
-   "mental": 94,
-   "charm": 87,
-   "social": 92,
-   "asset": -28709
+   "hp": 87,
+   "mental": 93,
+   "charm": 83,
+   "social": 94,
+   "intel": 88,
+   "luck": 61,
+   "asset": -31471
   },
   "seed": true,
-  "ts": 1790457755938
+  "ts": 1790461745532
  },
  {
   "id": "seed-life80-2",
@@ -573,19 +627,21 @@ window.LIFE_HALL_SEEDS = [
   "key": "life80",
   "stageLabel": "80세 완주",
   "age": 80,
-  "score": 49.6,
+  "score": 46.3,
   "grade": "C",
   "top": null,
-  "title": "캠퍼스에서 인생을 시작해 문을 닫을 뻔한 가게를 지킨 창업가",
+  "title": "조용한 아기로 태어나 누군가의 책장에 꽂힌 작가",
   "name": "최지우",
   "stats": {
    "hp": 87,
    "mental": 94,
-   "charm": 86,
-   "social": 94,
-   "asset": -18180
+   "charm": 87,
+   "social": 92,
+   "intel": 88,
+   "luck": 56,
+   "asset": -52851
   },
   "seed": true,
-  "ts": 1790284955938
+  "ts": 1790288945532
  }
 ];

@@ -521,7 +521,18 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '복권 한 장',
     text: '편의점 앞에 복권이 붙어 있습니다. 1등은 20억이라고 합니다. 5천 원입니다.',
     choices: [
-      { label: '산다', result: '낙첨. 5천 원이 사라졌지만 하루를 설렜습니다.', effects: { asset: -1, mental: 2 } },
+      { label: '산다',
+        // 행운은 마지막에 한 번씩 일한다 — 행운이 72 이상이면 5등이 걸린다
+        result: function (s) {
+          return (s.stats.luck || 50) >= 72
+            ? '5등. 오천 원이 오만 원이 되어 돌아왔습니다. 하루 종일 웃었습니다.'
+            : '낙첨. 5천 원이 사라졌지만 하루를 설렜습니다.';
+        },
+        effects: function (s) {
+          return (s.stats.luck || 50) >= 72
+            ? { asset: 45, mental: 3, luck: 1 }
+            : { asset: -1, mental: 2, luck: 1 };
+        } },
       { label: '그냥 간다', result: '5천 원을 아꼈습니다. 인생은 그런 것일지도 모릅니다.', effects: { asset: 1, mental: 1 } }
     ]
   },

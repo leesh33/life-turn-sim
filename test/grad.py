@@ -85,7 +85,7 @@ def run(url, outdir):
             problems.append(f"회고 줄 수 이상: {len(lines)}")
         rows = page.locator(".cmp-row").count()
         print("비교 행 수:", rows)
-        if rows != 6:
+        if rows != 8:
             problems.append(f"비교 행 수 이상: {rows}")
 
         # 결산 화면에서 새로고침해도 결산이 유지되는지

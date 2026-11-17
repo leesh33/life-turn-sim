@@ -181,20 +181,20 @@ boomEvents.forEach((e) => {
 // 예전에는 달이 바뀔 때마다 스탯을 53~57 쪽으로 당기는 '생활 소모'가 있었다.
 // 선택한 효과 말고는 스탯이 변하지 않아야 한다.
 const nd = Life.newGame({ name: '무변화', gender: '남', startAge: 30 });
-nd.stats = { hp: 84, mental: 78, charm: 71, social: 66, asset: 500 };
+nd.stats = { hp: 84, mental: 78, charm: 71, social: 66, intel: 74, luck: 69, asset: 500 };
 const beforeSix = JSON.parse(JSON.stringify(nd.stats));
 for (let i = 0; i < 6; i++) {
   nd.current = { eventId: 'none', chosen: 0 };
   Life.advance(nd);
 }
-const sixDelta = ['hp', 'mental', 'charm', 'social', 'asset'].filter((k) => Math.abs(nd.stats[k] - beforeSix[k]) > 0.001);
+const sixDelta = ['hp', 'mental', 'charm', 'social', 'intel', 'luck', 'asset'].filter((k) => Math.abs(nd.stats[k] - beforeSix[k]) > 0.001);
 check('6개월을 그냥 보내도 스탯이 줄지 않음', sixDelta.length === 0,
   sixDelta.map((k) => `${k} ${beforeSix[k]}→${nd.stats[k]}`).join(', ') || '변화 없음');
 check('6개월 진행 후에도 30세', nd.age === 30 && nd.month === 7, `${nd.age}세 ${nd.month}개월차`);
 
 // 최고치(88 초과)만 아주 조금씩 내려간다 — 100에 붙지 않게
 const top = Life.newGame({ name: '최고치', gender: '남', startAge: 30 });
-top.stats = { hp: 100, mental: 60, charm: 60, social: 60, asset: 0 };
+top.stats = { hp: 100, mental: 60, charm: 60, social: 60, intel: 60, luck: 60, asset: 0 };
 top.current = { eventId: 'none', chosen: 0 };
 Life.advance(top);
 check('최고치는 한 달에 조금만 내려감', top.stats.hp < 100 && top.stats.hp > 97,

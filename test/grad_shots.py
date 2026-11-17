@@ -97,7 +97,7 @@ def run(url, outdir, phase):
         shot(page, "07-grad13-compare")
         rows = page.locator(".cmp-row").count()
         print("비교 행 수:", rows)
-        if rows != 6:
+        if rows != 8:
             problems.append("비교 행 수 이상")
         page.locator("#gradRegister").scroll_into_view_if_needed()
         page.wait_for_timeout(300)

@@ -24,7 +24,7 @@
   var auto = { tick: null, deadline: 0, remain: 0, running: false, paused: false };
   try { auto.paused = localStorage.getItem(AUTO_PAUSED_KEY) === '1'; } catch (e) {}
 
-  var LABEL = { hp: '체력', mental: '멘탈', charm: '매력', asset: '재산', social: '호감도' };
+  var LABEL = { hp: '체력', mental: '멘탈', charm: '매력', asset: '재산', social: '호감도', intel: '역량', luck: '행운' };
 
   function $(id) { return document.getElementById(id); }
   function h(str) { return String(str == null ? '' : str); }
@@ -272,6 +272,9 @@
     renderRewards();
     $('advanceBtn').disabled = !(state.current && state.current.chosen !== null);
   }
+
+  // 기록에 없는 능력치(역량·행운이 없던 시절의 전당 기록)는 '-' 로 보여준다
+  function statNum(v) { return typeof v === 'number' && !isNaN(v) ? Math.round(v) : '-'; }
 
   function renderStats() {
     var box = $('stats');
@@ -793,9 +796,10 @@
             (r.mine ? '<span class="hr-mine">' + (isBest ? '내 최고 기록' : '내 기록') + '</span>' : '') +
             '<span class="hr-stage">' + esc(r.stageLabel) + '</span></div>' +
           '<div class="hr-title">' + esc(r.title) + '</div>' +
-          '<div class="hr-stats">체력 ' + num(r.stats.hp) + ' · 멘탈 ' + num(r.stats.mental) +
-            ' · 매력 ' + num(r.stats.charm) + ' · 호감도 ' + num(r.stats.social) +
-            ' · 재산 ' + esc(Life.formatAsset(r.stats.asset)) + '</div>' +
+          '<div class="hr-stats">체력 ' + statNum(r.stats.hp) + ' · 멘탈 ' + statNum(r.stats.mental) +
+            ' · 매력 ' + statNum(r.stats.charm) + ' · 호감도 ' + statNum(r.stats.social) + '</div>' +
+          '<div class="hr-stats">역량 ' + statNum(r.stats.intel) + ' · 행운 ' + statNum(r.stats.luck) +
+            ' · 재산 ' + esc(Life.formatAsset(r.stats.asset || 0)) + '</div>' +
         '</div>' +
         '<div class="hr-score"><b>' + scoreText(r.score) + '</b>' +
           '<i class="g-' + String(r.grade || 'B').toLowerCase() + '">' + esc(r.grade || '-') + '</i>' +
@@ -864,6 +868,7 @@
           '<div class="end-stat"><div class="es-label">남은 재산</div><div class="es-val">' + esc(Life.formatAsset(sum.stats.asset)) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">체력 / 멘탈</div><div class="es-val">' + Math.round(sum.stats.hp) + ' / ' + Math.round(sum.stats.mental) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">매력 / 호감도</div><div class="es-val">' + Math.round(sum.stats.charm) + ' / ' + Math.round(sum.stats.social) + '</div></div>' +
+          '<div class="end-stat wide"><div class="es-label">역량 / 행운</div><div class="es-val">' + Math.round(sum.stats.intel) + ' / ' + Math.round(sum.stats.luck) + '</div></div>' +
           '<div class="end-stat wide"><div class="es-label">쌓인 선택</div><div class="es-val">' + sum.turns + '개</div></div>' +
         '</div>' +
         '<div class="end-brand">🎲 인생 한 턴</div>' +
@@ -930,6 +935,7 @@
           '<div class="end-stat"><div class="es-label">남은 재산</div><div class="es-val">' + esc(Life.formatAsset(info.stats.asset)) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">체력 / 멘탈</div><div class="es-val">' + Math.round(info.stats.hp) + ' / ' + Math.round(info.stats.mental) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">매력 / 호감도</div><div class="es-val">' + Math.round(info.stats.charm) + ' / ' + Math.round(info.stats.social) + '</div></div>' +
+          '<div class="end-stat wide"><div class="es-label">역량 / 행운</div><div class="es-val">' + Math.round(info.stats.intel) + ' / ' + Math.round(info.stats.luck) + '</div></div>' +
           '<div class="end-stat wide"><div class="es-label">명예의 전당 순위</div><div class="es-val">' +
             hall.count + '명 중 ' + hall.rank + '위 · 상위 ' + (info.total.top || 50) + '%</div></div>' +
         '</div>' +

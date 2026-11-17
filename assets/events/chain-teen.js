@@ -457,11 +457,12 @@ X('high', 'tn_h49', 19, '교실', '원서 접수', '정시 원서를 접수합�
    → 결과를 고르는 선택지를 없애고, 지난 3년의 성적·습관으로 정해지는 결과를
      확인하는 선택지로 바꿨다. 두 선택지는 결과가 아니라 ‘어떻게 받아들이는가’만 가른다. */
 (function () {
-  // 합격선 — 멘탈(공부)과 체력, 그리고 지난 3년의 습관 플래그가 점수가 된다.
+  // 합격선 — 멘탈(공부 버티기)과 역량(풀어내는 힘)이 절반씩, 체력·매력과 지난 3년의 습관이 나머지를 만든다.
+  // 역량을 더한 만큼 멘탈 비중을 낮춰 합격률은 예전과 비슷하게 유지했다(무작위 플레이 기준 5% 안팎).
   function admitScore(s) {
     var st = s.stats || {};
     var f = s.flags || {};
-    var q = (st.mental || 0) * 0.5 + (st.hp || 0) * 0.12 + (st.charm || 0) * 0.05;
+    var q = (st.mental || 0) * 0.34 + (st.intel || 0) * 0.34 + (st.hp || 0) * 0.12 + (st.charm || 0) * 0.05;
     if (f.성실함) q += 7;
     if (f.꼼꼼함) q += 5;
     if (f.성적_상승) q += 8;
@@ -475,7 +476,7 @@ X('high', 'tn_h49', 19, '교실', '원서 접수', '정시 원서를 접수합�
     if (f.게임고수) q -= 2;
     return q;
   }
-  var PASS = 62;
+  var PASS = 68;
   function passed(s) { return admitScore(s) >= PASS; }
 
   var ev = X('high', 'tn_h50', 19, '교실', '합격 발표',
@@ -490,7 +491,7 @@ X('high', 'tn_h49', 19, '교실', '원서 접수', '정시 원서를 접수합�
       : '화면에 “불합격”이 떴습니다. 세 번 다시 열어 봤지만 숫자는 그대로였습니다. 그날 밤은 길었습니다.';
   };
   ev.choices[0].effects = function (s) {
-    return passed(s) ? { mental: 3, social: 2 } : { mental: -2, social: 1 };
+    return passed(s) ? { mental: 3, social: 2, intel: 2 } : { mental: -2, social: 1 };
   };
   ev.choices[0].set = function (s) {
     return passed(s) ? { 대학_진학: true, 수능_결과_합격: true } : { 수능_결과_불합격: true };
@@ -502,7 +503,7 @@ X('high', 'tn_h49', 19, '교실', '원서 접수', '정시 원서를 접수합�
       : '부모님과 함께 화면을 열었습니다. “불합격”이라는 글자 앞에서 아무도 말하지 못했습니다. 아빠가 먼저 어깨를 두드렸습니다.';
   };
   ev.choices[1].effects = function (s) {
-    return passed(s) ? { mental: 2, social: 3 } : { mental: -1, social: 2, hp: -1 };
+    return passed(s) ? { mental: 2, social: 3, intel: 2 } : { mental: -1, social: 2, hp: -1 };
   };
   ev.choices[1].set = function (s) {
     return passed(s) ? { 대학_진학: true, 수능_결과_합격: true } : { 수능_결과_불합격: true };

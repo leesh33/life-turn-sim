@@ -22,10 +22,10 @@ const STAGE_RUNS = Number(process.argv[3]) || 180;
 const GRADS = Life.GRADUATIONS;
 const STAGE_START = { kindergarten: 1, elementary: 8, middle: 14, high: 17, college: 20 };
 const KEYS = GRADS.map((g) => g.key);
-const FIELDS = ['hp', 'mental', 'charm', 'social', 'asset', 'score'];
+const FIELDS = ['hp', 'mental', 'charm', 'social', 'intel', 'luck', 'asset', 'score'];
 
 const samples = {};
-KEYS.forEach((k) => { samples[k] = { hp: [], mental: [], charm: [], social: [], asset: [], score: [], rec: [] }; });
+KEYS.forEach((k) => { samples[k] = { hp: [], mental: [], charm: [], social: [], intel: [], luck: [], asset: [], score: [], rec: [] }; });
 const lifeEnds = [];
 
 const pickIdx = (ev) => Math.floor(Math.random() * ev.choices.length);
@@ -34,11 +34,12 @@ function record(key, s) {
   const st = s.stats;
   const b = samples[key];
   b.hp.push(st.hp); b.mental.push(st.mental); b.charm.push(st.charm); b.social.push(st.social);
+  b.intel.push(st.intel); b.luck.push(st.luck);
   b.asset.push(st.asset);
   const score = Life.scoreOfStats(st);
   b.score.push(score);
   b.rec.push({
-    stats: { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social, asset: st.asset },
+    stats: { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social, intel: st.intel, luck: st.luck, asset: st.asset },
     score,
     title: Life.summary(s).title
   });
@@ -164,6 +165,7 @@ KEYS.forEach((k) => {
       stats: {
         hp: Math.round(best.stats.hp), mental: Math.round(best.stats.mental),
         charm: Math.round(best.stats.charm), social: Math.round(best.stats.social),
+        intel: Math.round(best.stats.intel), luck: Math.round(best.stats.luck),
         asset: Math.round(best.stats.asset)
       },
       seed: true,
@@ -191,6 +193,7 @@ const lifeSorted = lifeEnds.slice().sort((a, b) => b.score - a.score);
     stats: {
       hp: Math.round(pick.stats.hp), mental: Math.round(pick.stats.mental),
       charm: Math.round(pick.stats.charm), social: Math.round(pick.stats.social),
+      intel: Math.round(pick.stats.intel), luck: Math.round(pick.stats.luck),
       asset: Math.round(pick.stats.asset)
     },
     seed: true,
@@ -207,5 +210,6 @@ console.log('기준 분포 평균 점수:', KEYS.map((k) => k + ' ' + out[k].mea
 console.log('시드 기록:', seeds.length + '건');
 KEYS.forEach((k) => {
   console.log('  ' + k, 'hp', out[k].hp.mean, '| mental', out[k].mental.mean, '| charm', out[k].charm.mean,
-    '| social', out[k].social.mean, '| asset', out[k].asset.mean);
+    '| social', out[k].social.mean, '| intel', out[k].intel.mean, '| luck', out[k].luck.mean,
+    '| asset', out[k].asset.mean);
 });

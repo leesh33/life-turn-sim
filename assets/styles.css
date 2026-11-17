@@ -501,28 +501,38 @@ body {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin-top: 10px;
+  /* 일곱 능력치(체력·멘탈·매력·호감도·역량·행운·재산)를 390px 폭 한 줄에 넣는다.
+     두 줄로 나누면 390×664 에서 플레이 카드가 밀려 선택지를 스크롤해야 했다. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 9px;
 }
 .stat {
   background: rgba(255, 255, 255, 0.78);
-  border-radius: 10px;
-  padding: 6px 7px 7px;
+  border-radius: 9px;
+  padding: 5px 4px 6px;
   min-width: 0;
   transition: background 0.3s ease;
 }
-.stat-label { font-size: 9.5px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.1px; }
-.stat-val {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: -0.4px;
-  margin-top: 1px;
+.stat-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--ink-3);
+  letter-spacing: -0.1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.stat-bar { height: 3px; border-radius: 99px; background: rgba(27, 26, 24, 0.08); margin-top: 5px; overflow: hidden; }
+.stat-val {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-bar { height: 2px; border-radius: 99px; background: rgba(27, 26, 24, 0.08); margin-top: 4px; overflow: hidden; }
 .stat-bar i {
   display: block;
   height: 100%;
@@ -532,6 +542,9 @@ body {
 }
 .stat.pulse { background: var(--accent-soft); }
 .stat[data-key="asset"] .stat-bar i { background: #b58b2a; }
+/* 역량은 보라, 행운은 초록 — 새로 더한 두 축이 한눈에 구분되게 */
+.stat[data-key="intel"] .stat-bar i { background: #7C5CD6; }
+.stat[data-key="luck"] .stat-bar i { background: #2C8C7A; }
 
 /* 카드 스테이지 */
 .stage {
@@ -1304,7 +1317,7 @@ body {
 }
 .grad-name { margin: 6px 0 4px; font-size: 24px; font-weight: 800; letter-spacing: -1px; position: relative; }
 .grad-sub { margin: 0; font-size: 12px; color: var(--ink-3); font-weight: 700; position: relative; }
-.grad-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 15px; position: relative; }
+.grad-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 15px; position: relative; }
 .gs-cell { background: var(--card-2); border-radius: 10px; padding: 7px 3px; }
 .gs-label { display: block; font-size: 9px; font-weight: 700; color: var(--ink-3); }
 .gs-cell b { font-size: 13px; font-weight: 800; letter-spacing: -0.4px; }
@@ -1599,6 +1612,7 @@ body {
   overflow: hidden;
 }
 .hr-stats { margin-top: 3px; font-size: 9.5px; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hr-stats + .hr-stats { margin-top: 1px; }
 .hr-score { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .hr-score b { font-size: 17px; font-weight: 800; letter-spacing: -0.6px; }
 .hr-score i { font-style: normal; font-size: 9px; font-weight: 800; color: #fff; border-radius: 5px; padding: 1px 4px; background: var(--ink-3); }
