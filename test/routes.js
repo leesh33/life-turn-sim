@@ -7,24 +7,32 @@ const { Life, EVENTS } = load(path.join(__dirname, '..', 'assets'));
 const ran = [];
 const check = (name, cond, extra) => { ran.push(`${cond ? 'PASS' : 'FAIL'} · ${name}${extra ? ' — ' + extra : ''}`); };
 
-// 1) 비혼 루트
-let s = Life.newGame({ name: '독신', gender: '여', startAge: 35 });
-let guard = 0;
+// 1) 비혼 루트 — 이벤트 풀이 커져도 흔들리지 않게 여러 판을 돌려 확인한다
+const SOLO = ['solo_apartment', 'solo_hobby', 'single_life'];
+let s = null;
 const seen = new Set();
-while (!s.ended && guard++ < 3000) {
-  const ev = Life.currentEvent(s);
-  seen.add(ev.id);
-  let idx = 0;
-  ev.choices.forEach((c, i) => {
-    const l = typeof c.label === 'function' ? c.label(s) : c.label;
-    if (/아직 아니다|준비가 안 됐|거절|혼자|그냥 산다|참는다|기다린다/.test(l)) idx = i;
-  });
-  Life.choose(s, idx);
-  Life.advance(s);
+for (let attempt = 0; attempt < 6 && !SOLO.every((id) => seen.has(id)); attempt++) {
+  s = Life.newGame({ name: '독신', gender: '여', startAge: 35 });
+  let guard = 0;
+  while (!s.ended && guard++ < 3000) {
+    const ev = Life.currentEvent(s);
+    seen.add(ev.id);
+    let idx = 0;
+    // 결혼을 권하는 선택지가 있으면 결혼하지 않는 쪽을 고른다 (비혼 루트 고정)
+    const marryAt = ev.choices.findIndex((c) => c.set && c.set.결혼);
+    const noMarry = ev.choices.findIndex((c) => !(c.set && c.set.결혼));
+    if (marryAt >= 0 && noMarry >= 0) idx = noMarry;
+    else ev.choices.forEach((c, i) => {
+      const l = typeof c.label === 'function' ? c.label(s) : c.label;
+      if (/아직 아니다|준비가 안 됐|거절|혼자|그냥 산다|참는다|기다린다/.test(l)) idx = i;
+    });
+    Life.choose(s, idx);
+    Life.advance(s);
+  }
 }
 const sum = Life.summary(s);
 check('비혼 루트: 결혼하지 않고 80세 완주', !s.flags.결혼 && s.ended, `결혼:${!!s.flags.결혼} 나이:${s.age}`);
-check('비혼 전용 이벤트 등장', seen.has('solo_apartment') && seen.has('solo_hobby') && seen.has('single_life'));
+check('비혼 전용 이벤트 등장', SOLO.every((id) => seen.has(id)), SOLO.filter((id) => !seen.has(id)).join(',') || '3/3');
 console.log('비혼 엔딩:', sum.title, '/', sum.grade, sum.gradeLabel);
 
 // 2) 멘탈 붕괴

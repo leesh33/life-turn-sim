@@ -13,6 +13,17 @@
   var hallReturn = 'start';
   var hallTab = 'all';
 
+  /* ── 5초 자동 넘김 ──
+     결과 화면이 뜨면 5초 카운트다운 뒤 다음 턴으로 넘어간다.
+     · 기존 '다음 1개월 진행하기' 버튼 = 타이머를 끄고 즉시 이동
+     · ⏸ 일시정지 토글 = 남은 시간을 붙잡아 두고 멈춤(다시 누르면 재개)
+     · 졸업식·엔딩으로 넘어가는 턴에서는 자동 넘김이 걸리지 않는다
+     · 화면을 벗어나거나(전당·일지·요약·새로 시작) 탭이 숨겨지면 타이머를 정리한다 */
+  var AUTO_SECONDS = 5;
+  var AUTO_PAUSED_KEY = 'lifeTurnSim.autoPaused';
+  var auto = { tick: null, deadline: 0, remain: 0, running: false, paused: false };
+  try { auto.paused = localStorage.getItem(AUTO_PAUSED_KEY) === '1'; } catch (e) {}
+
   var LABEL = { hp: '체력', mental: '멘탈', charm: '매력', asset: '재산', social: '호감도' };
 
   function $(id) { return document.getElementById(id); }
@@ -97,6 +108,7 @@
      지금 플레이 중인 이름·나이·개월차·사건 제목을 넘겨
      버그 제보의 '발생 위치/나이'를 자동으로 채운다. */
   function openFeedback() {
+    autoClear();
     if (!window.Feedback) { toast('게시판을 불러오지 못했습니다'); return; }
     var ctx = { screen: screenName, name: '익명', age: null, month: null, eventTitle: '' };
     if (state) {
@@ -122,6 +134,7 @@
 
   /* ── 화면 전환 ── */
   function showScreen(name) {
+    if (name !== 'play') autoClear();
     ['start', 'play', 'ending', 'grad', 'hall'].forEach(function (n) {
       var el = $('screen-' + n);
       if (el) el.classList.toggle('active', n === name);
@@ -131,8 +144,124 @@
     screenName = name;
   }
 
+  /* ── 5초 자동 넘김 동작부 ── */
+  function autoClear() {
+    clearInterval(auto.tick);
+    auto.tick = null;
+    auto.running = false;
+  }
+
+  function autoPaint(remain) {
+    var num = $('autoNum');
+    var fill = $('autoFill');
+    var chip = $('autoChip');
+    var secs = Math.max(0, Math.ceil(remain / 1000));
+    if (num) num.textContent = secs;
+    if (fill) fill.style.width = Math.max(0, Math.min(100, (remain / (AUTO_SECONDS * 1000)) * 100)).toFixed(1) + '%';
+    if (chip) chip.classList.toggle('urgent', remain <= 2000);
+  }
+
+  function autoRun() {
+    auto.running = true;
+    auto.deadline = Date.now() + auto.remain;
+    clearInterval(auto.tick);
+    var row = $('autoRow');
+    if (row) row.dataset.mode = 'run';
+    var label = $('autoLabel');
+    if (label) label.innerHTML = '<span id="autoNum">' + Math.max(1, Math.ceil(auto.remain / 1000)) + '</span>초 후 다음 턴';
+    var btn = $('autoPause');
+    if (btn) { btn.textContent = '⏸ 일시정지'; btn.setAttribute('aria-pressed', 'false'); btn.hidden = false; }
+    autoPaint(auto.remain);
+    auto.tick = setInterval(function () {
+      auto.remain = auto.deadline - Date.now();
+      if (auto.remain <= 0) {
+        auto.remain = 0;
+        autoClear();
+        advance();
+        return;
+      }
+      autoPaint(auto.remain);
+    }, 100);
+  }
+
+  function autoPausedState() {
+    var row = $('autoRow');
+    if (row) row.dataset.mode = 'paused';
+    var label = $('autoLabel');
+    if (label) {
+      label.innerHTML = auto.remain > 0
+        ? '⏸ 일시정지됨 · <span id="autoNum">' + Math.ceil(auto.remain / 1000) + '</span>초 남음'
+        : '⏸ 일시정지됨 · 자동 넘김 꺼짐';
+    }
+    var btn = $('autoPause');
+    if (btn) { btn.textContent = '▶ 다시 시작'; btn.setAttribute('aria-pressed', 'true'); }
+    var chip = $('autoChip');
+    if (chip) chip.classList.remove('urgent');
+  }
+
+  function autoStopState(kind) {
+    var row = $('autoRow');
+    if (row) row.dataset.mode = 'stop';
+    var label = $('autoLabel');
+    if (label) {
+      label.innerHTML = kind === 'grad'
+        ? '🎓 다음은 졸업 결산 — 버튼으로 넘어가세요'
+        : '🌅 다음은 인생 마무리 — 버튼으로 넘어가세요';
+    }
+    var btn = $('autoPause');
+    if (btn) btn.hidden = true;
+    var fill = $('autoFill');
+    if (fill) fill.style.width = '0%';
+  }
+
+  // 다음 진행이 졸업식/엔딩이면 자동 넘김을 걸지 않는다(멈춰야 하는 화면)
+  function autoPendingStop() {
+    if (!state || !state.current || state.current.chosen === null) return null;
+    if (state.month < Life.MONTHS) return null;
+    if (state.age + 1 > Life.END_AGE) return 'ending';
+    for (var i = 0; i < Life.GRADUATIONS.length; i++) {
+      if (Life.GRADUATIONS[i].age === state.age) return 'grad';
+    }
+    return null;
+  }
+
+  function autoArm() {
+    autoClear();
+    var row = $('autoRow');
+    if (!row || !state || !state.current || state.current.chosen === null) return;
+    var btn = $('autoPause');
+    if (btn) btn.hidden = false;
+    var stop = autoPendingStop();
+    if (stop) { autoStopState(stop); return; }
+    auto.remain = AUTO_SECONDS * 1000;
+    if (auto.paused) { auto.remain = 0; autoPausedState(); return; }
+    autoRun();
+  }
+
+  function autoToggle() {
+    var row = $('autoRow');
+    if (!row) return;
+    var mode = row.dataset.mode;
+    if (mode === 'stop') return;
+    if (mode === 'paused') {
+      // 재개 — 사용자가 직접 자동 넘김을 다시 켜는 경우
+      auto.paused = false;
+      try { localStorage.setItem(AUTO_PAUSED_KEY, '0'); } catch (e) {}
+      if (auto.remain <= 0) auto.remain = AUTO_SECONDS * 1000;
+      autoRun();
+      return;
+    }
+    // 멈춤 — 남은 시간을 붙잡아 둔다 (다음 결과에도 적용되는 설정으로 저장)
+    auto.paused = true;
+    try { localStorage.setItem(AUTO_PAUSED_KEY, '1'); } catch (e) {}
+    if (auto.running) auto.remain = Math.max(1, auto.deadline - Date.now());
+    autoClear();
+    autoPausedState();
+  }
+
   /* ── 플레이 화면 ── */
   function renderGame() {
+    autoClear();
     if (!state) return;
     $('whoName').textContent = state.name;
     $('ageLabel').textContent = state.age + '세';
@@ -175,16 +304,38 @@
     return '<span class="delta ' + (up ? 'up' : 'down') + '">' + label + ' ' + amount + '</span>';
   }
 
-  function renderEvent(animate) {
+  function autoRowHtml() {
+    return '<div class="auto-row" id="autoRow" data-mode="run">' +
+      '<span class="auto-chip" id="autoChip"><span class="auto-label" id="autoLabel">' +
+        '<span id="autoNum">' + AUTO_SECONDS + '</span>초 후 다음 턴</span></span>' +
+      '<button type="button" class="auto-pause" id="autoPause" aria-pressed="false">⏸ 일시정지</button>' +
+      '</div>' +
+      '<div class="auto-bar"><i id="autoFill"></i></div>';
+  }
+
+  function renderEvent(animate, fresh) {
     var ev = Life.currentEvent(state);
     if (!ev) return;
     var stage = Life.stageOf(state.age);
     var chosen = state.current ? state.current.chosen : null;
     var isChosen = chosen !== null && chosen !== undefined;
+    var boom = Life.boomerangOf(state, ev);
 
     var badges = '<span class="badge age">' + state.age + '세 · ' + state.month + '개월차</span>';
+    if (ev.boomerang) badges += '<span class="badge boom">🪃 과거의 부메랑</span>';
     if (ev.milestone) badges += '<span class="badge milestone">★ 마일스톤</span>';
     badges += '<span class="badge place">' + esc(ev.place || stage.name) + '</span>';
+
+    var boomHtml = '';
+    if (ev.boomerang) {
+      boomHtml = '<div class="boom-note">' +
+        (boom
+          ? '<div class="boom-when">🪃 <b>' + boom.age + '세 ' + boom.month + '개월차</b>의 선택이 돌아왔습니다</div>' +
+            '<p class="boom-choice">‘' + esc(boom.choice) + '’</p>'
+          : '<div class="boom-when">🪃 오래전의 선택이 돌아왔습니다</div>') +
+        (ev.boomerangNote ? '<p class="boom-line">' + esc(ev.boomerangNote) + '</p>' : '') +
+        '</div>';
+    }
 
     var title = typeof ev.title === 'function' ? ev.title(state) : ev.title;
     var text = typeof ev.text === 'function' ? ev.text(state) : ev.text;
@@ -209,7 +360,7 @@
         (deltaKeys.length
           ? '<div class="deltas">' + deltaKeys.map(function (k) { return badgeDelta(k, deltas[k]); }).join('') + '</div>'
           : '<div class="deltas"><span class="delta up">변화 없음</span></div>') +
-        '<p class="next-hint">아래 버튼으로 다음 달로 넘어가세요</p>' +
+        (fresh ? autoRowHtml() : '<p class="next-hint">아래 버튼으로 다음 달로 넘어가세요</p>') +
         '</div>';
     }
 
@@ -218,6 +369,7 @@
       '<div class="card-badges">' + badges + '</div>' +
       '<h2 class="card-title">' + esc(title) + '</h2>' +
       '<p class="card-text">' + esc(text).replace(/\n/g, '<br>') + '</p>' +
+      boomHtml +
       '<div class="choices' + (isChosen ? ' locked' : '') + '" id="choices">' + choices + '</div>' +
       resultHtml +
       '</article>' +
@@ -242,16 +394,47 @@
   }
 
   function pickChoice(index) {
-    var res = Life.choose(state, index);
+    if (!state) return;
+    var ev = Life.currentEvent(state);
+    var choice = ev && ev.choices ? ev.choices[index] : null;
+    // 미니 승부가 붙은 선택지는 먼저 승부를 본다 (이때는 결과가 아직 없으므로 자동 넘김 타이머도 없다)
+    if (choice && choice.mini && window.MiniGame) {
+      autoClear();
+      window.MiniGame.open(choice.mini, state, function (win) {
+        resolveChoice(index, win);
+      });
+      return;
+    }
+    resolveChoice(index, null);
+  }
+
+  function resolveChoice(index, miniWin) {
+    var res = Life.choose(state, index, typeof miniWin === 'boolean' ? { miniWin: miniWin } : undefined);
     if (!res) return;
     Life.save(state);
     renderStats();
     pulseStats(res.deltas);
-    renderEvent(true);
+    renderEvent(true, true);
     renderRewards();
     $('advanceBtn').disabled = false;
     $('logCount').textContent = state.history.length;
     if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+    autoArm();
+    revealResult();
+    checkTitles();
+  }
+
+  // 결과가 화면 밖으로 밀렸으면 결과·카운트다운이 보이게 스크롤한다
+  function revealResult() {
+    setTimeout(function () {
+      var stage = $('stage'), row = $('autoRow');
+      if (!stage || !row) return;
+      var sr = stage.getBoundingClientRect();
+      var rr = row.getBoundingClientRect();
+      if (rr.bottom > sr.bottom - 10) {
+        stage.scrollTop = stage.scrollTop + (rr.bottom - sr.bottom) + 26;
+      }
+    }, 60);
   }
 
   /* ── 보상형 광고 ── */
@@ -282,6 +465,7 @@
 
   function requestReward(kind) {
     if (!state) return;
+    autoClear();
     var r = Life.rewardState(state);
     var ok = kind === 'undo' ? r.canUndo : kind === 'reroll' ? r.canReroll : r.canHeal;
     if (!ok) { toast(REWARD_HINT[kind] || '지금은 쓸 수 없어요'); return; }
@@ -291,6 +475,7 @@
 
   function applyReward(kind) {
     if (!state) return;
+    autoClear();
     if (kind === 'undo') {
       var ev = Life.undo(state);
       Life.save(state);
@@ -357,6 +542,7 @@
   }
 
   function advance() {
+    autoClear();
     if (!state || !state.current || state.current.chosen === null) return;
     var res = Life.advance(state);
     if (!res.ok) return;
@@ -391,6 +577,7 @@
 
   /* ── 인생 일지 ── */
   function openSheet() {
+    autoClear();
     var body = $('sheetBody');
     if (!state.history.length) {
       body.innerHTML = '<div class="tl-empty">아직 기록이 없습니다.<br>첫 선택을 하면 여기에 쌓입니다.</div>';
@@ -540,6 +727,7 @@
     .concat([{ key: 'life80', label: '완주' }]);
 
   function openHall(from) {
+    autoClear();
     hallReturn = from || screenName;
     renderHall();
     showScreen('hall');
@@ -562,6 +750,15 @@
     var list = hallTab === 'all' ? Life.hallSorted(recs) : Life.hallOf(hallTab);
 
     $('hallSub').textContent = '졸업·완주 기록 ' + recs.length + '건 · 내 기록 ' + mine.length + '건';
+
+    if (window.TitleBook) {
+      var tp = window.TitleBook.progress();
+      $('hallTitles').innerHTML = '<span class="ht-emoji">🏅</span>' +
+        '<span class="ht-body"><b>칭호·인연 도감</b>' +
+        '<span>' + tp.got + ' / ' + tp.total + ' 수집 · ' + tp.pct + '%</span></span>' +
+        '<span class="ht-go">보기 →</span>';
+      $('hallTitles').hidden = false;
+    }
 
     $('hallTabs').innerHTML = HALL_TABS.map(function (t) {
       return '<button type="button" class="hall-tab' + (hallTab === t.key ? ' active' : '') +
@@ -759,6 +956,105 @@
     $('endHall').addEventListener('click', function () { openHall('ending'); });
   }
 
+  /* ═════════════ 칭호·인연 도감 ═════════════ */
+  var badgeTimer = null;
+
+  function checkTitles() {
+    if (!window.TitleBook || !state) return;
+    var got = window.TitleBook.check(state);
+    if (got.length) showTitleBadge(got);
+  }
+
+  function showTitleBadge(titles) {
+    var old = $('badgePop');
+    if (old) old.remove();
+    var t = titles[0];
+    if (!t) return;
+    var extra = titles.length > 1 ? ' · 외 ' + (titles.length - 1) + '개' : '';
+    var pop = document.createElement('div');
+    pop.className = 'badge-pop';
+    pop.id = 'badgePop';
+    pop.setAttribute('role', 'status');
+    pop.innerHTML =
+      '<div class="bp-emoji">' + t.emoji + '</div>' +
+      '<div class="bp-body">' +
+        '<div class="bp-kicker">🏅 새 칭호' + esc(extra) + '</div>' +
+        '<div class="bp-name">' + esc(t.name) + '</div>' +
+        '<div class="bp-desc">' + esc(t.desc) + '</div>' +
+      '</div>' +
+      '<span class="bp-open">도감 →</span>';
+    pop.addEventListener('click', function () {
+      clearTimeout(badgeTimer);
+      pop.remove();
+      openTitleBook();
+    });
+    $('app').appendChild(pop);
+    requestAnimationFrame(function () { pop.classList.add('show'); });
+    clearTimeout(badgeTimer);
+    badgeTimer = setTimeout(function () {
+      pop.classList.remove('show');
+      setTimeout(function () { if (pop.parentNode) pop.remove(); }, 320);
+    }, 4200);
+  }
+
+  function ensureTitleModal() {
+    var modal = $('titleModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.className = 'title-modal';
+    modal.id = 'titleModal';
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML =
+      '<header class="tm-top">' +
+        '<button type="button" class="tm-close" id="tmClose" aria-label="닫기">✕</button>' +
+        '<div class="tm-title-box">' +
+          '<h2>🏅 칭호·인연 도감</h2>' +
+          '<p id="tmSub">—</p>' +
+        '</div>' +
+      '</header>' +
+      '<div class="tm-progress"><i id="tmBar"></i></div>' +
+      '<div class="tm-body" id="tmBody"></div>' +
+      '<p class="tm-note">해금한 칭호는 이 브라우저에 남습니다 · 새 인생을 시작해도 그대로예요</p>';
+    $('app').appendChild(modal);
+    $('tmClose').addEventListener('click', closeTitleBook);
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeTitleBook(); });
+    return modal;
+  }
+
+  function openTitleBook() {
+    if (!window.TitleBook) return;
+    var modal = ensureTitleModal();
+    var prog = window.TitleBook.progress();
+    var owned = window.TitleBook.owned();
+    $('tmSub').textContent = prog.got + ' / ' + prog.total + ' 수집 · ' + prog.pct + '%';
+    $('tmBar').style.width = Math.max(2, prog.pct) + '%';
+    $('tmBody').innerHTML = window.TitleBook.LIST.map(function (t) {
+      var rec = owned[t.id];
+      var when = rec ? (rec.age + '세 ' + (rec.month || 1) + '개월차' + (rec.name ? ' · ' + rec.name : '')) :
+        (t.ages[0] === t.ages[1] ? t.ages[0] + '세에 해금' : t.ages[0] + '~' + t.ages[1] + '세에 해금');
+      return '<div class="tb-item' + (rec ? ' got' : '') + '">' +
+        '<div class="tb-emoji">' + (rec ? t.emoji : '🔒') + '</div>' +
+        '<div class="tb-body">' +
+          '<div class="tb-name">' + (rec ? esc(t.name) : '???') +
+            '<span class="tb-kind">' + esc(t.kind) + '</span></div>' +
+          '<div class="tb-desc">' + (rec ? esc(t.desc) : '아직 만나지 못한 칭호입니다') + '</div>' +
+          '<div class="tb-when">' + esc(when) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    $('tmBody').scrollTop = 0;
+  }
+
+  function closeTitleBook() {
+    var modal = $('titleModal');
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
   /* ── 토스트 ── */
   var toastTimer = null;
   function toast(msg) {
@@ -775,6 +1071,7 @@
 
   /* ── 새로 시작 ── */
   function resetGame() {
+    autoClear();
     if (state && state.history.length && !state.ended) {
       if (!window.confirm('지금 인생을 지우고 처음부터 시작할까요?')) return;
     }
@@ -809,6 +1106,29 @@
     });
     initAdZone();
     bindHall();
+
+    // 칭호 도감 진입 (시작 화면 · 플레이 화면)
+    var tbStart = $('titleBtnStart');
+    if (tbStart) tbStart.addEventListener('click', openTitleBook);
+    var tbHall = $('hallTitles');
+    if (tbHall) tbHall.addEventListener('click', openTitleBook);
+
+    // 결과 카드 안의 ⏸ 일시정지 토글 (카드가 다시 그려져도 살아 있게 위임)
+    $('stageInner').addEventListener('click', function (e) {
+      if (e.target.closest('#autoPause')) { e.preventDefault(); autoToggle(); }
+    });
+
+    // 탭을 떠나면 타이머를 멈춘다 (돌아왔을 때 모르는 사이 넘어가 있지 않게)
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && auto.running) {
+        auto.remain = Math.max(1, auto.deadline - Date.now());
+        autoClear();
+        if ($('autoRow')) autoPausedState();
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeTitleBook();
+    });
   }
 
   window.addEventListener('DOMContentLoaded', function () {

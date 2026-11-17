@@ -28,11 +28,11 @@ function load(base) {
     (0, eval)(fs.readFileSync(path.join(dir, f), 'utf8'));
   }
   // 졸업 결산 기준 분포 · 명예의 전당 기본 시드 (앱에서는 index.html 이 따로 불러온다)
-  for (const extra of ['refdist.js', 'hall-seeds.js']) {
+  for (const extra of ['refdist.js', 'hall-seeds.js', 'titles.js']) {
     const p = path.join(base, extra);
     if (fs.existsSync(p)) (0, eval)(fs.readFileSync(p, 'utf8'));
   }
-  return { Life: global.window.Life, EVENTS: global.window.LIFE_EVENTS };
+  return { Life: global.window.Life, EVENTS: global.window.LIFE_EVENTS, TitleBook: global.window.TitleBook };
 }
 
 module.exports = { load, installStorage };

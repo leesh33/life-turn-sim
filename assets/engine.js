@@ -538,11 +538,30 @@
     return fresh;
   }
 
-  function choose(s, index) {
+  /* ── 미니 승부 ──
+     선택지에 `mini: { type, win:{result,effects,set}, lose:{...} }` 가 붙으면
+     앱이 먼저 미니게임을 열고, 승패(opts.miniWin)를 정한 뒤 엔진에 넘긴다.
+     opts 없이 부르면(테스트·자동 진행) 기본 효과만 적용된다. */
+  function mergeDeltas(target, extra) {
+    Object.keys(extra || {}).forEach(function (k) {
+      target[k] = (target[k] || 0) + extra[k];
+    });
+    return target;
+  }
+
+  function branchOf(choice, miniWin) {
+    if (!choice || !choice.mini || typeof miniWin !== 'boolean') return null;
+    return miniWin ? choice.mini.win : choice.mini.lose;
+  }
+
+  function choose(s, index, opts) {
     var ev = currentEvent(s);
     if (!ev || s.current.chosen !== null) return null;
     var choice = ev.choices[index];
     if (!choice) return null;
+
+    var miniWin = opts && typeof opts.miniWin === 'boolean' ? opts.miniWin : null;
+    var branch = branchOf(choice, miniWin);
 
     // 되돌리기를 위해 선택 전 상태를 담아둔다
     s.undo = snapshotForUndo(s);
@@ -551,12 +570,19 @@
     if (choice.set) {
       Object.keys(choice.set).forEach(function (k) { s.flags[k] = choice.set[k]; });
     }
+    if (branch && branch.set) {
+      Object.keys(branch.set).forEach(function (k) { s.flags[k] = branch.set[k]; });
+    }
     var deltas = resolveEffects(s, choice.effects);
+    if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects));
     if (choice.queue) {
       var q = Array.isArray(choice.queue) ? choice.queue : [choice.queue];
       q.forEach(function (id) { s.queue.push(id); });
     }
     var resultText = typeof choice.result === 'function' ? choice.result(s) : choice.result;
+    if (branch && branch.result) {
+      resultText = typeof branch.result === 'function' ? branch.result(s) : branch.result;
+    }
 
     var entry = {
       turn: s.turn,
@@ -570,11 +596,43 @@
       choice: typeof choice.label === 'function' ? choice.label(s) : choice.label,
       result: resultText || '',
       deltas: deltas,
-      setKeys: choice.set ? Object.keys(choice.set) : []
+      setKeys: (choice.set ? Object.keys(choice.set) : []).concat(branch && branch.set ? Object.keys(branch.set) : []),
+      mini: choice.mini && typeof miniWin === 'boolean' ? { type: choice.mini.type, win: miniWin } : null
     };
     s.history.push(entry);
-    s.current = { eventId: ev.id, chosen: index, result: resultText, deltas: deltas, event: ev.__generic ? ev : null };
-    return { entry: entry, deltas: deltas, result: resultText };
+    s.current = {
+      eventId: ev.id, chosen: index, result: resultText, deltas: deltas,
+      event: ev.__generic ? ev : null,
+      mini: entry.mini
+    };
+    return { entry: entry, deltas: deltas, result: resultText, mini: entry.mini };
+  }
+
+  /* ── 과거의 부메랑 ──
+     중·노년 이벤트에 `boomerang: true` 와 `callback: ['플래그', ...]` 를 달면,
+     그 플래그를 남긴 **가장 이른 선택**을 기록에서 찾아 돌려준다.
+     (예: 12세 4개월차 '그림을 그리기 시작했다') */
+  function boomerangOf(s, ev) {
+    if (!s || !ev || !ev.boomerang) return null;
+    var cond = ev.callback;
+    var list = typeof cond === 'string' ? [cond]
+      : Array.isArray(cond) ? cond
+      : (cond && Array.isArray(cond.flags)) ? cond.flags : [];
+    if (!list.length || !Array.isArray(s.history)) return null;
+    for (var i = 0; i < s.history.length; i++) {
+      var item = s.history[i];
+      var keys = item && item.setKeys ? item.setKeys : [];
+      for (var j = 0; j < list.length; j++) {
+        if (keys.indexOf(list[j]) !== -1) {
+          return {
+            age: item.age, month: item.month, turn: item.turn,
+            title: item.title || '', choice: item.choice || '',
+            flag: list[j]
+          };
+        }
+      }
+    }
+    return null;
   }
 
   /* ── 자연 변화(생활 소모) ──
@@ -1544,6 +1602,7 @@
     rewardState: rewardState,
     canUndo: canUndo,
     undo: undo,
+    boomerangOf: boomerangOf,
     canReroll: canReroll,
     reroll: reroll,
     canHeal: canHeal,
