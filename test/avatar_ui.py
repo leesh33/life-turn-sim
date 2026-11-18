@@ -133,7 +133,8 @@ def phase_actions(pg, states, out, tag, tagm):
     """선택 → 팝업 → 몇 턴 → 미션 달성"""
     m = pg.evaluate(MEASURE)
     check(f"[{tagm}] 말풍선 문구", bool(m["bubble"]) and len(m["bubble"]) <= 40, m["bubble"])
-    check(f"[{tagm}] 미션 목표·% 표시", bool(m["missionGoal"]) and "%" in (m["missionPct"] or ""),
+    check(f"[{tagm}] 미션 목표·진행 표시",
+          bool(m["missionGoal"]) and any(x in (m["missionPct"] or "") for x in ("%", "원", "달성")),
           f"{m['missionGoal']} {m['missionPct']}")
     check(f"[{tagm}] 인라인 SVG (외부 이미지 없음)", m["svgImgs"] == 0 and bool(m["svgLabel"]), m["svgLabel"])
     pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-play.png"))

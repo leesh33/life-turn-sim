@@ -386,7 +386,10 @@
     var def = band.mission;
     var st = state.stats || {};
     var cur = def.key === 'asset' ? num(st.asset, 0) : num(st[def.key], 0);
-    var pct = clamp((cur / def.target) * 100, 0, 100);
+    // 재산 미션은 빚(마이너스)이면 목표가 '빚 청산'으로 바뀐다 — 0원을 넘는 순간 달성
+    var inDebt = def.key === 'asset' && cur < 0;
+    var goal = inDebt ? '빚 청산' : def.goal;
+    var pct = inDebt ? 0 : clamp((cur / def.target) * 100, 0, 100);
     var done = !!(state.missions && state.missions[def.id]);
     var bonusLabel = Object.keys(def.bonus).map(function (k) {
       if (k === 'asset') return '재산 +' + manText(def.bonus[k]) + '원';
@@ -396,7 +399,8 @@
       id: def.id,
       bandId: band.id,
       label: def.label,
-      goal: def.goal,
+      goal: goal,
+      inDebt: inDebt,
       key: def.key,
       cur: cur,
       target: def.target,

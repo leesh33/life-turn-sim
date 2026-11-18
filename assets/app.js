@@ -343,7 +343,7 @@
           ' aria-label="' + esc(m.label + ' ' + m.goal + ' ' + (m.done ? '달성' : m.pct + '퍼센트')) + '">' +
           '<span class="am-chip">🎯 ' + esc(m.label) + '</span>' +
           '<span class="am-goal">' + esc(m.goal) + '</span>' +
-          '<span class="am-pct">' + (m.done ? '달성 ✓' : m.pct + '%') + '</span>' +
+          '<span class="am-pct">' + (m.done ? '달성 ✓' : (m.inDebt ? m.curText : m.pct + '%')) + '</span>' +
           '<span class="am-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
         '</div>' +
       '</div>' +

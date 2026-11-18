@@ -120,6 +120,16 @@ check('달성 기록이 저장본에 남음', !!baby.missions.m_baby, JSON.strin
 check('같은 미션은 두 번 주지 않음', Avatar.checkMission(baby) === null);
 check('카드에는 달성으로 표시', Avatar.mission(baby).done === true && Avatar.mission(baby).pct === 100);
 
+// 재산 미션이 빚이면 목표가 '빚 청산'으로 바뀐다
+const debt = S(30, { asset: -1200 });
+check('빚이면 목표가 빚 청산', Avatar.mission(debt).goal === '빚 청산', Avatar.mission(debt).goal);
+check('빚 상태의 진행률은 0%', Avatar.mission(debt).pct === 0, Avatar.mission(debt).pct + '%');
+check('빚 상태는 금액을 보여 준다', Avatar.mission(debt).inDebt === true && Avatar.mission(debt).curText.includes('-'),
+  Avatar.mission(debt).curText);
+check('빚 상태에서는 미션 달성 아님', Avatar.checkMission(debt) === null);
+check('빚을 갚으면 원래 목표로 돌아옴', Avatar.mission(S(30, { asset: 300 })).goal === '재산 3,000만 돌파',
+  Avatar.mission(S(30, { asset: 300 })).goal);
+
 // 재산 미션 — 3,000만 돌파
 const adult = S(30, { asset: 2400 });
 check('재산 2,400만 → 80%', Avatar.mission(adult).pct === 80, Avatar.mission(adult).pct + '%');
