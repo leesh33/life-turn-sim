@@ -6,8 +6,9 @@
    · stage  : 'infancy' | 'elementary' | 'middle' | 'high' | 'college' | 'work' |
               'family' | 'midlife' | 'senior' | 'any'
    · ages   : 5  (5세 전용)  또는  [4, 6] (4~6세)
-   · choices: [라벨, 결과, 효과, set?, queue?] 배열의 배열 (2~3개)
+   · choices: [라벨, 결과, 효과, set?, queue?, 확장?] 배열의 배열 (2~4개)
               효과는 { hp:2, social:-1, asset:30 } 처럼, 범위는 [1,3] 도 가능
+              확장에는 카메오 관계 진행(cameoRel)처럼 선택지에만 붙는 값을 넣는다
    · opts   : { at: [나이, 개월차], milestone: true, repeatable: true,
                 weight: 5, when: function (s) { ... } }
 
@@ -34,6 +35,7 @@
         if (c[2]) ch.effects = c[2];
         if (c[3]) ch.set = c[3];
         if (c[4]) ch.queue = c[4];
+        if (c[5]) { for (var k in c[5]) ch[k] = c[5][k]; }
         return ch;
       })
     };

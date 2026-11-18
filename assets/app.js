@@ -129,7 +129,10 @@
     Life.save(state);
     showScreen('play');
     renderGame();
-    toast('인생이 시작되었습니다');
+    var cameoCount = state.cameos ? state.cameos.length : 0;
+    toast(cameoCount
+      ? '🧬 이전 인생의 인물 ' + cameoCount + '명이 이번 인생에 있습니다'
+      : '인생이 시작되었습니다');
   }
 
   /* ── 화면 전환 ── */
@@ -409,6 +412,7 @@
     var boom = Life.boomerangOf(state, ev);
 
     var badges = '<span class="badge age">' + state.age + '세 · ' + state.month + '개월차</span>';
+    if (ev.cameo) badges += '<span class="badge cameo">🧬 이전 회차 인물</span>';
     if (ev.boomerang) badges += '<span class="badge boom">🪃 과거의 부메랑</span>';
     if (ev.milestone) badges += '<span class="badge milestone">★ 마일스톤</span>';
     badges += '<span class="badge place">' + esc(ev.place || stage.name) + '</span>';
@@ -426,7 +430,6 @@
 
     var title = typeof ev.title === 'function' ? ev.title(state) : ev.title;
     var text = typeof ev.text === 'function' ? ev.text(state) : ev.text;
-
     var choices = ev.choices.map(function (c, i) {
       var label = typeof c.label === 'function' ? c.label(state) : c.label;
       var dim = isChosen && chosen !== i ? ' dim' : '';
@@ -457,6 +460,7 @@
       '<div class="card-badges">' + badges + '</div>' +
       '<h2 class="card-title">' + esc(title) + '</h2>' +
       '<p class="card-text">' + esc(text).replace(/\n/g, '<br>') + '</p>' +
+      (ev.cameo ? cameoNoteHtml() : '') +
       boomHtml +
       '<div class="choices' + (isChosen ? ' locked' : '') + '" id="choices">' + choices + '</div>' +
       resultHtml +
@@ -470,6 +474,18 @@
         pickChoice(Number(btn.dataset.i));
       });
     }
+  }
+
+  /* 🧬 이전 회차 인물 안내줄 — 카드 위에 그 사람의 지난 인생 기록을 짧게 붙인다 */
+  function cameoNoteHtml() {
+    if (!Life.cameoNote) return '';
+    var n = Life.cameoNote(state);
+    if (!n) return '';
+    return '<div class="cameo-note">' +
+      '<div class="cameo-who">🧬 이전 인생의 기록 — <b>' + esc(n.name) + '</b>' +
+        (n.rel && n.rel !== 'none' && n.relLabel ? ' · ' + esc(n.relLabel) : '') + '</div>' +
+      (n.record ? '<p class="cameo-line">' + esc(n.record) + '</p>' : '') +
+      '</div>';
   }
 
   function stageNote(stage) {
@@ -692,7 +708,8 @@
         }
         var dk = Object.keys(item.deltas || {});
         html += '<div class="tl-item">' +
-          '<div class="tl-when">' + item.age + '세 · ' + item.month + '개월차' + (item.place ? ' · ' + esc(item.place) : '') + '</div>' +
+          '<div class="tl-when">' + item.age + '세 · ' + item.month + '개월차' + (item.place ? ' · ' + esc(item.place) : '') +
+            (item.cameo ? ' · 🧬 이전 회차' : '') + '</div>' +
           '<div class="tl-title">' + esc(item.title) + '</div>' +
           '<span class="tl-choice">' + esc(item.choice) + '</span>' +
           '<div class="tl-result">' + esc(item.result) + '</div>' +
@@ -722,6 +739,17 @@
       '<div class="recall-body">' +
       lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') +
       '</div></div>';
+  }
+
+  /* 🧬 이전 회차의 인연 — 엔딩·요약에 함께 적는다 */
+  function cameoEndHtml(c) {
+    if (!c) return '';
+    return '<div class="end-cameo">' +
+      '<div class="ec-head">🧬 이전 회차의 인연</div>' +
+      '<div class="ec-body"><b>' + esc(c.name) + '</b>' +
+        (c.relLabel ? ' · ' + esc(c.relLabel) : '') + '</div>' +
+      (c.record ? '<div class="ec-record">' + esc(c.record) + '</div>' : '') +
+      '</div>';
   }
 
   function cmpRow(r, total) {
@@ -894,6 +922,7 @@
             (r.mine ? '<span class="hr-mine">' + (isBest ? '내 최고 기록' : '내 기록') + '</span>' : '') +
             '<span class="hr-stage">' + esc(r.stageLabel) + '</span></div>' +
           '<div class="hr-title">' + esc(r.title) + '</div>' +
+          (r.cameo ? '<div class="hr-cameo">🧬 ' + esc(r.cameo.name) + ' · ' + esc(r.cameo.relLabel || '') + '</div>' : '') +
           '<div class="hr-stats">체력 ' + statNum(r.stats.hp) + ' · 멘탈 ' + statNum(r.stats.mental) +
             ' · 매력 ' + statNum(r.stats.charm) + ' · 호감도 ' + statNum(r.stats.social) + '</div>' +
           '<div class="hr-stats">역량 ' + statNum(r.stats.intel) + ' · 행운 ' + statNum(r.stats.luck) +
@@ -971,6 +1000,7 @@
         '</div>' +
         '<div class="end-brand">🎲 인생 한 턴</div>' +
       '</div>' +
+      cameoEndHtml(sum.cameo) +
       (isFinal ? recallCard(Life.recall(state, 'life'), '여든 살의 나에게', '80세 · 인생 회고') : '') +
       (highlights ? '<div class="end-section-title">인생 하이라이트</div><div class="highlights">' + highlights + '</div>' : '') +
       (tags ? '<div class="end-section-title">남은 것들</div><div class="tag-cloud">' + tags + '</div>' : '') +
@@ -1039,6 +1069,7 @@
         '</div>' +
         '<div class="end-brand">🎲 인생 한 턴</div>' +
       '</div>' +
+      cameoEndHtml(sum.cameo) +
       recallCard(recall, '그 시절의 나에게', info.age + '세 · ' + def.short) +
       (highlights ? '<div class="end-section-title">인생 하이라이트</div><div class="highlights">' + highlights + '</div>' : '') +
       (tags ? '<div class="end-section-title">남은 것들</div><div class="tag-cloud">' + tags + '</div>' : '') +

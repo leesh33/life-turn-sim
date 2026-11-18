@@ -6,7 +6,7 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
-  var SAVE_VERSION = 4;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운)
+  var SAVE_VERSION = 5;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운) → v5(이전 회차 인물)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
   var MONTHS = 12;           // 한 살 = 12개월차
   var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
@@ -403,6 +403,7 @@
       age: s.age, month: s.month, turn: s.turn, ended: s.ended,
       stats: Object.assign({}, s.stats),
       flags: Object.assign({}, s.flags),
+      cameos: JSON.parse(JSON.stringify(s.cameos || [])),
       used: s.used.slice(),
       lastSeen: Object.assign({}, s.lastSeen),
       queue: s.queue.slice(),
@@ -422,6 +423,7 @@
     s.endingKind = null;
     s.stats = Object.assign({}, snap.stats);
     s.flags = Object.assign({}, snap.flags);
+    if (Array.isArray(snap.cameos)) s.cameos = JSON.parse(JSON.stringify(snap.cameos));
     s.used = snap.used.slice();
     s.lastSeen = Object.assign({}, snap.lastSeen);
     s.queue = snap.queue.slice();
@@ -503,6 +505,7 @@
       rngState: rng,
       stats: Object.assign({}, preset.stats),
       flags: Object.assign({}, preset.flags),
+      cameos: [],
       used: [],
       lastSeen: {},
       queue: [],
@@ -516,6 +519,8 @@
       rewards: { heal: 0, reroll: 0, undo: 0 },
       createdAt: Date.now()
     };
+    // 이전 회차의 인물 — 전당에 남은 내 기록에서 데려온다 (없으면 빈 배열)
+    s.cameos = pastCameos(s.name);
     var first = pickEvent(s);
     s.current = { eventId: first.id, chosen: null, event: first.__generic ? first : null };
     s.used.push(first.id);
@@ -613,6 +618,12 @@
     if (branchSet) {
       Object.keys(branchSet).forEach(function (k) { s.flags[k] = branchSet[k]; });
     }
+    // 이전 회차 인물과의 관계 진행 (cameoRel) — 결과 판정과 같은 상태를 읽는다
+    if (ev.cameo && choice.cameoRel) {
+      var relSpec = typeof choice.cameoRel === 'function' ? choice.cameoRel(s) : choice.cameoRel;
+      var cameoIdx = typeof choice.cameoIndex === 'number' ? choice.cameoIndex : 0;
+      setCameoRel(s, cameoIdx, relSpec);
+    }
     var deltas = resolveEffects(s, choice.effects);
     if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects));
     if (choice.queue) {
@@ -637,6 +648,7 @@
       result: resultText || '',
       deltas: deltas,
       setKeys: (setSpec ? Object.keys(setSpec) : []).concat(branchSet ? Object.keys(branchSet) : []),
+      cameo: !!ev.cameo,
       mini: choice.mini && typeof miniWin === 'boolean' ? { type: choice.mini.type, win: miniWin } : null
     };
     s.history.push(entry);
@@ -809,6 +821,8 @@
     backfillStats(s.stats);
     if (s.undo) backfillStats(s.undo.stats);
     if (s.grad && s.grad.stats) backfillStats(s.grad.stats);
+    // v5: 이전 회차 인물 — 예전 저장본은 불러올 때 전당에서 데려온다
+    if (!Array.isArray(s.cameos)) s.cameos = pastCameos(s.name);
     s.v = SAVE_VERSION;
     return s;
   }
@@ -1099,6 +1113,7 @@
       stats: st,
       tags: tags.slice(0, 12),
       highlights: highlights,
+      cameo: cameoSummary(s),
       career: s.flags.직업 || null
     };
   }
@@ -1342,6 +1357,165 @@
     return hallMine()[0] || null;
   }
 
+  /* ═════════════ 이전 회차 인물 (공유 세계관 · 카메오) ═════════════
+     명예의 전당에 남은 '내가 살았던 인생'의 인물이 다음 인생의 세계에 나타난다.
+       · 후보  : 전당 기록 중 내 기록(r.mine). 이름이 지금 플레이어와 같으면 뺀다(나를 만나지 않게).
+       · 인원  : 최근 기록부터 최대 3명(같은 이름은 최신 한 번만).
+       · 관계  : none → friend(친구) → close(단짝) / dating(연인) → married(부부), 또는 parted(스쳐 간 인연).
+       · 기록  : s.cameos[i].rel 에 남고, 일지·요약·전당 기록에 함께 실린다.
+     gender가 없던 옛 전당 기록은 이름 끝자리로 짐작한다(같은 이름은 늘 같은 결과). */
+  var CAMEO_MAX = 3;
+  var CAMEO_REL_LABEL = {
+    none: '아직 만나지 않음', friend: '친구', close: '단짝',
+    dating: '연인', married: '부부', parted: '스쳐 간 인연'
+  };
+  var FEMALE_TAILS = '연 희 숙 자 미 혜 라 나 슬 빈 옥 순 화 솔 별 봄 린 아'.split(' ');
+  var MALE_TAILS = '훈 준 호 석 철 욱 혁 환 범 찬 규 구 만 동 식 봉 길 성'.split(' ');
+
+  function guessGender(name) {
+    var n = String(name || '').replace(/\s+/g, '');
+    if (!n) return '';
+    var last = n.charAt(n.length - 1);
+    var female = FEMALE_TAILS.indexOf(last) !== -1;
+    var male = MALE_TAILS.indexOf(last) !== -1;
+    if (female && !male) return '여';
+    if (male && !female) return '남';
+    var h = 0;
+    for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+    return h % 2 ? '여' : '남';
+  }
+
+  var TOP_VIBE = {
+    hp: '몸을 먼저 움직이는 사람',
+    mental: '무슨 일에도 표정이 잘 안 흔들리는 사람',
+    charm: '눈에 띄는 사람',
+    social: '누구와도 금방 친해지는 사람',
+    intel: '무엇이든 이해가 빠른 사람',
+    luck: '웬만한 일은 운으로 넘기는 사람'
+  };
+
+  function topStatOf(st) {
+    var best = null;
+    GAUGE_KEYS.forEach(function (k) {
+      var v = st && typeof st[k] === 'number' ? st[k] : 0;
+      if (!best || v > best.value) best = { key: k, label: STAT_META[k].label, value: Math.round(v) };
+    });
+    return best;
+  }
+
+  function wealthOf(asset) {
+    var a = Math.round(asset || 0);
+    if (a < 0) return { key: 'debt', noun: '빚' };
+    if (a >= 30000) return { key: 'rich', noun: '억대 재산' };
+    if (a >= 10000) return { key: 'well', noun: '만만찮은 재산' };
+    if (a >= 1000) return { key: 'mid', noun: '천만원대 재산' };
+    if (a > 0) return { key: 'small', noun: '소박한 살림' };
+    return { key: 'bare', noun: '빈손' };
+  }
+
+  function cameoFromRecord(rec) {
+    var st = rec.stats || {};
+    var asset = typeof st.asset === 'number' ? st.asset : 0;
+    return {
+      recId: rec.id || null,
+      name: rec.name,
+      gender: rec.gender || guessGender(rec.name),
+      title: rec.title || '',
+      stageLabel: rec.stageLabel || (rec.key === 'life80' ? '80세 완주' : ''),
+      age: rec.age || null,
+      score: typeof rec.score === 'number' ? Math.round(rec.score) : null,
+      grade: rec.grade || '',
+      stats: {
+        hp: Math.round(st.hp || 0), mental: Math.round(st.mental || 0),
+        charm: Math.round(st.charm || 0), social: Math.round(st.social || 0),
+        intel: Math.round(st.intel || 0), luck: Math.round(st.luck || 0),
+        asset: Math.round(asset)
+      },
+      top: topStatOf(st),
+      wealth: wealthOf(asset),
+      rel: 'none',
+      met: false
+    };
+  }
+
+  // 이름이 같은 사람은 만나지 않는다 — 지금 플레이어와 겹치면 후보에서 뺀다
+  function pastCameos(name) {
+    var list;
+    try { list = hallRecords().filter(function (r) { return r && r.mine && r.name; }); } catch (e) { return []; }
+    list = list.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    var mineName = String(name || '').replace(/\s+/g, '');
+    var out = [], seen = {};
+    for (var i = 0; i < list.length; i++) {
+      var rec = list[i];
+      var key = String(rec.name).replace(/\s+/g, '');
+      if (!key || key === mineName) continue;
+      if (seen[key]) continue;
+      seen[key] = true;
+      out.push(cameoFromRecord(rec));
+      if (out.length >= CAMEO_MAX) break;
+    }
+    return out;
+  }
+
+  function cameoOf(s, index) {
+    if (!s || !Array.isArray(s.cameos) || !s.cameos.length) return null;
+    var i = typeof index === 'number' ? index : 0;
+    return s.cameos[i] || null;
+  }
+
+  // 이 사람과 연애·결혼으로 갈 수 있는가 (이성일 때만)
+  function cameoCanRomance(s, c) {
+    c = c || cameoOf(s);
+    if (!c || !c.gender || !s || !s.gender) return false;
+    return c.gender !== s.gender;
+  }
+
+  // 관계 진행 — 카메오 이벤트의 선택지(cameoRel)가 부른다
+  function setCameoRel(s, index, rel) {
+    var c = cameoOf(s, index);
+    if (!c || !rel) return null;
+    c.rel = rel;
+    if (rel !== 'none') c.met = true;
+    // 이전 회차의 인물과 맺어지면 게임의 가정 루트(배우자·자녀)가 함께 열린다
+    if (rel === 'married') { s.flags.결혼 = true; s.flags.배우자 = true; }
+    return c;
+  }
+
+  function cameoRecordLine(c) {
+    if (!c) return '';
+    var bits = [];
+    if (c.stageLabel) bits.push(c.stageLabel);
+    if (c.score !== null && c.score !== undefined) bits.push('종합 ' + c.score + '점');
+    if (c.top) bits.push(c.top.label + ' ' + c.top.value);
+    if (c.wealth && c.wealth.noun) bits.push(c.wealth.noun);
+    return bits.join(' · ');
+  }
+
+  function cameoNote(s) {
+    var c = cameoOf(s);
+    if (!c) return null;
+    return {
+      name: c.name,
+      gender: c.gender,
+      record: cameoRecordLine(c),
+      vibe: c.top ? (TOP_VIBE[c.top.key] || '') : '',
+      rel: c.rel,
+      relLabel: CAMEO_REL_LABEL[c.rel] || ''
+    };
+  }
+
+  function cameoSummary(s) {
+    var c = cameoOf(s);
+    if (!c) return null;
+    return {
+      name: c.name,
+      rel: c.rel,
+      relLabel: CAMEO_REL_LABEL[c.rel] || '',
+      record: cameoRecordLine(c),
+      count: (s.cameos || []).length
+    };
+  }
+
   /* ── 졸업하기 / 계속 살기 ── */
   function graduate(s, register) {
     if (!s || !s.grad) return null;
@@ -1362,6 +1536,8 @@
         top: info.total.top,
         title: info.title,
         name: s.name,
+        gender: s.gender,
+        cameo: cameoSummary(s),
         stats: statSnapshot(info.stats)
       });
       s.grad.registered = true;
@@ -1388,6 +1564,8 @@
       top: null,
       title: sum.title,
       name: s.name,
+      gender: s.gender,
+      cameo: cameoSummary(s),
       stats: statSnapshot(s.stats)
     });
     s.hallId = rec.id;
@@ -1730,6 +1908,16 @@
     canUndo: canUndo,
     undo: undo,
     boomerangOf: boomerangOf,
+    cameoOf: cameoOf,
+    cameos: pastCameos,
+    cameoCanRomance: cameoCanRomance,
+    cameoSummary: cameoSummary,
+    cameoNote: cameoNote,
+    cameoRecordLine: cameoRecordLine,
+    setCameoRel: setCameoRel,
+    cameoRelLabel: function (rel) { return CAMEO_REL_LABEL[rel] || ''; },
+    CAMEO_REL_LABEL: CAMEO_REL_LABEL,
+    guessGender: guessGender,
     canReroll: canReroll,
     reroll: reroll,
     canHeal: canHeal,

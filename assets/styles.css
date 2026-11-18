@@ -1616,6 +1616,7 @@ body {
   overflow: hidden;
 }
 .hr-stats { margin-top: 3px; font-size: 9.5px; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hr-cameo { margin-top: 2px; font-size: 9.5px; font-weight: 700; color: #2f6b62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hr-stats + .hr-stats { margin-top: 1px; }
 .hr-score { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .hr-score b { font-size: 17px; font-weight: 800; letter-spacing: -0.6px; }
@@ -1652,6 +1653,18 @@ body {
   color: #8a6a17;
 }
 .end-hall b { font-weight: 800; }
+.end-cameo {
+  margin-top: 14px;
+  background: linear-gradient(160deg, #f8fdfc, #eaf5f2);
+  border: 1px solid rgba(47, 122, 110, 0.22);
+  border-radius: 14px;
+  padding: 11px 13px;
+  color: #2f6b62;
+}
+.end-cameo .ec-head { font-size: 10.5px; font-weight: 800; letter-spacing: 0.2px; color: #5b8a83; }
+.end-cameo .ec-body { margin-top: 3px; font-size: 13px; font-weight: 700; }
+.end-cameo .ec-body b { font-weight: 800; }
+.end-cameo .ec-record { margin-top: 3px; font-size: 10.5px; color: #6a8b86; }
 .end-actions.second { margin-top: 9px; }
 .end-actions.second .btn { flex: 1; }
 
@@ -2099,6 +2112,22 @@ body {
 }
 .auto-row[data-mode="paused"] + .auto-bar i,
 .auto-row[data-mode="stop"] + .auto-bar i { background: var(--ink-4); }
+
+/* ── 🧬 이전 회차 인물 ── */
+.badge.cameo {
+  color: #2f5d55;
+  background: #e5f4f0;
+}
+.cameo-note {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fdfc, #eef7f5);
+  border: 1px dashed rgba(47, 122, 110, 0.45);
+}
+.cameo-who { font-size: 11.5px; font-weight: 800; color: #2f6b62; letter-spacing: -0.2px; }
+.cameo-who b { font-weight: 800; }
+.cameo-line { margin: 5px 0 0; font-size: 11.5px; color: #5b7a74; line-height: 1.45; }
 
 /* ── 🪃 과거의 부메랑 ── */
 .badge.boom {

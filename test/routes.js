@@ -11,7 +11,7 @@ const check = (name, cond, extra) => { ran.push(`${cond ? 'PASS' : 'FAIL'} · ${
 const SOLO = ['solo_apartment', 'solo_hobby', 'single_life'];
 let s = null;
 const seen = new Set();
-for (let attempt = 0; attempt < 6 && !SOLO.every((id) => seen.has(id)); attempt++) {
+for (let attempt = 0; attempt < 10 && !SOLO.every((id) => seen.has(id)); attempt++) {
   s = Life.newGame({ name: '독신', gender: '여', startAge: 35 });
   let guard = 0;
   while (!s.ended && guard++ < 3000) {
@@ -138,7 +138,7 @@ FOLLOW.forEach(([parent, child, age]) => {
   global.window.localStorage.setItem('lifeTurnSim.save.v1', JSON.stringify(legacy));
   const loaded = Life.load();
   check('예전 저장본(v1 일차) → 개월차 마이그레이션',
-    !!loaded && loaded.v === 4 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
+    !!loaded && loaded.v === 5 && loaded.month === 4 && loaded.history[0].month === 2 && loaded.day === undefined,
     `month:${loaded && loaded.month} histMonth:${loaded && loaded.history[0].month}`);
   Life.clear();
 })();

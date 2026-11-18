@@ -86,7 +86,7 @@ const loaded = Life.load();
 check('옛 저장본이 그대로 열림', !!loaded, loaded ? loaded.name : 'null');
 check('역량 50으로 채워짐', loaded && loaded.stats.intel === 50, loaded ? String(loaded.stats.intel) : '-');
 check('행운 50으로 채워짐', loaded && loaded.stats.luck === 50, loaded ? String(loaded.stats.luck) : '-');
-check('저장 버전 올라감', loaded && loaded.v === 4, loaded ? String(loaded.v) : '-');
+check('저장 버전 올라감', loaded && loaded.v === 5, loaded ? String(loaded.v) : '-');
 
 // 졸업 결산 직전 저장본(grad.stats 에 두 능력치가 없던 경우)
 const gradSave = Life.newGame({ name: '결산', gender: '남', startAge: 1 });
