@@ -51,7 +51,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     text: '동생이 내 인형을 가져갔습니다. 돌려달라고 하면 엄마는 "동생이니까 양보해"라고 합니다.',
     choices: [
       { label: '양보한다', result: '억울했지만 참았습니다. 동생은 좋아서 팔짝팔짝 뛰었습니다.', effects: { social: 2, mental: -2 } },
-      { label: '빼앗아 돌려받는다', result: '동생이 울었고 나는 혼났습니다. 그래도 인형은 내 손에 있습니다.', effects: { mental: 1, social: -2 } },
+      { label: '빼앗아 보려고 달려든다', result: '동생이 울었고 나는 혼났습니다. 그래도 인형은 내 손에 있습니다.', effects: { mental: 1, social: -2 } },
       { label: '다른 장난감으로 같이 논다', result: '둘이 블록을 쌓았습니다. 엄마가 사진을 찍었습니다.', effects: { social: 2, mental: 1, hp: -1 } }
     ]
   },

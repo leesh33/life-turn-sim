@@ -107,10 +107,35 @@ X('middle', 'tn_m23', 15, '도서관', '첫 인문서', '도서관에서 두꺼�
   ['쉬운 책으로 돌아간다', '다른 책 세 권을 읽었습니다. 이해가 빨랐습니다.', { mental: 3, social: 1 }]
 ], { requireFlags: '책벌레', weight: 3 });
 
-X('middle', 'tn_m24', 15, '운동장', '시합', '학교 대항 축구 시합이 있습니다. 선발 명단에 내 이름이 있습니다.', [
-  ['선발로 나간다', '후반에 골을 넣었습니다. 동료들이 나를 안았습니다.', { hp: 3, social: 3 }, trackSet('진로_체육', { 축구부: true })],
-  ['후보로 남는다', '벤치에서 경기를 봤습니다. 다음 시합을 준비했습니다.', { hp: 2, mental: 2 }]
-], { at: [15, 6], milestone: true, fork: true, requireFlags: '축구부', weight: 3, when: T.only('진로_체육') });
+/* 시합 — '선발로 나간다'은 결과를 고르는 문구였다. 이제 '손을 든다'는 의도로 쓰고,
+   선발은 감독이 정한다. 뛰었을 때의 성과까지 능력치로 갈린다. */
+(function () {
+  function picked(s) {
+    return LifeChance.check(s, {
+      hp: 0.34, mental: 0.12, social: 0.12, luck: 0.30, base: 8, pass: 58,
+      bonus: { 운동_재능: 6, 축구부: 2 }
+    });
+  }
+  var ev = X('middle', 'tn_m24', 15, '운동장', '시합',
+    '학교 대항 축구 시합이 있습니다. 선발 명단은 경기 직전에 정해집니다.', [
+      ['선발 출전을 희망하며 손을 든다', '손을 들었습니다.', { hp: 1 }],
+      ['후보로 남는다', '벤치에서 경기를 봤습니다. 다음 시합을 준비했습니다.', { hp: 2, mental: 2 }]
+    ], { at: [15, 6], milestone: true, fork: true, requireFlags: '축구부', weight: 3, when: T.only('진로_체육') });
+
+  ev.choices[0].result = function (s) {
+    return picked(s)
+      ? '선발 명단에 내 이름이 올랐습니다. 후반에 골을 넣었고, 동료들이 나를 안았습니다.'
+      : '명단에는 들지 못했습니다. 하프타임에 몸을 풀다 후반 교체로 들어갔지만, 공은 잘 오지 않았습니다.';
+  };
+  ev.choices[0].effects = function (s) {
+    return picked(s) ? { hp: 3, social: 3 } : { hp: 2, social: 1, mental: -1 };
+  };
+  ev.choices[0].set = function (s) {
+    // 체육 갈래와 축구부는 그대로, 경기에서 보인 것만 플래그로 남긴다
+    if (picked(s)) return trackSet('진로_체육', { 축구부: true });
+    return T.exclusive('진로_체육');
+  };
+})();
 
 X('middle', 'tn_m25', 15, '컴퓨터실', '첫 앱 만들기', '코딩부에서 간단한 앱을 만듭니다. 버튼을 누르면 소리가 나게 하고 싶습니다.', [
   ['끝까지 만든다', '친구들에게 배포했습니다. 세 명이 설치했습니다.', { mental: 3, social: 2 }, { 코딩: true, 진로_공학: true }],
@@ -127,10 +152,31 @@ X('middle', 'tn_m27', 15, '교실', '단톡방 소문', '단톡방에 나에 대
   ['무시한다', '아무 대답도 하지 않았습니다. 한동안 시선이 따가웠습니다.', { mental: 1, social: -1 }]
 ]);
 
-X('middle', 'tn_m28', 15, '교실', '첫 반장', '반장 선거에서 표를 받았습니다. 해보고 싶습니다.', [
-  ['출마한다', '반장이 됐습니다. 회의와 청소 당번표가 내 일이 됐습니다.', { social: 3, mental: 2 }, { 학생회: true, 리더_씨앗: true }],
-  ['부반장을 맡는다', '반장을 도왔습니다. 실제로 일하는 사람은 나였습니다.', { social: 2, mental: 2 }]
-]);
+/* 첫 반장 — '출마한다'는 나설 의도는 그대로, 당선은 표가 갈린다는 걸 결과로 보여 준다. */
+(function () {
+  function elected(s) {
+    return LifeChance.check(s, {
+      social: 0.42, charm: 0.20, luck: 0.24, base: 8, pass: 57,
+      bonus: { 리더_씨앗: 6, 학생회: 5, 반장: 5 }
+    });
+  }
+  var ev = X('middle', 'tn_m28', 15, '교실', '첫 반장', '반장 선거에서 표를 받았습니다. 해보고 싶습니다.', [
+    ['출마한다', '공약을 준비했습니다.', { mental: 1 }],
+    ['부반장을 맡는다', '반장을 도왔습니다. 실제로 일하는 사람은 나였습니다.', { social: 2, mental: 2 }]
+  ]);
+
+  ev.choices[0].result = function (s) {
+    return elected(s)
+      ? '표가 가장 많았습니다. 반장이 됐고, 회의와 청소 당번표가 내 일이 됐습니다.'
+      : '표가 모자랐습니다. 부반장을 맡아 회의를 정리했고, 일은 결국 내가 했습니다.';
+  };
+  ev.choices[0].effects = function (s) {
+    return elected(s) ? { social: 3, mental: 2 } : { social: 2, mental: 1 };
+  };
+  ev.choices[0].set = function (s) {
+    return elected(s) ? { 학생회: true, 리더_씨앗: true } : null;
+  };
+})();
 
 X('middle', 'tn_m29', 15, '학원', '새벽 학원', '학원에서 새벽 자습을 시작합니다. 친구들은 이미 다니고 있습니다.', [
   ['같이 다닌다', '새벽 한 시에 귀가했습니다. 성적은 올랐지만 몸이 무거웠습니다.', { mental: 2, hp: -3 }, { 성적_상승: true }],
@@ -175,7 +221,7 @@ X('middle', 'tn_m41', 16, '예술고 설명회장', '예고 입시 설명회', '
 ], { at: [16, 3], milestone: true, fork: true, requireFlags: '진로_예술', weight: 4 });
 
 X('middle', 'tn_m42', 16, '체육고 상담실', '체육고 입시 상담', '체육고 입시를 알아봅니다. 기록이 중요하다고 합니다.', [
-  ['기록을 단축한다', '매일 아침 달렸습니다. 기록이 삼 초 줄었습니다.', { hp: 3, mental: 2 }, trackSet('진로_체육', { 체육고_준비: true })],
+  ['기록 단축을 노린다', '매일 아침 달렸습니다. 기록이 삼 초 줄었습니다.', { hp: 3, mental: 2 }, trackSet('진로_체육', { 체육고_준비: true })],
   ['일반고에서 운동을 계속한다', '공부와 운동을 같이 하기로 했습니다. 둘 다 어려웠습니다.', { hp: 2, mental: 1 }, { 진로_체육: true }]
 ], { requireFlags: ['진로_체육', '축구부'], weight: 4 });
 
@@ -302,10 +348,32 @@ X('high', 'tn_h10', 17, '교실', '진로 결정', '고2 진로를 정해야 합
   ['아직 정하지 않는다', '두루 들었습니다. 결정은 2학년 끝에 하기로 했습니다.', { mental: 2, social: 1 }, { 진로_미정: true }]
 ]);
 
-X('high', 'tn_h11', 17, '교실', '반장 선거', '반장 선거에 나가겠냐는 연락을 받았습니다.', [
-  ['나간다', '반장이 됐습니다. 아침마다 출석을 부르게 됐습니다.', { social: 3, mental: 2 }, { 학생회: true, 리더_씨앗: true }],
-  ['거절한다', '공부에 집중하기로 했습니다. 대신 학급 행사는 도왔습니다.', { mental: 3, social: 1 }]
-]);
+/* 반장 선거 — '나간다'는 말로 결과를 고르게 했던 걸 '선거에 나간다'는 의도로 바꿈.
+   당선 여부는 호감도·매력·운으로 갈리고, 리더 플래그가 있으면 유리하다. */
+(function () {
+  function elected(s) {
+    return LifeChance.check(s, {
+      social: 0.42, charm: 0.18, mental: 0.08, luck: 0.22, base: 8, pass: 58,
+      bonus: { 리더_씨앗: 6, 학생회: 5, 반장: 5 }
+    });
+  }
+  var ev = X('high', 'tn_h11', 17, '교실', '반장 선거', '반장 선거에 나가겠냐는 연락을 받았습니다.', [
+    ['반장 선거에 나간다', '공약을 준비했습니다.', { mental: 1 }],
+    ['거절한다', '공부에 집중하기로 했습니다. 대신 학급 행사는 도왔습니다.', { mental: 3, social: 1 }]
+  ]);
+
+  ev.choices[0].result = function (s) {
+    return elected(s)
+      ? '연설이 끝나자 박수가 나왔습니다. 반장이 됐고, 아침마다 출석을 부르게 됐습니다.'
+      : '연설은 짧았고 표가 모자랐습니다. 낙선했지만 이름은 알렸습니다. 학급 행사는 계속 도왔습니다.';
+  };
+  ev.choices[0].effects = function (s) {
+    return elected(s) ? { social: 3, mental: 2 } : { social: 1, mental: -1 };
+  };
+  ev.choices[0].set = function (s) {
+    return elected(s) ? { 학생회: true, 리더_씨앗: true } : null;
+  };
+})();
 
 X('high', 'tn_h12', 17, '겨울방학', '겨울방학 계획', '겨울방학이 시작됩니다. 스무 권을 읽겠다는 계획을 세웠습니다.', [
   ['계획을 지킨다', '열다섯 권을 읽었습니다. 계획의 75%는 성취였습니다.', { mental: 3, hp: -1 }, { 독서_습관: true }],

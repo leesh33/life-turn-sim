@@ -1,6 +1,16 @@
 /* ─────────────────────────────────────────────
    content.early.js — 유아기(1~7세) · 초등학교(8~13세)
    ───────────────────────────────────────────── */
+
+/* 수학 경시대회 — '나간다'는 의도와 '상을 받는다'는 결과를 나눈다.
+   상은 역량과 운으로 갈리고, 수학을 따로 한 아이가 유리하다. */
+function mathContestWon(s) {
+  return LifeChance.check(s, {
+    intel: 0.64, mental: 0.12, luck: 0.24, pass: 58,
+    bonus: { 학원_수학: 6, 앞자리: 4 }
+  });
+}
+
 window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 1세 ══════════════ */
@@ -277,7 +287,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '게임의 세계',
     text: '친구가 게임 계정을 알려줬습니다. 오늘 밤, 첫 보스전입니다. 내일은 받아쓰기 시험입니다.',
     choices: [
-      { label: '보스전을 잡는다', result: '새벽 2시에 클리어. 다음 날 시험은 45점. 그래도 뿌듯합니다.', effects: { mental: 3, hp: -2, social: 1 }, set: { 게이머: true } },
+      { label: '보스전에 도전한다', result: '새벽 2시에 클리어. 다음 날 시험은 45점. 그래도 뿌듯합니다.', effects: { mental: 3, hp: -2, social: 1 }, set: { 게이머: true } },
       { label: '한 판만 하고 잔다', result: '자제력이라는 걸 스스로 확인했습니다.', effects: { mental: 2, hp: 1 } },
       { label: '게임을 지운다', result: '친구가 서운해했지만 성적은 올랐습니다.', effects: { mental: 1, social: -2, hp: 1 } }
     ]
@@ -325,8 +335,17 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '수학 경시대회',
     text: '선생님이 경시대회를 권합니다. 주말을 반납해야 합니다. 상금은 10만 원입니다.',
     choices: [
-      { label: '나간다', result: '동상입니다. 트로피가 거실 TV 옆에 놓였습니다.', effects: { mental: 3, asset: 10, social: 2 }, set: { 수학상: true } },
-      { label: '주말이 더 소중하다', result: '주말에 친구들과 놀았습니다. 대신 특별한 성취는 없습니다.', effects: { mental: 2, social: 2 } }
+      { label: '경시대회에 나간다',
+        result: function (s) {
+          return mathContestWon(s)
+            ? '동상입니다. 트로피가 거실 TV 옆에 놓였습니다.'
+            : '상을 받지는 못했습니다. 어려운 문제를 끝까지 붙잡고 나왔습니다. 다음 대회를 보기로 했습니다.';
+        },
+        effects: function (s) {
+          return mathContestWon(s) ? { mental: 3, asset: 10, social: 2 } : { mental: 1, hp: -1 };
+        },
+        set: function (s) { return mathContestWon(s) ? { 수학상: true } : null; } },
+      { label: '주말을 지킨다', result: '주말에 친구들과 놀았습니다. 대신 특별한 성취는 없습니다.', effects: { mental: 2, social: 2 } }
     ]
   },
   {

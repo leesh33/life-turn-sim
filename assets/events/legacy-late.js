@@ -232,7 +232,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '과장 · 팀장',
     text: '팀장 자리가 비었습니다. 나와 옆 팀 과장이 후보입니다. 이 자리는 책임이 두 배입니다.',
     choices: [
-      { label: '받는다', result: '팀장이 되었습니다. 회의는 늘고, 내 판단을 미루는 사람이 없습니다.', effects: { mental: -1, hp: -2, asset: 300, social: 2 }, set: { 승진: true, 관리자: true } },
+      { label: '팀장 자리를 받아들인다', result: '팀장이 되었습니다. 회의는 늘고, 내 판단을 미루는 사람이 없습니다.', effects: { mental: -1, hp: -2, asset: 300, social: 2 }, set: { 승진: true, 관리자: true } },
       { label: '고사한다', result: '실무자로 남았습니다. 야근은 줄고 저녁이 생겼습니다.', effects: { mental: 3, hp: 2, asset: 60 }, set: { 워라밸러: true } }
     ]
   },
@@ -252,7 +252,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     text: '주말에 어디 갈지로 시작된 이야기가 세 시간째 이어집니다. 마지막엔 3년 전 일이 나왔습니다.',
     choices: [
       { label: '먼저 사과한다', result: '대화가 풀렸습니다. 자존심보다 관계가 크다는 걸 배웁니다.', effects: { social: 3, mental: 2 } },
-      { label: '논리로 이긴다', result: '이겼습니다. 방은 조용해졌고, 3일간 대화가 없었습니다.', effects: { mental: -2, social: -3 } },
+      { label: '논리로 따져 이기려 든다', result: '말은 이겼습니다. 방은 조용해졌고, 3일간 대화가 없었습니다.', effects: { mental: -2, social: -3 } },
       { label: '잠깐 나가서 걷는다', result: '한 시간 산책 후 돌아오니 냉장고에 음식이 있었습니다.', effects: { mental: 2, social: 1 } }
     ]
   },

@@ -335,7 +335,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '대장내시경',
     text: '검진 항목에 대장내시경이 있습니다. 전날 장 정결제를 먹어야 합니다. 물만 마시는 하루입니다.',
     choices: [
-      { label: '받는다', result: '용종이 하나 발견되어 제거했습니다. 의사가 "잘 오셨다"고 했습니다.', effects: { hp: 2, mental: 1, asset: -20 }, set: { 검진_완료: true }, queue: ['polyp_result'] },
+      { label: '검사를 받는다', result: '용종이 하나 발견되어 제거했습니다. 의사가 "잘 오셨다"고 했습니다.', effects: { hp: 2, mental: 1, asset: -20 }, set: { 검진_완료: true }, queue: ['polyp_result'] },
       { label: '다음 해로 미룬다', result: '올해는 넘겼습니다. 마음 한구석이 남았습니다.', effects: { hp: -1, mental: 1 } }
     ]
   },
@@ -491,7 +491,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '제2의 직업',
     text: '은퇴 전에 자격증을 하나 따두려 합니다. 전기기능사, 요양보호사, 조리사. 무엇이든 6개월이 걸립니다.',
     choices: [
-      { label: '자격증을 딴다', result: '세 번의 필기 끝에 붙었습니다. 자격증이 생기니 선택지가 늘었습니다.', effects: { mental: 3, hp: -2, asset: -60 }, set: { 자격증: true } },
+      { label: '자격증 시험에 도전한다', result: '세 번의 필기 끝에 붙었습니다. 자격증이 생기니 선택지가 늘었습니다.', effects: { mental: 3, hp: -2, asset: -60 }, set: { 자격증: true } },
       { label: '아직 시간이 있다고 생각한다', result: '내년에 하기로 했습니다. 책은 사뒀습니다.', effects: { mental: 1, asset: -5 } }
     ]
   },

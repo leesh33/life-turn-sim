@@ -99,7 +99,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '다시 일자리',
     text: '지인이 작은 회사의 자문 자리를 제안합니다. 월 150만 원, 주 2일. 다시 사원증을 만들 수 있습니다.',
     choices: [
-      { label: '받는다', result: '주 2일이지만 하루가 규칙적이 됐습니다. 돈보다 리듬을 얻었습니다.', effects: { asset: 180, mental: 3, social: 2 }, set: { 재취업: true } },
+      { label: '제안을 받아들인다', result: '주 2일이지만 하루가 규칙적이 됐습니다. 돈보다 리듬을 얻었습니다.', effects: { asset: 180, mental: 3, social: 2 }, set: { 재취업: true } },
       { label: '거절하고 쉰다', result: '평일 낮의 한강을 걸었습니다. 이게 오랜 소원이었습니다.', effects: { mental: 3, hp: 2 } }
     ]
   },

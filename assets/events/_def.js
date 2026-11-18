@@ -80,6 +80,38 @@
     };
   }
 
+  /* ── 결과 판정 도우미 ──
+     선택지 문구는 '하려는 일'로 쓰고, 실제로 되는지는 지금 능력치로 가른다.
+     난수를 쓰지 않는 이유: 결과 문구·효과·플래그가 서로 어긋나지 않으려면
+     같은 상태에서 몇 번을 물어도 같은 답이 나와야 한다.
+       LifeChance.check(s, { hp: 0.34, luck: 0.30, base: 6, pass: 60,
+                             bonus: { 운동_재능: 6 } })
+     · 가중치 키: hp · mental · charm · social · intel · luck (0~100)
+     · base: 더할 고정값 · pass: 통과선(기본 55) · bonus: 플래그별 가산 */
+  function chanceScore(s, spec) {
+    spec = spec || {};
+    var st = (s && s.stats) || {}, f = (s && s.flags) || {};
+    var q = spec.base || 0;
+    ['hp', 'mental', 'charm', 'social', 'intel', 'luck'].forEach(function (k) {
+      if (typeof spec[k] === 'number') q += (st[k] || 0) * spec[k];
+    });
+    var bonus = spec.bonus || {};
+    Object.keys(bonus).forEach(function (k) { if (f[k]) q += bonus[k]; });
+    return q;
+  }
+
+  function chanceCheck(s, spec) {
+    var pass = spec && typeof spec.pass === 'number' ? spec.pass : 55;
+    return chanceScore(s, spec) >= pass;
+  }
+
+  global.LifeChance = {
+    PASS: 55,
+    score: chanceScore,
+    check: chanceCheck
+  };
+  if (typeof globalThis !== 'undefined') globalThis.LifeChance = global.LifeChance;
+
   global.LifeTracks = {
     LIST: TRACKS.slice(),
     trackOf: trackOf,

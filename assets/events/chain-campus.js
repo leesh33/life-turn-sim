@@ -120,10 +120,36 @@ X('college', 'cp_u15', 20, '운동장', '교내 축구 동아리', '운동장에
   ['관중으로 남는다', '경기를 보러 갔습니다. 응원이 재미있었습니다.', { social: 2, mental: 1 }]
 ], { at: [20, 4], milestone: true, fork: true });
 
-X('college', 'cp_u16', [21, 22], '경기장', '교내 리그', '교내 리그 결승입니다. 관중이 운동장을 둘러쌌습니다.', [
-  ['선발로 나간다', '후반에 어시스트를 했습니다. 팀이 우승했습니다.', { hp: 3, social: 3 }, Object.assign(LifeTracks.exclusive('진로_체육'), { 운동_재능: true })],
-  ['준비를 돕는다', '몸을 풀고 물을 챙겼습니다. 팀이 고마워했습니다.', { social: 2, mental: 1 }, LifeTracks.exclusive('진로_체육')]
-], { at: [21, 8], milestone: true, fork: true, requireFlags: '축구부', weight: 3 });
+/* 교내 리그 — '선발로 나간다'는 결과를 고르게 하던 문구를 '손을 든다'는 의도로 바꾸고,
+   선발 여부는 체력·멘탈·호감도·운으로 갈리게 한다(운동 재능·축구부는 가산).
+   bench 로 끝나도 체육 갈래는 그대로 남는다. */
+(function () {
+  function picked(s) {
+    return LifeChance.check(s, {
+      hp: 0.34, mental: 0.14, social: 0.10, luck: 0.30, base: 6, pass: 62,
+      bonus: { 운동_재능: 6, 축구부: 2 }
+    });
+  }
+  var ev = X('college', 'cp_u16', [21, 22], '경기장', '교내 리그',
+    '교내 리그 결승입니다. 관중이 운동장을 둘러쌌습니다. 선발 명단은 감독이 정합니다.', [
+      ['선발 출전을 희망하며 손을 든다', '손을 들었습니다.', { hp: 1 }],
+      ['준비를 돕는다', '몸을 풀고 물을 챙겼습니다. 팀이 고마워했습니다.', { social: 2, mental: 1 }, LifeTracks.exclusive('진로_체육')]
+    ], { at: [21, 8], milestone: true, fork: true, requireFlags: '축구부', weight: 3 });
+
+  ev.choices[0].result = function (s) {
+    return picked(s)
+      ? '감독이 고개를 끄덕였습니다. 선발 명단에 내 이름이 올랐습니다. 후반에 어시스트를 했고, 팀이 우승했습니다.'
+      : '명단에는 내 이름이 없었습니다. 벤치에서 조끼를 걸치고 경기를 봤습니다. 팀은 준결승에서 멈췄고, 나는 다음 시즌을 기다렸습니다.';
+  };
+  ev.choices[0].effects = function (s) {
+    return picked(s) ? { hp: 3, social: 3 } : { hp: 1, social: 1, mental: -1 };
+  };
+  ev.choices[0].set = function (s) {
+    var set = LifeTracks.exclusive('진로_체육');
+    if (picked(s)) set.운동_재능 = true;
+    return set;
+  };
+})();
 
 X('college', 'cp_u17', [21, 23], '체육관', '생활체육 지도자', '생활체육 지도자 자격 과정을 알게 됐습니다. 주말 수업입니다.', [
   ['신청한다', '주말마다 체육관에 갔습니다. 자격증이 생기면 아이들을 가르칠 수 있습니다.', { mental: 3, hp: 2, asset: -50 }, Object.assign(LifeTracks.exclusive('진로_체육'), { 자격증: true })],
@@ -270,7 +296,7 @@ X('college', 'cp_u61', 23, '면접장', '첫 면접', '첫 면접입니다. 대�
 ]);
 
 X('college', 'cp_u62', 23, '운전학원', '운전면허', '운전면허 학원에 등록했습니다. 첫 시간에 차가 울컥했습니다.', [
-  ['끝까지 받는다', '기능시험에 한 번에 붙었습니다. 면허증이 생겼습니다.', { mental: 2, hp: -1, asset: -40 }, { 면허: true }],
+  ['학원을 끝까지 다닌다', '연습을 빠지지 않았습니다. 기능시험에 한 번에 붙었습니다. 면허증이 생겼습니다.', { mental: 2, hp: -1, asset: -40 }, { 면허: true }],
   ['학원을 미룬다', '돈과 시간이 아까웠습니다. 대중교통으로 다녔습니다.', { asset: 20, social: -1 }]
 ]);
 
