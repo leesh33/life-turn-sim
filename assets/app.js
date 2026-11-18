@@ -263,6 +263,7 @@
   function renderGame() {
     autoClear();
     if (!state) return;
+    missionFlash = false;
     $('whoName').textContent = state.name;
     $('ageLabel').textContent = state.age + '세';
     $('dayLabel').textContent = state.month + '개월차';
@@ -314,6 +315,89 @@
       '<button type="button" class="auto-pause" id="autoPause" aria-pressed="false">⏸ 일시정지</button>' +
       '</div>' +
       '<div class="auto-bar"><i id="autoFill"></i></div>';
+  }
+
+  /* ═════════ 성장 아바타 · 말풍선 · 단기 미션 ═════════
+     능력치 줄 아래(사건 카드 위)에 한 줄로 붙는다.
+     · 아바타는 인라인 SVG(assets/avatar.js) — 나이대·표정·소품이 지금 상태를 따른다
+     · 말풍선은 나이대·능력치·직전 선택 결과를 한두 줄로 말한다
+     · 미션은 나이대마다 하나, 진행률은 지금 능력치에서 바로 계산한다 */
+  var lastBandId = null;
+  var missionFlash = false;
+
+  function avatarCardHtml() {
+    if (!window.LifeAvatar || !state) return '';
+    var A = window.LifeAvatar;
+    var band = A.bandOf(state.age);
+    var m = A.mission(state);
+    var line = A.speech(state, { justDone: missionFlash });
+    var animate = band.id !== lastBandId;
+    lastBandId = band.id;
+    var pct = m.done ? 100 : Math.max(3, Math.min(100, m.pct));
+    return '<section class="avatar-card' + (animate ? '' : ' noanim') + (m.done ? ' done' : '') +
+      (missionFlash ? ' flash' : '') + '" id="avatarCard" aria-label="성장 아바타">' +
+      '<div class="av-tile">' + A.svg(state) + '</div>' +
+      '<div class="av-body">' +
+        '<div class="av-bubble"><span>' + esc(line) + '</span></div>' +
+        '<div class="av-mission" id="avMission" data-done="' + (m.done ? '1' : '0') + '"' +
+          ' aria-label="' + esc(m.label + ' ' + m.goal + ' ' + (m.done ? '달성' : m.pct + '퍼센트')) + '">' +
+          '<span class="am-chip">🎯 ' + esc(m.label) + '</span>' +
+          '<span class="am-goal">' + esc(m.goal) + '</span>' +
+          '<span class="am-pct">' + (m.done ? '달성 ✓' : m.pct + '%') + '</span>' +
+          '<span class="am-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
+        '</div>' +
+      '</div>' +
+      '</section>';
+  }
+
+  /* 능력치 팝업 — 바뀐 카드 바로 위에서 +5 / -15만 이 떠올랐다 사라진다 */
+  function deltaText(k, v) {
+    var abs = Math.abs(v);
+    if (k === 'asset') {
+      var t = window.LifeAvatar ? window.LifeAvatar.manText(abs) : Math.abs(Math.round(v)) + '만';
+      return (v > 0 ? '+' : '−') + t;
+    }
+    return (v > 0 ? '+' : '−') + Math.round(abs);
+  }
+
+  function popStatDeltas(deltas, delay) {
+    Object.keys(deltas || {}).forEach(function (k) {
+      var v = deltas[k];
+      if (!v) return;
+      var wait = delay || 0;
+      var run = function () {
+        var cell = document.querySelector('.stat[data-key="' + k + '"]');
+        if (!cell) return;
+        var el = document.createElement('span');
+        el.className = 'stat-pop ' + (v > 0 ? 'up' : 'down') + (k === 'asset' ? ' money' : '') + (wait ? ' late' : '');
+        el.textContent = deltaText(k, v);
+        el.setAttribute('aria-hidden', 'true');
+        cell.appendChild(el);
+        setTimeout(function () { if (el.parentNode) el.remove(); }, 1100);
+      };
+      if (wait) setTimeout(run, wait); else run();
+    });
+  }
+
+  /* 아바타 카드만 다시 그린다 — 회복처럼 사건 카드는 그대로 두고 상태만 바뀔 때 */
+  function refreshAvatar() {
+    var el = $('avatarCard');
+    if (!el || !window.LifeAvatar || !state) return;
+    var host = document.createElement('div');
+    host.innerHTML = avatarCardHtml();
+    var next = host.firstElementChild;
+    if (next && el.parentNode) el.parentNode.replaceChild(next, el);
+  }
+
+  /* 미션 달성 검사 — 새로 달성했으면 보너스를 주고 축하 토스트를 띄운다 */
+  function checkMissionNow() {
+    if (!window.LifeAvatar || !state) return null;
+    var got = window.LifeAvatar.checkMission(state);
+    if (!got) return null;
+    missionFlash = true;
+    toast('🎯 ' + got.label + ' 달성! ' + got.bonusLabel + ' 보너스');
+    if (navigator.vibrate) { try { navigator.vibrate([10, 40, 14]); } catch (e) {} }
+    return got;
   }
 
   function renderEvent(animate, fresh) {
@@ -368,6 +452,7 @@
     }
 
     $('stageInner').innerHTML =
+      avatarCardHtml() +
       '<article class="event-card' + (animate ? '' : ' noanim') + '" id="eventCard">' +
       '<div class="card-badges">' + badges + '</div>' +
       '<h2 class="card-title">' + esc(title) + '</h2>' +
@@ -414,10 +499,14 @@
   function resolveChoice(index, miniWin) {
     var res = Life.choose(state, index, typeof miniWin === 'boolean' ? { miniWin: miniWin } : undefined);
     if (!res) return;
+    var mission = checkMissionNow();
     Life.save(state);
     renderStats();
     pulseStats(res.deltas);
+    popStatDeltas(res.deltas);
+    if (mission) popStatDeltas(mission.deltas, 420);
     renderEvent(true, true);
+    missionFlash = false;
     renderRewards();
     $('advanceBtn').disabled = false;
     $('logCount').textContent = state.history.length;
@@ -507,9 +596,15 @@
       var res = Life.heal(state);
       Life.save(state);
       if (!res) { toast('지금은 회복할 수 없습니다'); return; }
+      var mission = checkMissionNow();
+      Life.save(state);
       renderStats();
-      renderRewards();
       pulseStats({ hp: 1, mental: 1 });
+      popStatDeltas({ hp: res.hp, mental: res.mental });
+      if (mission) popStatDeltas(mission.deltas, 420);
+      refreshAvatar();
+      missionFlash = false;
+      renderRewards();
       toast('💊 체력 +' + res.hp + ' · 멘탈 +' + res.mental + ' (남은 ' + res.left + '회)');
     }
   }
@@ -549,6 +644,7 @@
     if (!state || !state.current || state.current.chosen === null) return;
     var res = Life.advance(state);
     if (!res.ok) return;
+    var mission = res.ended ? null : checkMissionNow();
     Life.save(state);
 
     if (res.ended) { renderEnding(true); return; }
@@ -570,11 +666,13 @@
 
     setTimeout(function () {
       renderStats();
+      if (mission) popStatDeltas(mission.deltas, 260);
       renderEvent(true);
+      missionFlash = false;
       renderRewards();
       $('advanceBtn').disabled = true;
       $('stage').scrollTop = 0;
-      if (res.birthday) toast('🎂 ' + state.age + '세가 되었습니다');
+      if (res.birthday && !mission) toast('🎂 ' + state.age + '세가 되었습니다');
     }, 250);
   }
 
