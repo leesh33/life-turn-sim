@@ -709,7 +709,8 @@ body {
   flex: 0 0 auto;
   display: flex;
   gap: 9px;
-  padding: 10px 16px calc(12px + var(--safe-b));
+  /* 위 줄(되돌리기·다시 뽑기·긴급 회복)과 사이를 띄운다 — 보상바 아래 5px + 경계선 1px + 여기 8px = 14px */
+  padding: 8px 16px calc(12px + var(--safe-b));
   background: rgba(244, 241, 235, 0.9);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -1029,7 +1030,8 @@ body {
   flex: 0 0 auto;
   display: flex;
   gap: 6px;
-  padding: 6px 12px 0;
+  /* 아래에 5px을 남겨 하단바 경계선이 버튼에 붙지 않게 한다 */
+  padding: 6px 12px 5px;
   z-index: 4;
 }
 .reward-btn {
