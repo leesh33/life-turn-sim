@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """🧬 이전 회차 인물 — 브라우저 검증 (로컬 · 라이브 공용)
 
-  python3 test/cameo_ui.py --serve .            # 로컬
+  node test/mkcameo-states.js                                  # 단계별 저장본 만들기
+  python3 test/cameo_ui.py --serve .                            # 로컬
   python3 test/cameo_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
-하는 일
-  1. 명예의 전당에 1회차 '상훈'(80세 완주) 기록을 넣는다
-  2. '희연'으로 8세 인생을 시작한다 (시작 안내 토스트에 인물 수가 뜨는지)
-  3. 실제 엔진으로 달을 넘겨 카메오 등장 장면을 만나고, 화면을 그려 스크린샷
-  4. 친구 → 연인 → 부부로 이어 가며 관계 상태를 확인
-  5. 인생 일지·인생 요약에 인연이 남는지, 콘솔 오류 0건인지 확인
+하는 일 (390×844 실제 화면)
+  1. 명예의 전당에 1회차 '상훈'(80세 완주) 기록을 넣고, '희연'으로 8세 인생을 시작한다
+  2. 실제로 플레이해 만난 카메오 등장 장면 — 배지·이름·이전 인생 기록 안내줄
+  3. 친구 → 연인 → 부부로 이어 가며 화면과 관계 상태를 확인
+  4. 인생 일지 🧬 표시 · 인생 요약의 '이전 회차의 인연' · 명예의 전당 기록 줄
+  5. 콘솔 오류 0건
+
+※ 이 환경은 페이지를 여러 번 다시 열면 리소스가 모자라(net::ERR_INSUFFICIENT_RESOURCES)
+   스크립트가 빠진다. 그래서 단계마다 브라우저를 새로 띄워 페이지는 한 번만 열고,
+   상태는 test/mkcameo-states.js 가 만든 저장본을 심는다(README 의 저장본 주입 방식).
 """
 import argparse
 import functools
@@ -21,14 +26,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
 
 CHROME = "/workspace/.cache/ms-playwright/chromium-1134/chrome-linux/chrome"
-
-SANGHUN = {
-    "id": "r-sanghun-1", "kind": "life", "key": "life80", "stageLabel": "80세 완주", "age": 80,
-    "score": 71.4, "grade": "A", "top": None,
-    "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-기획자",
-    "name": "상훈", "gender": "남", "ts": 1700000000000, "mine": True,
-    "stats": {"hp": 64, "mental": 71, "charm": 66, "social": 84, "intel": 79, "luck": 55, "asset": 32000},
-}
+STATE_FILE = "/workspace/scratch/cameo-states.json"
 
 
 def serve(directory, port):
@@ -47,6 +45,9 @@ def main():
     ap.add_argument("--tag", default="local")
     args = ap.parse_args()
 
+    with open(STATE_FILE, encoding="utf-8") as f:
+        st = json.load(f)
+
     httpd = None
     if args.serve:
         httpd = serve(args.serve, 8877)
@@ -61,141 +62,126 @@ def main():
         results.append((bool(cond), name, extra))
         print(("PASS" if cond else "FAIL") + " · " + name + ((" — " + str(extra)) if extra else ""))
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
-        page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2,
-                                is_mobile=True, has_touch=True)
+    def session(p, hall, save, fn):
+        """브라우저를 새로 띄워 페이지를 한 번만 연다 (저장본 주입)"""
+        browser = p.chromium.launch(executable_path=CHROME,
+                                    args=["--no-sandbox", "--disable-dev-shm-usage"])
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1,
+                                  is_mobile=True, has_touch=True)
+        data = {"hall": json.dumps(hall, ensure_ascii=False),
+                "save": json.dumps(save, ensure_ascii=False) if save else None}
+        ctx.add_init_script(
+            "(() => { const data = " + json.dumps(data) + ";"
+            " try { localStorage.clear();"
+            "   localStorage.setItem('lifeTurnSim.hall.v1', data.hall);"
+            "   if (data.save) localStorage.setItem('lifeTurnSim.save.v1', data.save);"
+            " } catch (e) {} })();")
+        page = ctx.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
         page.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
-        page.goto(url, wait_until="networkidle")
-        page.wait_for_timeout(300)
-
-        # 1) 전당에 1회차 기록 주입
-        page.evaluate(
-            """(rec) => {
-                localStorage.clear();
-                localStorage.setItem('lifeTurnSim.hall.v1',
-                  JSON.stringify({ v: 1, seeded: true, records: [rec] }));
-            }""", SANGHUN)
-        page.reload(wait_until="networkidle")
-        page.wait_for_timeout(300)
-
-        # 2) 희연 · 8세 · 여 로 시작 (실제 UI 조작)
-        page.fill("#nameInput", "희연")
-        page.click('#genderChips .chip[data-g="여"]')
-        page.click('.age-card[data-age="8"]')
-        page.click("#startBtn")
+        page.goto(url, wait_until="load")
         page.wait_for_timeout(500)
-        age_label = page.inner_text("#ageLabel")
-        toast = page.inner_text("#toast")
-        ok("희연 · 8세로 인생 시작", "8세" in age_label, age_label)
-        ok("시작 안내에 이전 인생 인물 1명", "1명" in toast, toast)
-        page.screenshot(path=args.out + "/01-start-cameo-toast-" + args.tag + ".png")
+        try:
+            fn(page)
+        finally:
+            browser.close()
+        return errors
 
-        # 3) 실제 엔진으로 달을 넘겨 카메오 등장 장면을 만난다 (앱과 같은 상태·같은 저장본)
-        seen = page.evaluate(
-            """() => {
-                let s = Life.load();
-                const seen = [];
-                for (let i = 0; i < 40 && !s.ended; i++) {
-                  const ev = Life.currentEvent(s);
-                  seen.push(ev.id + '@' + s.age);
-                  if (String(ev.id).indexOf('cm_') === 0) break;
-                  Life.choose(s, 0);
-                  Life.advance(s);
-                }
-                Life.save(s);
-                return { seen: seen, id: s.current && s.current.eventId, age: s.age, month: s.month,
-                         cameos: s.cameos.map(c => c.name + '/' + c.rel) };
-            }""")
-        ok("플레이 중 카메오 장면 도달", str(seen["id"]).startswith("cm_"), json.dumps(seen, ensure_ascii=False)[:160])
+    shot = lambda name: args.out + "/" + name + "-" + args.tag + ".png"
+    all_errors = []
 
-        page.reload(wait_until="networkidle")
-        page.click("#resumeCard")
-        page.wait_for_timeout(400)
-        badge = page.inner_text("#eventCard")
-        ok("카드에 '이전 회차 인물' 배지", "이전 회차 인물" in badge, badge.split("\n")[0][:40])
-        ok("상훈의 실제 이름이 장면에 나옴", "상훈" in badge, "")
-        note = page.inner_text(".cameo-note")
-        ok("이전 인생 기록 안내줄", "80세 완주" in note and "억대 재산" in note, note.replace("\n", " / ")[:90])
-        page.screenshot(path=args.out + "/02-cameo-meet-" + args.tag + ".png")
+    with sync_playwright() as p:
+        # ① 희연 · 8세 · 여 — 시작 안내에 이전 인생 인물 수
+        def step_start(page):
+            page.fill("#nameInput", "희연")
+            page.click('#genderChips .chip[data-g="여"]')
+            page.click('.age-card[data-age="8"]')
+            page.click("#startBtn")
+            page.wait_for_timeout(500)
+            ok("희연 · 8세로 인생 시작", "8세" in page.inner_text("#ageLabel"), page.inner_text("#ageLabel"))
+            toast = page.inner_text("#toast")
+            ok("시작 안내에 이전 인생 인물 1명", "1명" in toast, toast)
+            page.screenshot(path=shot("01-start-cameo-toast"))
 
-        # 4) 친구 → 연인 → 부부
-        #    (등장 장면의 선택지가 실제로 친구가 되는지 — 판정은 능력치가 가른다)
-        page.evaluate(
-            """() => { const s = Life.load(); s.stats.social = 88; s.stats.charm = 85; s.stats.mental = 80;
-                      s.stats.luck = 80; Life.save(s); }""")
-        page.reload(wait_until="networkidle")
-        page.click("#resumeCard")
-        page.wait_for_timeout(300)
-        page.click("#choices .choice[data-i='0']")
-        page.wait_for_timeout(600)
-        rel = page.evaluate("() => Life.load().cameos[0].rel")
-        ok("먼저 말을 걸어 친구가 됨", rel == "friend", rel)
-        page.screenshot(path=args.out + "/03-cameo-friend-" + args.tag + ".png")
+        all_errors += session(p, st["hall"], None, step_start)
 
-        # 30세 몇 년 만의 연락 → 연인
-        page.evaluate(
-            """() => { const s = Life.load(); s.age = 30; s.month = 6;
-                      s.current = { eventId: 'cm_reunion', chosen: null }; Life.save(s); }""")
-        page.reload(wait_until="networkidle")
-        page.click("#resumeCard")
-        page.wait_for_timeout(300)
-        page.click("#choices .choice[data-i='0']")
-        page.wait_for_timeout(600)
-        rel = page.evaluate("() => Life.load().cameos[0].rel")
-        ok("몇 년 만의 연락 → 연인", rel == "dating", rel)
-        page.screenshot(path=args.out + "/04-cameo-dating-" + args.tag + ".png")
+        # ② 카메오 등장 장면 — 실제로 플레이해 만난 상태
+        def step_meet(page):
+            page.click("#resumeCard")
+            page.wait_for_timeout(500)
+            card = page.inner_text("#eventCard")
+            ok("카드에 '이전 회차 인물' 배지", "이전 회차 인물" in card, page.inner_text(".card-badges"))
+            ok("상훈의 실제 이름이 장면에 나옴", "상훈" in page.inner_text(".card-text"), "")
+            note = page.inner_text(".cameo-note")
+            ok("이전 인생 기록 안내줄", "80세 완주" in note and "억대 재산" in note, note.replace("\n", " / "))
+            page.screenshot(path=shot("02-cameo-meet"))
+            page.click("#choices .choice[data-i='0']")
+            page.wait_for_timeout(700)
+            rel = page.evaluate("() => Life.load().cameos[0].rel")
+            ok("먼저 말을 걸어 친구가 됨", rel == "friend", rel)
+            result = page.inner_text(".result-text")
+            ok("결과 문구에 상훈의 이름", "상훈" in result, result[:50])
+            page.screenshot(path=shot("03-cameo-friend"))
 
-        # 36세 진지한 이야기 → 부부
-        page.evaluate(
-            """() => { const s = Life.load(); s.age = 36; s.month = 5;
-                      s.current = { eventId: 'cm_deepen', chosen: null }; Life.save(s); }""")
-        page.reload(wait_until="networkidle")
-        page.click("#resumeCard")
-        page.wait_for_timeout(300)
-        page.click("#choices .choice[data-i='0']")
-        page.wait_for_timeout(600)
-        rel = page.evaluate("() => Life.load().cameos[0].rel")
-        flags = page.evaluate("() => { const s = Life.load(); return { m: !!s.flags.결혼, b: !!s.flags.배우자 }; }")
-        ok("진지한 이야기 → 부부", rel == "married", rel)
-        ok("결혼·배우자 플래그", flags["m"] and flags["b"], json.dumps(flags))
-        page.screenshot(path=args.out + "/05-cameo-married-" + args.tag + ".png")
+        all_errors += session(p, st["hall"], st["meet"], step_meet)
 
-        # 5) 인생 일지에 🧬 표시
-        page.click("#logBtn")
-        page.wait_for_timeout(400)
-        log_text = page.inner_text("#sheetBody")
-        ok("인생 일지에 '이전 회차' 표시", "이전 회차" in log_text, "이전 회차" if "이전 회차" in log_text else "없음")
-        page.screenshot(path=args.out + "/06-cameo-log-" + args.tag + ".png")
-        page.click("#sheetClose")
-        page.wait_for_timeout(300)
+        # ③ 몇 년 만의 연락 → 연인
+        def step_dating(page):
+            page.click("#resumeCard")
+            page.wait_for_timeout(500)
+            ok("재회 장면 제목", "연락" in page.inner_text(".card-title"), page.inner_text(".card-title"))
+            page.screenshot(path=shot("04-cameo-reunion"))
+            page.click("#choices .choice[data-i='0']")
+            page.wait_for_timeout(700)
+            rel = page.evaluate("() => Life.load().cameos[0].rel")
+            ok("몇 년 만의 연락 → 연인", rel == "dating", rel)
+            page.screenshot(path=shot("05-cameo-dating"))
 
-        # 6) 인생 요약에 인연
-        page.click("#summaryBtn")
-        page.wait_for_timeout(500)
-        end_text = page.inner_text("#endingScroll")
-        ok("인생 요약에 '이전 회차의 인연 · 부부'", "이전 회차의 인연" in end_text and "부부" in end_text, "")
-        page.screenshot(path=args.out + "/07-cameo-summary-" + args.tag + ".png")
+        all_errors += session(p, st["hall"], st["dating"], step_dating)
 
-        # 7) 80세 완주로 마무리 — 전당 기록에 인연이 남는다
-        page.evaluate(
-            """() => { const s = Life.load(); s.age = 80; s.month = 12;
-                      s.current = { eventId: 'cm_married_life', chosen: 0, result: 'x' };
-                      Life.advance(s); Life.save(s); return s.ended; }""")
-        page.reload(wait_until="networkidle")
-        page.click("#resumeCard")
-        page.wait_for_timeout(500)
-        page.click("#endHall")
-        page.wait_for_timeout(600)
-        hall_text = page.inner_text("#hallBody")
-        mine = page.evaluate("() => Life.hallMine().map(r => ({n: r.name, c: r.cameo && r.cameo.rel}))")
-        ok("명예의 전당 기록에 인연", any(m["c"] == "married" for m in mine), json.dumps(mine, ensure_ascii=False))
-        page.screenshot(path=args.out + "/08-hall-cameo-" + args.tag + ".png")
+        # ④ 진지한 이야기 → 부부 · 일지 · 요약
+        def step_married(page):
+            page.click("#resumeCard")
+            page.wait_for_timeout(500)
+            page.click("#choices .choice[data-i='0']")
+            page.wait_for_timeout(800)
+            rel = page.evaluate("() => Life.load().cameos[0].rel")
+            flags = page.evaluate("() => { const s = Life.load(); return { m: !!s.flags.결혼, b: !!s.flags.배우자 }; }")
+            ok("진지한 이야기 → 부부", rel == "married", rel)
+            ok("결혼·배우자 플래그", flags["m"] and flags["b"], json.dumps(flags))
+            page.screenshot(path=shot("06-cameo-married"))
 
-        ok("콘솔 오류 0건", len(errors) == 0, "; ".join(errors[:3]))
-        browser.close()
+            page.click("#logBtn")
+            page.wait_for_timeout(500)
+            log_text = page.inner_text("#sheetBody")
+            ok("인생 일지에 '이전 회차' 표시", "이전 회차" in log_text, "표시 있음" if "이전 회차" in log_text else "없음")
+            page.screenshot(path=shot("07-cameo-log"))
+            page.click("#sheetClose")
+            page.wait_for_timeout(300)
+
+            page.click("#summaryBtn")
+            page.wait_for_timeout(600)
+            end_text = page.inner_text("#endingScroll")
+            ok("인생 요약에 '이전 회차의 인연 · 부부'", "이전 회차의 인연" in end_text and "부부" in end_text, "")
+            page.screenshot(path=shot("08-cameo-summary"))
+
+        all_errors += session(p, st["hall"], st["married"], step_married)
+
+        # ⑤ 80세 완주 — 전당 기록에 인연이 남는다
+        def step_hall(page):
+            page.click("#resumeCard")
+            page.wait_for_timeout(600)
+            page.click("#endHall")
+            page.wait_for_timeout(700)
+            mine = page.evaluate("() => Life.hallMine().map(r => ({n: r.name, c: r.cameo && r.cameo.rel}))")
+            ok("명예의 전당 기록에 인연", any(m["c"] == "married" for m in mine), json.dumps(mine, ensure_ascii=False))
+            ok("전당 기록 줄에 🧬 표시", "🧬" in page.inner_text("#hallBody"), "")
+            page.screenshot(path=shot("09-hall-cameo"))
+
+        all_errors += session(p, st["hallAfter"], st["ended"], step_hall)
+
+    ok("콘솔 오류 0건", len(all_errors) == 0, "; ".join(all_errors[:3]))
 
     if httpd:
         httpd.shutdown()

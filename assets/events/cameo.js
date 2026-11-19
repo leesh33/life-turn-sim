@@ -166,11 +166,11 @@
         function (s) { return pass(s, ROMANCE) ? { social: 3, charm: 2, mental: 2 } : { mental: -2, social: -1 }; },
         null, null, { cameoRel: function (s) { return pass(s, ROMANCE) ? 'dating' : null; } }],
       ['정중히 사양한다', '친구에게 미안하다고 했습니다. 그날은 일찍 잠들었습니다.', { mental: 1, social: -1 }]
-    ], { cameo: true, weight: 7, when: function (s) { return rel(s) === 'none'; } });
+    ], { cameo: true, weight: 7, excludeFlags: '결혼', when: function (s) { return rel(s) === 'none'; } });
 
   /* ═══════════ ③ 다시 만난 친구 → 연인 ═══════════ */
 
-  X('work', 'cm_reunion', [29, 33], '식당', '몇 년 만의 연락',
+  X('work', 'cm_reunion', [27, 31], '식당', '몇 년 만의 연락',
     function (s) {
       return '동창 모임 단톡방에 초대가 왔습니다. 명단에 ‘' + nameOf(s) + '’이 있습니다. ' +
         (rel(s) === 'close' ? '오랜 단짝입니다. ' : '학교 때부터 알던 사이입니다. ') +
@@ -188,7 +188,7 @@
       ['그날 이야기로 만족한다',
         '그 시절 이야기만 세 시간 했습니다. 집에 오는 길에 발걸음이 가벼웠습니다.',
         { mental: 3, social: 2 }, null, null, { cameoRel: 'close' }]
-    ], { cameo: true, weight: 7,
+    ], { cameo: true, weight: 7, excludeFlags: '결혼',
       when: function (s) { return (rel(s) === 'friend' || rel(s) === 'close') && Life.cameoCanRomance(s); } });
 
   // 이성으로 이어질 수 없을 때(같은 성별·성별 미상)는 단짝 갈래로 깊어진다
@@ -206,7 +206,7 @@
 
   /* ═══════════ ④ 진지한 사이 — 결혼 / 이별 ═══════════ */
 
-  X('family', 'cm_deepen', [35, 40], '집 앞', '미래를 이야기하는 밤',
+  X('work', 'cm_deepen', [32, 34], '집 앞', '미래를 이야기하는 밤',
     function (s) {
       return '‘' + nameOf(s) + '’과 만난 지 두 해가 넘었습니다. 오늘은 이야기가 자꾸 내일, 그다음으로 넘어갑니다. ' +
         '집은 어디로 할지, 명절은 어떻게 보낼지, 그런 이야기를 합니다.';
@@ -223,9 +223,9 @@
       ['아직은 각자의 시간을 갖기로 한다',
         '서두르지 않기로 했습니다. 대신 서로의 일주일을 더 자세히 알게 되었습니다.',
         { mental: 2, intel: 1 }, null, null, { cameoRel: 'dating' }]
-    ], { cameo: true, weight: 7, when: function (s) { return rel(s) === 'dating'; } });
+    ], { cameo: true, weight: 7, excludeFlags: '결혼', when: function (s) { return rel(s) === 'dating'; } });
 
-  X('family', 'cm_breakup', [35, 39], '늦은 밤', '어긋나기 시작한 시간',
+  X('work', 'cm_breakup', [31, 34], '늦은 밤', '어긋나기 시작한 시간',
     function (s) {
       return '‘' + nameOf(s) + '’과의 약속이 이번 달에 세 번 미뤄졌습니다. 서로 바쁜 건 알지만, 바쁘다는 말이 대화의 전부가 되었습니다.';
     },
@@ -236,7 +236,7 @@
       ['각자의 길을 가기로 한다',
         '마지막 인사를 하고 돌아왔습니다. 연락처는 지우지 않았습니다.',
         { mental: -3, social: 1, charm: 1 }, null, null, { cameoRel: 'parted' }]
-    ], { cameo: true, weight: 6, when: function (s) { return rel(s) === 'dating'; } });
+    ], { cameo: true, weight: 6, excludeFlags: '결혼', when: function (s) { return rel(s) === 'dating'; } });
 
   X('family', 'cm_married_life', [41, 47], '집', '같이 사는 하루',
     function (s) {

@@ -152,7 +152,7 @@ const reunionText = evText(force(s3, 'cm_reunion', 30, 6), s3);
 Life.choose(s3, 0);
 check('몇 년 만의 연락 → 연인', s3.cameos[0].rel === 'dating', s3.cameos[0].rel + ' / ' + reunionText.slice(0, 30));
 
-force(s3, 'cm_deepen', 36, 5);
+force(s3, 'cm_deepen', 33, 5);
 const deepenRes = Life.choose(s3, 0);
 check('진지한 이야기 → 부부', s3.cameos[0].rel === 'married', s3.cameos[0].rel);
 check('부부가 되면 결혼·배우자 플래그', s3.flags.결혼 === true && s3.flags.배우자 === true,
@@ -254,7 +254,7 @@ check('한 명뿐이면 모임 장면은 열리지 않음', (function () {
 clearStorage();
 putHall([SANGHUN]);
 const organic = [];
-let married = 0;
+let progressed = 0, married = 0;
 for (let k = 0; k < 4; k++) {
   const s = Life.newGame({ name: '희연', gender: '여', startAge: 8 });
   let guard = 0;
@@ -264,10 +264,29 @@ for (let k = 0; k < 4; k++) {
     Life.choose(s, Math.floor(Math.random() * ev.choices.length));
     Life.advance(s);
   }
+  if (s.cameos[0].rel !== 'none') progressed++;
   if (s.cameos[0].rel === 'married') married++;
 }
 check('무작위 플레이에서 카메오 장면이 실제로 나옴', organic.length > 0, organic.slice(0, 6).join(', ') || '0회');
-check('무작위 플레이에서도 부부 갈래에 도달함', married > 0, married + ' / 4판');
+check('무작위 플레이에서도 인연이 친구를 넘어섬', progressed > 0, progressed + ' / 4판 (부부 ' + married + '판)');
+
+/* ── 9-1) 이미 다른 사람과 결혼한 인생 — 카메오 연애 갈래는 열리지 않는다 ── */
+clearStorage();
+putHall([SANGHUN]);
+const marriedElsewhere = Life.newGame({ name: '희연', gender: '여', startAge: 25 });
+marriedElsewhere.flags.결혼 = true;
+marriedElsewhere.flags.배우자 = true;
+const romanceIds = ['cm_blinddate', 'cm_reunion', 'cm_deepen', 'cm_breakup'];
+const opened = romanceIds.filter((id) => {
+  const ev = EVENTS.find((e) => e.id === id);
+  const s = Life.newGame({ name: '희연', gender: '여', startAge: 25 });
+  s.flags.결혼 = true;
+  s.cameos[0].rel = id === 'cm_blinddate' ? 'none' : (id === 'cm_reunion' ? 'friend' : 'dating');
+  s.age = ev.minAge;
+  s.turn = 300;
+  return Life.passes(ev, s);
+});
+check('이미 결혼한 인생 → 카메오 연애 이벤트 숨김', opened.length === 0, opened.join(',') || '0건');
 
 /* ── 결과 ── */
 ran.forEach((line) => console.log(line));

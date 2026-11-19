@@ -1895,6 +1895,7 @@
     archetypeOf: archetypeOf,
     ARCHETYPES: ARCHETYPES,
     flagMatch: flagMatch,
+    passes: function (ev, s) { return passes(ev, s); },
     formatAsset: formatAsset,
     compactAsset: compactAsset,
     displayStat: displayStat,
