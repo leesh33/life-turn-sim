@@ -1217,12 +1217,12 @@
     $('lgCount').textContent = data && data.total != null ? data.total + '명' : '—';
 
     var html;
-    if (lgLoading && !data) {
-      html = '<div class="hall-empty">전체 랭킹을 불러오는 중…</div>';
-    } else if (lgError) {
+    if (lgError) {
       html = '<div class="hall-empty">' + esc(lgError) + '<br>' +
         (signed ? '잠시 뒤 다시 열어 보세요.' : '로그인하지 않아도 모두의 기록은 볼 수 있습니다.') + '</div>';
-    } else if (!data || !(data.entries || []).length) {
+    } else if (!data) {
+      html = '<div class="hall-empty">전체 랭킹을 불러오는 중…</div>';
+    } else if (!(data.entries || []).length) {
       html = '<div class="hall-empty">아직 등록된 기록이 없습니다.<br>' +
         (signed ? '이 인생의 주인공이 되어 보세요!' : 'Google로 로그인하면 첫 기록의 주인공이 될 수 있습니다.') + '</div>';
     } else {
