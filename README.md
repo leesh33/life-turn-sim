@@ -202,6 +202,7 @@
   - RLS: `auth.uid() = user_id` 인 본인 행만 `select`/`insert`/`update`/`delete`, **anon 은 권한 없음**
   - 저장은 `life_sim_put_state(p_data jsonb, p_revised_at bigint)` **security definer** RPC 하나로. 들어온 `revised_at` 이 저장된 것보다 과거면 덮어쓰지 않고 지금 상태를 돌려주고, 앱은 돌려받은 값이 다르면 한 번 더 합쳐 올립니다(여러 기기가 동시에 저장해도 최신이 남게).
   - Supabase Auth 의 Google 제공자와 리다이렉트 주소(`https://life-turn-sim.vercel.app/**`)는 대시보드에서 설정되어 있습니다(릴스핀과 같은 프로젝트 공용).
+    로컬(`python3 -m http.server`)에서 진짜 구글 로그인까지 보려면 Authentication → URL Configuration 의 Redirect URLs 에 `http://localhost:포트/**` 를 한 줄 추가해야 합니다.
 - **실패해도 로컬은 그대로**: 네트워크가 끊기면 칩이 `동기화 실패 · 다시 시도`로 바뀌고 저장본은 건드리지 않습니다. 탭을 숨기거나 다시 열 때도 한 번 맞춥니다.
 
 ### 개인정보처리방침 · 이용약관
