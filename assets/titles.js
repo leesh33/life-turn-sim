@@ -117,7 +117,9 @@
         at: Date.now(),
         age: state.age,
         month: state.month,
-        name: state.name || ''
+        name: state.name || '',
+        // 어느 판에서 딴 칭호인가 — 엔딩 결과 카드가 '이번 인생의 칭호'만 골라 쓴다
+        run: state.createdAt || null
       };
       out.push(t);
     });

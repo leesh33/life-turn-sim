@@ -6,7 +6,7 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
-  var SAVE_VERSION = 5;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운) → v5(이전 회차 인물)
+  var SAVE_VERSION = 5;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운) → v5(이전 회차 인물 · 2026-11-20 출발 시나리오·가문 유산을 같은 v5 모양에 더함)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
   var MONTHS = 12;           // 한 살 = 12개월차
   var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
@@ -89,6 +89,64 @@
     35: { stats: { hp: 56, mental: 55, charm: 58, social: 60, intel: 64, luck: 51, asset: 9500 },
           flags: { 대졸: true, 문과: true, 직업: '대기업 기획자' } }
   };
+
+  /* ═════════════ 출발 시나리오 ═════════════
+     같은 나이에서 시작해도 '어떤 집에서 태어났는가'가 첫 몇 해의 결을 바꾼다.
+       · 재산은 배수(assetMul)와 고정값(assetAdd)으로, 능력치는 시작할 때 한 번만 더한다
+         (이후의 고수준 체감·최고치 유지·노화 규칙은 모든 시나리오가 똑같이 따른다).
+       · 시나리오 플래그(시나리오_재벌 등)로 그 집안에만 열리는 이벤트가 붙는다
+         (assets/events/scenario.js) — 재벌가의 승계 압박, 흙수저의 아르바이트, 90년대생의 세대 서사.
+       · 기본값('kr')은 지금까지의 균형을 그대로 둔다(아무것도 더하지 않는다). */
+  var SCENARIOS = [
+    { id: 'kr', emoji: '🇰🇷', name: '기본 한국 현실', short: '한국 현실',
+      desc: '평범한 집, 평범한 통장. 특별히 유리하지도 불리하지도 않은 출발입니다.',
+      hint: '평범한 집 · 균형 잡힌 출발',
+      stats: {}, assetMul: 1, assetAdd: 0, flags: {},
+      intro: '평범한 집에서 인생이 시작되었습니다' },
+    { id: 'imf', emoji: '📼', name: '90년대생', short: '90년대생',
+      desc: '외환위기를 지난 부모 밑에서 자란 세대. 일찍 철들고, 운은 조금 비켜 갔습니다.',
+      hint: '일찍 철듦 · 운은 조금 낮게',
+      stats: { mental: -3, intel: 2, social: 1, luck: -2 }, assetMul: 0.7, assetAdd: 0,
+      flags: { 시나리오_IMF: true },
+      intro: '외환위기를 지나온 집에서 인생이 시작되었습니다' },
+    { id: 'chaebol', emoji: '💎', name: '재벌가 막내', short: '재벌가 막내',
+      desc: '태어날 때부터 통장이 있고 이름표가 따라붙습니다. 대신 비교와 기대도 함께 옵니다.',
+      hint: '재산 1억 · 대신 압박이 크다',
+      stats: { mental: -7, hp: -4, social: 6, charm: 5, intel: 3 }, assetMul: 1, assetAdd: 10000,
+      flags: { 시나리오_재벌: true },
+      intro: '이름표가 따라붙는 집에서 인생이 시작되었습니다' },
+    { id: 'dirt', emoji: '🔥', name: '흙수저 자수성가', short: '흙수저',
+      desc: '통장은 빚에서 시작합니다. 대신 몸과 마음이 일찍 단단해졌습니다.',
+      hint: '빚에서 시작 · 몸과 마음은 단단',
+      stats: { hp: 4, mental: 4, social: -3, charm: -2, intel: 1 }, assetMul: 0.1, assetAdd: -150,
+      flags: { 시나리오_흙수저: true },
+      intro: '가진 것 없이 인생이 시작되었습니다' }
+  ];
+  var SCENARIO_BY_ID = {};
+  SCENARIOS.forEach(function (sc) { SCENARIO_BY_ID[sc.id] = sc; });
+
+  function scenarioOf(id) {
+    return SCENARIO_BY_ID[id] || SCENARIO_BY_ID.kr;
+  }
+
+  function scenarioBrief(id) {
+    var sc = scenarioOf(id);
+    return { id: sc.id, emoji: sc.emoji, name: sc.name, short: sc.short, desc: sc.desc, hint: sc.hint };
+  }
+
+  // 시작 상태에 시나리오를 얹는다 (능력치는 한 번만, 재산은 배수→고정값 순서)
+  function applyScenario(s, sc) {
+    var deltas = sc.stats || {};
+    Object.keys(deltas).forEach(function (k) {
+      if (s.stats[k] === undefined) return;
+      s.stats[k] = clamp(s.stats[k] + deltas[k], 0, 100);
+    });
+    var mul = typeof sc.assetMul === 'number' ? sc.assetMul : 1;
+    s.stats.asset = Math.round(s.stats.asset * mul + (sc.assetAdd || 0));
+    Object.keys(sc.flags || {}).forEach(function (k) { s.flags[k] = sc.flags[k]; });
+    s.scenario = sc.id;
+    return s;
+  }
 
   /* ── 유틸 ── */
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -484,6 +542,116 @@
     };
   }
 
+  /* ═════════════ 가문 · 유산 이어받기 ═════════════
+     명예의 전당에 남긴 '내가 살았던 인생' 중 하나를 골라 그 집안의 자녀로 시작한다.
+       · 재산 : 그 인생의 순재산 중 6%만 물려받는다(최대 2,500만원).
+                한 번의 상속으로 판이 끝나지 않게, 그리고 '빚'은 물려받지 않게 0에서 끊는다.
+       · 특성 : 그 인생의 가장 높은 능력치 하나에 +3 (가문의 재능)
+       · 대수 : 부모가 1대면 나는 2대, 부모가 2대면 나는 3대 — 전당 기록에 대수를 남긴다.
+       · 부모님이 이전 회차 인물과 부부였다면 '부모님: OO ♥ XX' 가문 소개가 붙고,
+         두 사람은 이번 인생의 인연 후보에서 빠진다(부모와 연애할 수는 없으니까). */
+  var LEGACY_RATE = 0.06;     // 순재산의 6%
+  var LEGACY_CAP = 2500;      // 최대 2,500만원 (만원 단위)
+  var LEGACY_BONUS = 3;       // 가문의 재능 +3
+  var LEGACY_TRAIT = {
+    hp: '몸이 튼튼한 집안',
+    mental: '쉽게 흔들리지 않는 집안',
+    charm: '눈에 띄는 집안',
+    social: '사람이 따르는 집안',
+    intel: '머리 쓰는 집안',
+    luck: '운이 따르는 집안'
+  };
+
+  function ancestorInfo(rec) {
+    if (!rec) return null;
+    var st = rec.stats || {};
+    var asset = typeof st.asset === 'number' ? st.asset : 0;
+    var top = topStatOf(st) || { key: 'mental', label: '멘탈', value: 50 };
+    var heir = asset > 0 ? Math.round(Math.min(asset * LEGACY_RATE, LEGACY_CAP)) : 0;
+    var spouse = rec.cameo && rec.cameo.rel === 'married' && rec.cameo.name ? rec.cameo.name : null;
+    return {
+      recId: rec.id || null,
+      name: rec.name,
+      gender: rec.gender || guessGender(rec.name),
+      gen: (typeof rec.generation === 'number' && rec.generation > 0 ? rec.generation : 1) + 1,
+      key: rec.key || '',
+      stageLabel: rec.stageLabel || '',
+      age: rec.age || null,
+      score: typeof rec.score === 'number' ? Math.round(rec.score) : null,
+      grade: rec.grade || '',
+      title: rec.title || '',
+      asset: Math.round(asset),
+      assetText: formatAsset(asset),
+      heir: heir,
+      heirText: formatAsset(heir),
+      bonus: { key: top.key, label: top.label, amount: LEGACY_BONUS },
+      trait: LEGACY_TRAIT[top.key] || '가문의 재능',
+      family: spouse ? '부모님: ' + rec.name + ' ♥ ' + spouse : '부모님: ' + rec.name,
+      spouse: spouse,
+      scenario: rec.scenario || 'kr'
+    };
+  }
+
+  // 전당에 남긴 내 기록 = 이어받을 수 있는 가문 (최근 것부터)
+  function ancestorsOf() {
+    var list;
+    try { list = hallRecords().filter(function (r) { return r && r.mine && r.name; }); } catch (e) { return []; }
+    list = list.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    return list.map(ancestorInfo).filter(Boolean);
+  }
+
+  // opts.legacy 는 전당 기록 id 문자열 또는 그 객체
+  function legacyOf(opts) {
+    if (!opts) return null;
+    var id = typeof opts === 'string' ? opts : opts.recId;
+    if (!id) return null;
+    var rec = null;
+    try {
+      var all = hallRecords();
+      for (var i = 0; i < all.length; i++) { if (all[i].id === id) { rec = all[i]; break; } }
+    } catch (e) { return null; }
+    if (!rec || !rec.mine) return null;
+    return ancestorInfo(rec);
+  }
+
+  function applyLegacy(s, legacy) {
+    s.stats.asset = Math.round(s.stats.asset + legacy.heir);
+    if (legacy.bonus && s.stats[legacy.bonus.key] !== undefined) {
+      s.stats[legacy.bonus.key] = clamp(s.stats[legacy.bonus.key] + legacy.bonus.amount, 0, 100);
+    }
+    s.flags.가문_이어받음 = true;
+    s.generation = legacy.gen;
+    s.legacy = {
+      recId: legacy.recId,
+      from: legacy.name,
+      gen: legacy.gen,
+      heir: legacy.heir,
+      heirText: legacy.heirText,
+      bonus: { key: legacy.bonus.key, label: legacy.bonus.label, amount: legacy.bonus.amount },
+      trait: legacy.trait,
+      family: legacy.family,
+      spouse: legacy.spouse,
+      parentTitle: legacy.title,
+      stageLabel: legacy.stageLabel
+    };
+    return s;
+  }
+
+  function legacyBrief(legacy) {
+    if (!legacy) return null;
+    return {
+      from: legacy.from,
+      gen: legacy.gen,
+      heir: legacy.heir,
+      heirText: legacy.heirText,
+      trait: legacy.trait,
+      bonus: legacy.bonus,
+      family: legacy.family,
+      spouse: legacy.spouse,
+      stageLabel: legacy.stageLabel
+    };
+  }
+
   /* ── 상태 생성 ── */
   function newGame(opts) {
     opts = opts || {};
@@ -517,10 +685,18 @@
       hallId: null,
       undo: null,
       rewards: { heal: 0, reroll: 0, undo: 0 },
+      scenario: 'kr',
+      generation: 1,
+      legacy: null,
       createdAt: Date.now()
     };
+    // 출발 시나리오 → 가문 유산 순서로 얹는다 (유산이 마지막에 더해져야 상속액이 그대로 남는다)
+    applyScenario(s, scenarioOf(opts.scenario));
+    var legacy = legacyOf(opts.legacy);
+    if (legacy) applyLegacy(s, legacy);
     // 이전 회차의 인물 — 전당에 남은 내 기록에서 데려온다 (없으면 빈 배열)
-    s.cameos = pastCameos(s.name);
+    // 부모가 된 기록(가문 이어받기)은 부모님이므로 이번 인생의 인연 후보에서 뺀다
+    s.cameos = pastCameos(s.name, legacy ? [legacy.name, legacy.spouse] : []);
     var first = pickEvent(s);
     s.current = { eventId: first.id, chosen: null, event: first.__generic ? first : null };
     s.used.push(first.id);
@@ -823,6 +999,12 @@
     if (s.grad && s.grad.stats) backfillStats(s.grad.stats);
     // v5: 이전 회차 인물 — 예전 저장본은 불러올 때 전당에서 데려온다
     if (!Array.isArray(s.cameos)) s.cameos = pastCameos(s.name);
+    // 2026-11-20: 출발 시나리오·가문 유산 (예전 저장본은 기본값으로 이어 간다)
+    if (!s.scenario || !SCENARIO_BY_ID[s.scenario]) s.scenario = 'kr';
+    if (s.legacy === undefined) s.legacy = null;
+    if (typeof s.generation !== 'number' || s.generation < 1) {
+      s.generation = s.legacy && s.legacy.gen ? s.legacy.gen : 1;
+    }
     s.v = SAVE_VERSION;
     return s;
   }
@@ -1114,7 +1296,10 @@
       tags: tags.slice(0, 12),
       highlights: highlights,
       cameo: cameoSummary(s),
-      career: s.flags.직업 || null
+      career: s.flags.직업 || null,
+      scenario: scenarioBrief(s.scenario),
+      generation: s.generation || 1,
+      legacy: legacyBrief(s.legacy)
     };
   }
 
@@ -1439,16 +1624,22 @@
   }
 
   // 이름이 같은 사람은 만나지 않는다 — 지금 플레이어와 겹치면 후보에서 뺀다
-  function pastCameos(name) {
+  // excludeNames: 가문을 이어받았을 때 부모가 된 이름(부모와 연애할 수는 없으니까)
+  function pastCameos(name, excludeNames) {
     var list;
     try { list = hallRecords().filter(function (r) { return r && r.mine && r.name; }); } catch (e) { return []; }
     list = list.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
     var mineName = String(name || '').replace(/\s+/g, '');
+    var skip = {};
+    (excludeNames || []).forEach(function (n) {
+      var k = String(n || '').replace(/\s+/g, '');
+      if (k) skip[k] = true;
+    });
     var out = [], seen = {};
     for (var i = 0; i < list.length; i++) {
       var rec = list[i];
       var key = String(rec.name).replace(/\s+/g, '');
-      if (!key || key === mineName) continue;
+      if (!key || key === mineName || skip[key]) continue;
       if (seen[key]) continue;
       seen[key] = true;
       out.push(cameoFromRecord(rec));
@@ -1538,6 +1729,9 @@
         name: s.name,
         gender: s.gender,
         cameo: cameoSummary(s),
+        generation: s.generation || 1,
+        scenario: s.scenario || 'kr',
+        legacyFrom: s.legacy ? s.legacy.recId : null,
         stats: statSnapshot(info.stats)
       });
       s.grad.registered = true;
@@ -1566,6 +1760,9 @@
       name: s.name,
       gender: s.gender,
       cameo: cameoSummary(s),
+      generation: s.generation || 1,
+      scenario: s.scenario || 'kr',
+      legacyFrom: s.legacy ? s.legacy.recId : null,
       stats: statSnapshot(s.stats)
     });
     s.hallId = rec.id;
@@ -1860,6 +2057,15 @@
   /* ── 공개 API ── */
   global.Life = {
     STAGES: STAGES,
+    SCENARIOS: SCENARIOS,
+    scenarioOf: scenarioOf,
+    scenarioBrief: scenarioBrief,
+    ancestors: ancestorsOf,
+    legacyOf: legacyOf,
+    generationLabel: function (s) {
+      var g = s && typeof s.generation === 'number' ? s.generation : 1;
+      return g > 1 ? g + '대' : '1대';
+    },
     START_AGES: START_AGES,
     STATS: STATS,
     STAT_META: STAT_META,

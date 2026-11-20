@@ -13,6 +13,17 @@
   var hallReturn = 'start';
   var hallTab = 'all';
 
+  /* ── 출발 시나리오 · 가문 이어받기 (2026-11-20) ──
+     시작 화면에서 고른 값은 Life.newGame({ scenario, legacy }) 로 넘긴다.
+     마지막에 고른 시나리오는 localStorage 에 남겨 다음 판의 기본값으로 쓴다. */
+  var SCENARIO_KEY = 'lifeTurnSim.scenario.v1';
+  var pickedScenario = 'kr';
+  var pickedLegacy = null;
+  try {
+    var savedScenario = localStorage.getItem(SCENARIO_KEY);
+    if (savedScenario && Life && Life.scenarioOf(savedScenario).id === savedScenario) pickedScenario = savedScenario;
+  } catch (e) {}
+
   /* ── 5초 자동 넘김 ──
      결과 화면이 뜨면 5초 카운트다운 뒤 다음 턴으로 넘어간다.
      · 기존 '다음 1개월 진행하기' 버튼 = 타이머를 끄고 즉시 이동
@@ -65,6 +76,108 @@
     var mine = Life.hallMine();
     var hallBtn = $('hallBtnStart');
     if (hallBtn) hallBtn.textContent = '🏆 명예의 전당' + (mine.length ? ' ' + mine.length : '');
+
+    renderScenarios();
+    renderLegacy();
+  }
+
+  /* ── 출발 시나리오 칩 ── */
+  function renderScenarios() {
+    var row = $('scenarioRow');
+    if (!row || !Life || !Life.SCENARIOS) return;
+    row.innerHTML = Life.SCENARIOS.map(function (sc) {
+      var on = sc.id === pickedScenario;
+      return '<button type="button" class="scenario-chip' + (on ? ' active' : '') + '"' +
+        ' data-sc="' + sc.id + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+        ' title="' + esc(sc.desc) + '">' +
+        '<span class="sc-emoji" aria-hidden="true">' + sc.emoji + '</span>' + esc(sc.short) + '</button>';
+    }).join('');
+    var hint = $('scenarioHint');
+    if (hint) hint.textContent = Life.scenarioOf(pickedScenario).hint || '';
+  }
+
+  /* ── 가문 이어받기 줄 (전당에 내 기록이 있을 때만 보인다) ── */
+  function ancestorsNow() {
+    if (!Life || typeof Life.ancestors !== 'function') return [];
+    try { return Life.ancestors() || []; } catch (e) { return []; }
+  }
+
+  function currentAncestor(list) {
+    if (!pickedLegacy) return null;
+    var all = list || ancestorsNow();
+    for (var i = 0; i < all.length; i++) if (all[i].recId === pickedLegacy) return all[i];
+    return null;
+  }
+
+  function renderLegacy() {
+    var row = $('legacyRow');
+    if (!row) return;
+    var list = ancestorsNow();
+    var startScreen = $('screen-start');
+    if (!list.length) {
+      row.hidden = true;
+      pickedLegacy = null;
+      if (startScreen) startScreen.classList.remove('has-legacy');
+      return;
+    }
+    var cur = currentAncestor(list);
+    if (pickedLegacy && !cur) pickedLegacy = null;
+    row.hidden = false;
+    // 가문 줄이 한 줄 더 차지하므로 시작 화면 머리를 조금 더 압축한다(styles.css .has-legacy)
+    if (startScreen) startScreen.classList.add('has-legacy');
+    row.classList.toggle('on', !!cur);
+    $('legacyName').textContent = cur
+      ? '가문 이어받기 · ' + cur.name + ' (' + cur.gen + '대)'
+      : '새 인물로 시작';
+    $('legacySub').textContent = cur
+      ? cur.family + ' · 유산 ' + cur.heirText + ' · ' + cur.bonus.label + ' +' + cur.bonus.amount
+      : '이전 회차의 재산·재능을 물려받아 시작할 수 있어요';
+  }
+
+  function openLegacyModal() {
+    var list = ancestorsNow();
+    if (!list.length) { toast('이어받을 가문이 아직 없어요'); return; }
+    var html = '<button type="button" class="lm-item' + (pickedLegacy ? '' : ' active') + '" data-rec="">' +
+      '<div class="lm-top"><span class="lg-emoji" aria-hidden="true">👤</span>' +
+        '<span class="lm-name">새 인물로 시작</span>' +
+        (pickedLegacy ? '' : '<span class="lm-check">✓ 선택됨</span>') + '</div>' +
+      '<div class="lm-meta">가문 없이 처음부터 · 물려받는 것 없음</div>' +
+      '</button>';
+    list.forEach(function (a) {
+      var on = pickedLegacy === a.recId;
+      var meta = [];
+      if (a.stageLabel) meta.push(a.stageLabel);
+      if (a.age) meta.push(a.age + '세');
+      if (a.grade) meta.push(a.grade + '등급');
+      meta.push('남긴 재산 ' + a.assetText);
+      html += '<button type="button" class="lm-item' + (on ? ' active' : '') + '" data-rec="' + esc(a.recId) + '">' +
+        '<div class="lm-top"><span class="lm-gen">' + a.gen + '대</span>' +
+          '<span class="lm-name">' + esc(a.name) + '</span>' +
+          (on ? '<span class="lm-check">✓ 선택됨</span>' : '') + '</div>' +
+        '<div class="lm-meta">' + esc(meta.join(' · ')) + '</div>' +
+        (a.title ? '<div class="lm-title">' + esc(a.title) + '</div>' : '') +
+        (a.spouse ? '<div class="lm-family">👪 ' + esc(a.family) + '</div>' : '') +
+        '<div class="lm-gain"><span>유산 ' + esc(a.heirText) + '</span>' +
+          '<span>' + esc(a.trait) + ' · ' + esc(a.bonus.label) + ' +' + a.bonus.amount + '</span></div>' +
+        '</button>';
+    });
+    $('lmList').innerHTML = html;
+    $('lmList').scrollTop = 0;
+    $('legacyModal').hidden = false;
+    $('legacyModal').setAttribute('aria-hidden', 'false');
+  }
+
+  function closeLegacyModal() {
+    $('legacyModal').hidden = true;
+    $('legacyModal').setAttribute('aria-hidden', 'true');
+  }
+
+  function pickLegacy(recId) {
+    pickedLegacy = recId || null;
+    closeLegacyModal();
+    renderLegacy();
+    var cur = currentAncestor();
+    toast(cur ? '🧬 ' + cur.family + ' · ' + cur.gen + '대' : '새 인물로 시작합니다');
   }
 
   function bindStart() {
@@ -75,6 +188,25 @@
       Array.prototype.forEach.call(document.querySelectorAll('.age-card'), function (c) {
         c.classList.toggle('selected', Number(c.dataset.age) === pickedAge);
       });
+    });
+
+    $('scenarioRow').addEventListener('click', function (e) {
+      var chip = e.target.closest('.scenario-chip');
+      if (!chip) return;
+      pickedScenario = chip.dataset.sc;
+      renderScenarios();
+      if (window.Sfx) window.Sfx.pick();
+    });
+
+    $('legacyRow').addEventListener('click', openLegacyModal);
+    $('lmClose').addEventListener('click', closeLegacyModal);
+    $('legacyModal').addEventListener('click', function (e) {
+      if (e.target === $('legacyModal')) closeLegacyModal();
+    });
+    $('lmList').addEventListener('click', function (e) {
+      var item = e.target.closest('.lm-item');
+      if (!item) return;
+      pickLegacy(item.dataset.rec || null);
     });
 
     $('genderChips').addEventListener('click', function (e) {
@@ -125,14 +257,28 @@
 
   function startGame() {
     var name = $('nameInput').value.trim() || '상훈';
-    state = Life.newGame({ name: name, gender: pickedGender, startAge: pickedAge });
+    var legacyId = currentAncestor() ? pickedLegacy : null;
+    state = Life.newGame({
+      name: name,
+      gender: pickedGender,
+      startAge: pickedAge,
+      scenario: pickedScenario,
+      legacy: legacyId
+    });
+    try { localStorage.setItem(SCENARIO_KEY, pickedScenario); } catch (e) {}
     Life.save(state);
     showScreen('play');
     renderGame();
+    if (window.Sfx) window.Sfx.turn();
     var cameoCount = state.cameos ? state.cameos.length : 0;
-    toast(cameoCount
-      ? '🧬 이전 인생의 인물 ' + cameoCount + '명이 이번 인생에 있습니다'
-      : '인생이 시작되었습니다');
+    var bits = [];
+    if (state.legacy) bits.push('🧬 ' + state.legacy.family + ' · ' + state.legacy.gen + '대');
+    else if (state.scenario && state.scenario !== 'kr') {
+      var sc = Life.scenarioOf(state.scenario);
+      bits.push(sc.emoji + ' ' + sc.name);
+    }
+    if (cameoCount) bits.push('이전 인생 인물 ' + cameoCount + '명');
+    toast(bits.length ? bits.join(' · ') + ' — 인생이 시작되었습니다' : '인생이 시작되었습니다');
   }
 
   /* ── 화면 전환 ── */
@@ -398,6 +544,7 @@
     var got = window.LifeAvatar.checkMission(state);
     if (!got) return null;
     missionFlash = true;
+    if (window.Sfx) window.Sfx.mission();
     toast('🎯 ' + got.label + ' 달성! ' + got.bonusLabel + ' 보너스');
     if (navigator.vibrate) { try { navigator.vibrate([10, 40, 14]); } catch (e) {} }
     return got;
@@ -499,6 +646,7 @@
 
   function pickChoice(index) {
     if (!state) return;
+    if (window.Sfx) window.Sfx.pick();
     var ev = Life.currentEvent(state);
     var choice = ev && ev.choices ? ev.choices[index] : null;
     // 미니 승부가 붙은 선택지는 먼저 승부를 본다 (이때는 결과가 아직 없으므로 자동 넘김 타이머도 없다)
@@ -515,6 +663,11 @@
   function resolveChoice(index, miniWin) {
     var res = Life.choose(state, index, typeof miniWin === 'boolean' ? { miniWin: miniWin } : undefined);
     if (!res) return;
+    if (window.Sfx) {
+      if (miniWin === true) window.Sfx.win();
+      else if (miniWin === false) window.Sfx.lose();
+      else window.Sfx.deltas(res.deltas);
+    }
     var mission = checkMissionNow();
     Life.save(state);
     renderStats();
@@ -658,6 +811,7 @@
   function advance() {
     autoClear();
     if (!state || !state.current || state.current.chosen === null) return;
+    if (window.Sfx) window.Sfx.turn();
     var res = Life.advance(state);
     if (!res.ok) return;
     var mission = res.ended ? null : checkMissionNow();
@@ -1015,10 +1169,13 @@
       '</div>' +
       '<div class="end-actions second">' +
         '<button class="btn log" id="endHall">🏆 명예의 전당</button>' +
+        '<button class="btn log share-card" id="endShare" aria-label="결과 카드 저장 또는 공유">' +
+          '<b>📸 결과 카드</b><span>저장 · 공유</span></button>' +
       '</div>';
 
     $('endingScroll').innerHTML = html;
     showScreen('ending');
+    if (isFinal && window.Sfx) window.Sfx.ending();
 
     var cont = $('endContinue');
     if (cont) cont.addEventListener('click', function () { showScreen('play'); renderGame(); });
@@ -1030,6 +1187,30 @@
     });
     var hb = $('endHall');
     if (hb) hb.addEventListener('click', function () { openHall('ending'); });
+    var sh = $('endShare');
+    if (sh) sh.addEventListener('click', openShareCard);
+  }
+
+  /* ═════════════ 📸 엔딩 결과 카드 ═════════════
+     1080×1350 카드를 canvas 로 그리고, 미리보기에서 저장(PNG) 또는 공유(모바일 공유 시트). */
+  function openShareCard() {
+    if (!state) return;
+    if (!window.ShareCard) { toast('결과 카드를 만들 수 없습니다'); return; }
+    var canvas = window.ShareCard.render(state);
+    if (!canvas) { toast('이 브라우저에서는 카드를 만들 수 없습니다'); return; }
+    try {
+      $('smImg').src = canvas.toDataURL('image/png');
+    } catch (e) { toast('카드를 그리지 못했습니다'); return; }
+    $('smSub').textContent = '1080×1350 · PNG · ' + window.ShareCard.filename(state);
+    $('smShare').hidden = !window.ShareCard.canShareFiles();
+    $('shareModal').hidden = false;
+    $('shareModal').setAttribute('aria-hidden', 'false');
+  }
+
+  function closeShareCard() {
+    $('shareModal').hidden = true;
+    $('shareModal').setAttribute('aria-hidden', 'true');
+    $('smImg').removeAttribute('src');
   }
 
   function renderGradEnding() {
@@ -1079,16 +1260,20 @@
       '</div>' +
       '<div class="end-actions second">' +
         '<button class="btn log" id="endHall">🏆 명예의 전당</button>' +
+        '<button class="btn log share-card" id="endShare" aria-label="결과 카드 저장 또는 공유">' +
+          '<b>📸 결과 카드</b><span>저장 · 공유</span></button>' +
       '</div>';
 
     $('endingScroll').innerHTML = html;
     showScreen('ending');
+    if (window.Sfx) window.Sfx.ending();
     $('endRestart').addEventListener('click', resetGame);
     $('endLog').addEventListener('click', function () {
       if (!state.history.length) return;
       openSheet();
     });
     $('endHall').addEventListener('click', function () { openHall('ending'); });
+    $('endShare').addEventListener('click', openShareCard);
   }
 
   /* ═════════════ 칭호·인연 도감 ═════════════ */
@@ -1097,7 +1282,10 @@
   function checkTitles() {
     if (!window.TitleBook || !state) return;
     var got = window.TitleBook.check(state);
-    if (got.length) showTitleBadge(got);
+    if (got.length) {
+      if (window.Sfx) window.Sfx.title();
+      showTitleBadge(got);
+    }
   }
 
   function showTitleBadge(titles) {
@@ -1241,6 +1429,29 @@
     });
     initAdZone();
     bindHall();
+    initSfx();
+
+    // 📸 결과 카드 미리보기 · 저장 · 공유
+    $('smClose').addEventListener('click', closeShareCard);
+    $('shareModal').addEventListener('click', function (e) {
+      if (e.target === $('shareModal')) closeShareCard();
+    });
+    $('smSave').addEventListener('click', function () {
+      if (!state || !window.ShareCard) return;
+      window.ShareCard.download(state).then(function (r) {
+        toast(r && r.ok ? '📸 결과 카드를 저장했습니다' : '저장하지 못했습니다');
+      });
+    });
+    $('smShare').addEventListener('click', function () {
+      if (!state || !window.ShareCard) return;
+      window.ShareCard.share(state).then(function (r) {
+        if (!r) return;
+        if (r.mode === 'share') toast('공유 시트를 열었습니다');
+        else if (r.mode === 'cancel') return;
+        else if (r.ok) toast('📸 이미지로 저장했습니다');
+        else toast('공유하지 못했습니다');
+      });
+    });
 
     // 칭호 도감 진입 (시작 화면 · 플레이 화면)
     var tbStart = $('titleBtnStart');
@@ -1268,8 +1479,47 @@
       }
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeTitleBook();
+      if (e.key === 'Escape') {
+        closeTitleBook();
+        closeShareCard();
+        closeLegacyModal();
+      }
     });
+  }
+
+  /* ── 🔊 효과음 토글 (상단 바) ──
+     기본은 켜짐. 누를 때마다 켜고 끄며, 상태는 localStorage 에 남는다.
+     iOS 사파리는 사용자 제스처 전에 소리를 막으므로, 처음 화면을 건드리는 순간 연다. */
+  function initSfx() {
+    var btn = $('sfxBtn');
+    if (!window.Sfx) { if (btn) btn.hidden = true; return; }
+    if (!window.Sfx.supported()) { if (btn) btn.hidden = true; return; }
+    paintSfx();
+    if (btn) {
+      btn.addEventListener('click', function () {
+        window.Sfx.unlock();
+        var muted = window.Sfx.toggle();
+        paintSfx();
+        toast(muted ? '🔇 효과음을 꼈습니다' : '🔊 효과음을 켰습니다');
+      });
+    }
+    var once = function () {
+      window.Sfx.unlock();
+      document.removeEventListener('pointerdown', once);
+      document.removeEventListener('keydown', once);
+    };
+    document.addEventListener('pointerdown', once, { passive: true });
+    document.addEventListener('keydown', once);
+  }
+
+  function paintSfx() {
+    var btn = $('sfxBtn');
+    if (!btn || !window.Sfx) return;
+    var muted = window.Sfx.isMuted();
+    btn.textContent = muted ? '🔇' : '🔊';
+    btn.classList.toggle('off', muted);
+    btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    btn.setAttribute('aria-label', muted ? '효과음 켜기' : '효과음 끄기');
   }
 
   window.addEventListener('DOMContentLoaded', function () {

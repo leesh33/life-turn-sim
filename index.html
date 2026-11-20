@@ -46,6 +46,25 @@
         <h2 class="section-label">어디서부터 시작할까요?</h2>
         <div class="age-grid" id="ageGrid"></div>
 
+        <!-- 출발 시나리오 — 한 줄 가로 스크롤이라 시작 화면이 밀리지 않는다 -->
+        <div class="scenario-block">
+          <div class="scenario-head">
+            <span class="scenario-label">출발 시나리오</span>
+            <span class="scenario-hint" id="scenarioHint">평범한 집에서 태어납니다</span>
+          </div>
+          <div class="scenario-row" id="scenarioRow" role="group" aria-label="출발 시나리오 선택"></div>
+        </div>
+
+        <!-- 가문 이어받기 — 명예의 전당에 내 기록이 있을 때만 보인다 -->
+        <button type="button" class="legacy-row" id="legacyRow" hidden>
+          <span class="lg-emoji" aria-hidden="true">🧬</span>
+          <span class="lg-body">
+            <b id="legacyName">새 인물로 시작</b>
+            <span id="legacySub">이전 회차의 재산·재능을 물려받아 시작할 수 있어요</span>
+          </span>
+          <span class="lg-go">선택 →</span>
+        </button>
+
         <div class="name-row">
           <label class="field">
             <span class="field-label">이름</span>
@@ -79,12 +98,13 @@
     <header class="statusbar">
       <div class="sb-top">
         <div class="sb-who">
+          <button type="button" class="snd-btn" id="sfxBtn" aria-label="효과음 끄기" aria-pressed="false" title="효과음">🔊</button>
           <span class="sb-name" id="whoName">—</span>
           <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1개월차</span></span>
         </div>
         <div class="sb-actions">
           <button class="ghost-btn" id="hallBtnPlay">🏆 전당</button>
-          <button class="ghost-btn" id="fbBtnPlay">💬 제안·제보</button>
+          <button class="ghost-btn" id="fbBtnPlay" aria-label="제안·제보">💬 제보</button>
           <button class="ghost-btn" id="summaryBtn" aria-label="인생 요약">요약</button>
           <button class="ghost-btn danger" id="resetBtn">새로 시작</button>
         </div>
@@ -166,6 +186,40 @@
   </div>
 
   <div class="toast" id="toast" hidden></div>
+
+  <!-- ───────────── 🧬 가문 이어받기 선택 ───────────── -->
+  <div class="legacy-modal" id="legacyModal" hidden aria-hidden="true">
+    <div class="lm-card" role="dialog" aria-modal="true" aria-labelledby="lmTitle">
+      <header class="lm-head">
+        <div>
+          <h2 id="lmTitle">🧬 가문 이어받기</h2>
+          <p class="lm-lead">명예의 전당에 남긴 인생 하나를 부모로 삼아 시작합니다</p>
+        </div>
+        <button type="button" class="lm-close" id="lmClose" aria-label="닫기">✕</button>
+      </header>
+      <div class="lm-list" id="lmList"></div>
+      <p class="lm-note">순재산의 6%(최대 2,500만원)와 그 인생의 가장 높은 능력치 +3을 물려받습니다 · 빚은 물려받지 않습니다</p>
+    </div>
+  </div>
+
+  <!-- ───────────── 📸 엔딩 결과 카드 미리보기 ───────────── -->
+  <div class="share-modal" id="shareModal" hidden aria-hidden="true">
+    <div class="sm-card" role="dialog" aria-modal="true" aria-labelledby="smTitle">
+      <header class="sm-head">
+        <div>
+          <h2 id="smTitle">📸 결과 카드</h2>
+          <p class="sm-sub" id="smSub">1080×1350 · PNG</p>
+        </div>
+        <button type="button" class="sm-close" id="smClose" aria-label="닫기">✕</button>
+      </header>
+      <div class="sm-preview"><img id="smImg" alt="인생 결과 카드 미리보기" /></div>
+      <div class="sm-actions">
+        <button type="button" class="btn primary" id="smSave">이미지 저장</button>
+        <button type="button" class="btn outline" id="smShare">공유하기</button>
+      </div>
+      <p class="sm-note">저장한 이미지를 가족·친구에게 보내 보세요</p>
+    </div>
+  </div>
 
   <!-- ───────────── 💬 제안·제보 게시판 ───────────── -->
   <div class="fb-modal" id="fbModal" hidden aria-hidden="true">
@@ -297,6 +351,9 @@
 <script src="assets/feedback.js"></script>
 <script src="assets/titles.js"></script>
 <script src="assets/minigames.js"></script>
+<!-- 🔊 효과음(Web Audio 합성) · 📸 엔딩 결과 카드(canvas) -->
+<script src="assets/sfx.js"></script>
+<script src="assets/sharecard.js"></script>
 <!-- ☁️ 구글 로그인 · 클라우드 동기화 (선택) — 로그인하지 않으면 아무것도 하지 않는다 -->
 <script src="assets/sync.js"></script>
 <script src="assets/app.js"></script>
