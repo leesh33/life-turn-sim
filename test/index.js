@@ -10,7 +10,8 @@ const SUITE = [
   ['branches', 'test/branches.js'],
   ['stats', 'test/stats.js'],
   ['fun', 'test/fun.js'],
-  ['avatar', 'test/avatar.js']
+  ['avatar', 'test/avatar.js'],
+  ['sync', 'test/sync.js']
 ];
 
 let failed = 0;

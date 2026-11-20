@@ -936,7 +936,7 @@
 
     $('hallBody').innerHTML = pin + rows +
       '<p class="hall-fine">기본 기록은 게임 밸런스 시뮬레이션에서 뽑은 가상 인물의 기록입니다.<br>' +
-      '내 기록은 이 브라우저에만 저장됩니다.</p>';
+      '내 기록은 이 브라우저에 저장됩니다 · Google로 로그인하면 기기 사이로 이어집니다.</p>';
     $('hallBody').scrollTop = 0;
     bindPin(bestMine);
   }
@@ -1248,6 +1248,12 @@
     var tbHall = $('hallTitles');
     if (tbHall) tbHall.addEventListener('click', openTitleBook);
 
+    // ☁️ 구글 로그인 · 동기화 칩 (시작 화면 · 명예의 전당)
+    if (window.CloudSync) {
+      window.CloudSync.mount($('syncRow'));
+      window.CloudSync.mount($('hallSyncRow'));
+    }
+
     // 결과 카드 안의 ⏸ 일시정지 토글 (카드가 다시 그려져도 살아 있게 위임)
     $('stageInner').addEventListener('click', function (e) {
       if (e.target.closest('#autoPause')) { e.preventDefault(); autoToggle(); }
@@ -1270,6 +1276,24 @@
     renderStart();
     bindStart();
     bind();
+
+    // ☁️ 동기화가 화면을 다시 그릴 수 있게 앱 상태를 열어 둔다
+    //   (플레이 중에는 이 기기의 인생을 지키는 판단에 쓰인다)
+    window.LifeApp = {
+      isPlaying: function () { return !!state && screenName === 'play'; },
+      screen: function () { return screenName; }
+    };
+    window.addEventListener('life-sim-sync-applied', function () {
+      if (screenName === 'start') renderStart();
+      else if (screenName === 'hall') renderHall();
+      if (window.CloudSync) window.CloudSync.renderAll();
+    });
+    window.addEventListener('life-sim-sync-signed-in', function () {
+      renderStart();
+      toast('☁️ Google 계정과 연결했습니다');
+    });
+    if (window.CloudSync) window.CloudSync.start();
+
     // 저장된 게임이 있으면 바로 이어서 열지 않고 시작 화면에서 선택하게 둔다.
   });
 })();

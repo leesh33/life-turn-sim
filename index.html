@@ -61,11 +61,16 @@
           </div>
         </div>
       </div>
+
+      <p class="legal-links">
+        <a href="privacy.html">개인정보처리방침</a><span aria-hidden="true">·</span><a href="terms.html">이용약관</a>
+      </p>
     </div>
 
     <div class="start-foot">
       <button class="btn primary big" id="startBtn">인생 시작하기</button>
-      <p class="fine">진행 상황은 이 브라우저에 자동 저장됩니다 · 언제든 새로 시작할 수 있어요</p>
+      <!-- ☁️ 선택 기능 — 로그인 없이도 그대로 논다. 로그인하면 전당·칭호·진행이 기기 사이로 이어진다. -->
+      <div class="sync-row" id="syncRow" role="status" aria-live="polite"></div>
     </div>
   </section>
 
@@ -140,6 +145,7 @@
         <p id="hallSub">—</p>
       </div>
     </header>
+    <div class="sync-row hall-sync" id="hallSyncRow" data-sync-hall="1" role="status" aria-live="polite"></div>
     <div class="hall-tabs" id="hallTabs"></div>
     <button type="button" class="hall-titles" id="hallTitles"></button>
     <div class="hall-body" id="hallBody"></div>
@@ -291,6 +297,8 @@
 <script src="assets/feedback.js"></script>
 <script src="assets/titles.js"></script>
 <script src="assets/minigames.js"></script>
+<!-- ☁️ 구글 로그인 · 클라우드 동기화 (선택) — 로그인하지 않으면 아무것도 하지 않는다 -->
+<script src="assets/sync.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

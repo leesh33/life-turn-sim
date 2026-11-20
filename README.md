@@ -6,7 +6,7 @@
 
 - 실서버: **https://life-turn-sim.vercel.app** (Vercel 프로젝트 `life-turn-sim`, 팀 leesh33)
 - 저장소: https://github.com/leesh33/life-turn-sim
-- 별도 백엔드 없음 · 진행 상황은 브라우저 `localStorage`에 자동 저장
+- 별도 백엔드 없음 · 진행 상황은 브라우저 `localStorage`에 자동 저장 (원하면 구글 로그인으로 기기 간 동기화 — 선택)
 
 ## 플레이 방식
 
@@ -186,6 +186,29 @@
   - 운영자는 대시보드에서 `status`를 `open → applied / fixed`로 바꿔 배지를 갱신합니다.
 - **오프라인**: 목록을 못 불러오면 `다시 불러오기` 버튼과 안내 문구를 보여 주고, 작성 중이던 글은 지우지 않습니다.
 
+## ☁️ 구글 로그인 · 클라우드 동기화 (선택)
+
+**로그인 없이 그대로 노는 게 기본**입니다. 구글 로그인은 기기를 바꿔도 이어서 하고 싶을 때만 쓰는 선택 기능이고, 로그인하지 않으면 네트워크 요청이 **0건**입니다.
+
+- **진입**: 시작 화면 `인생 시작하기` 아래 `G Google로 로그인` 칩(안내줄 `로그인하면 기기 간에 이어집니다 (선택)`) · 명예의 전당 제목 아래 같은 줄. 로그인하면 `☁️ 동기화됨 · 이름` + `로그아웃`으로 바뀝니다.
+- **무엇이 이어지나**: 진행 중 인생(`lifeTurnSim.save.v1`) · 명예의 전당(`lifeTurnSim.hall.v1`, 🧬 카메오 인물의 근거) · 칭호 도감(`lifeTurnSim.titles.v1`). 화면 설정(자동 넘김·배너 접기)과 제보 게시판의 기기별 제한은 기기에 남깁니다.
+- **합치기(merge) 규칙** — 잃지 않는 쪽으로
+  - 전당: `id` 기준 합집합(같은 기록은 한 번), 내 기록은 최근 240건까지
+  - 칭호: `id` 기준 합집합, 같은 칭호는 **먼저 딴 기록**을 남김
+  - 진행 중 인생: 마지막으로 저장한 쪽(`updatedAt`). 단 **지금 이 화면에서 플레이 중이면 이 기기의 인생**이 이깁니다(플레이 도중 남의 기록으로 갈아치우지 않게).
+  - 다른 기기에서 `새로 시작`을 누르면 그 사실(`saveAt`)도 올라가 저장본이 되살아나지 않습니다.
+- **로그인 방식**: Supabase GoTrue OAuth(**PKCE S256**) — 외부 스크립트 없이 `fetch`로만. `code_verifier`는 `localStorage`(`lifeTurnSim.auth.pkce.v1`)에 두고 돌아온 `?code=`를 토큰으로 바꿉니다. 토큰 만료 60초 전에 자동 갱신, 401이면 한 번 갱신 후 재시도.
+- **저장**: Supabase `public.life_sim_user_state`(사람 1명당 1행, 사용자당 2MB 제한) — 스키마·RLS·RPC는 `supabase/life_sim_cloud_sync.sql`(다시 실행해도 안전).
+  - RLS: `auth.uid() = user_id` 인 본인 행만 `select`/`insert`/`update`/`delete`, **anon 은 권한 없음**
+  - 저장은 `life_sim_put_state(p_data jsonb, p_revised_at bigint)` **security definer** RPC 하나로. 들어온 `revised_at` 이 저장된 것보다 과거면 덮어쓰지 않고 지금 상태를 돌려주고, 앱은 돌려받은 값이 다르면 한 번 더 합쳐 올립니다(여러 기기가 동시에 저장해도 최신이 남게).
+  - Supabase Auth 의 Google 제공자와 리다이렉트 주소(`https://life-turn-sim.vercel.app/**`)는 대시보드에서 설정되어 있습니다(릴스핀과 같은 프로젝트 공용).
+- **실패해도 로컬은 그대로**: 네트워크가 끊기면 칩이 `동기화 실패 · 다시 시도`로 바뀌고 저장본은 건드리지 않습니다. 탭을 숨기거나 다시 열 때도 한 번 맞춥니다.
+
+### 개인정보처리방침 · 이용약관
+
+- `privacy.html` · `terms.html` — 시작 화면 맨 아래 `개인정보처리방침 · 이용약관` 링크(각 문서에서 게임으로 돌아가는 링크도 있음). 스타일은 `assets/legal.css`.
+- 로그인하지 않으면 기록은 브라우저에만 남고, 로그인하면 Supabase(미국)에 이메일·게임 기록이 저장된다는 점을 두 문서에 적었습니다. 문의처는 게시판과 운영자 메일.
+
 ## 스탯
 
 일곱 가지입니다(상단 HUD에 이 순서로 한 줄). 앞의 여섯 개는 0~100 게이지, 재산만 만원 단위 눈금입니다.
@@ -312,6 +335,13 @@ node test/sim.js
 
 # 비혼 루트 · 번아웃 · 보상형 광고(되돌리기/다시 뽑기/회복) · 후속 분기
 node test/routes.js
+
+# ☁️ 구글 로그인 · 클라우드 동기화 — 합치기·PKCE·콜백·서버 왕복 47항목 (네트워크는 흉내)
+node test/sync.js
+
+# ☁️ 화면 검증(390×664·390×844) — 칩·약관 링크·한 화면·로그인 요청(PKCE)·동기화됨·로그아웃·약관 페이지
+python3 test/sync_ui.py --serve .
+python3 test/sync_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
 # 🧬 이전 회차 인물 — 0건/1건/3건, 이름 같은 사람 제외, 친구→연인→부부, 이별·실패, 저장 호환(v4→v5)
 node test/cameo.js
