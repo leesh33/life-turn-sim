@@ -1516,6 +1516,14 @@
     var better = list.filter(function (r) { return (r.score || 0) > score; }).length;
     return { count: list.length, rank: better + 1, best: list[0] || null };
   }
+  // 새 기록이 전당에 들어갔다는 사실을 앱(전체 랭킹 등)에 알린다
+  function hallEmit(rec) {
+    try {
+      if (typeof global.dispatchEvent === 'function' && typeof global.CustomEvent === 'function') {
+        global.dispatchEvent(new global.CustomEvent('life-sim-hall-add', { detail: rec }));
+      }
+    } catch (e) { /* 이벤트를 못 쓰는 환경(테스트 등)에서는 조용히 넘어간다 */ }
+  }
   function hallAdd(rec) {
     var d = hallSeed(hallState());
     rec.id = 'r' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e4).toString(36);
@@ -1533,6 +1541,7 @@
       d.records.splice(oldest, 1);
     }
     hallWrite(d);
+    hallEmit(rec);
     return rec;
   }
   function hallMine() {
@@ -1726,6 +1735,7 @@
         grade: info.grade,
         top: info.total.top,
         title: info.title,
+        archetype: (archetypeOf(s) || {}).label || '',
         name: s.name,
         gender: s.gender,
         cameo: cameoSummary(s),
@@ -1757,6 +1767,7 @@
       grade: sum.grade,
       top: null,
       title: sum.title,
+      archetype: sum.archetype ? sum.archetype.label : '',
       name: s.name,
       gender: s.gender,
       cameo: cameoSummary(s),

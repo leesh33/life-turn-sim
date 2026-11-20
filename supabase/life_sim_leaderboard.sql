@@ -97,7 +97,7 @@ declare
 begin
   v := regexp_replace(v, '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+', '', 'g');   -- 이메일 모양 제거
   v := regexp_replace(v, '[[:cntrl:]]', ' ', 'g');                       -- 제어문자 → 공백
-  v := btrim(regexp_replace(v, '\s+', ' ', 'g'));
+  v := btrim(regexp_replace(v, '[[:space:]]+', ' ', 'g'));
   if char_length(v) > p_max then v := left(v, p_max); end if;
   if v = '' then v := p_fallback; end if;
   return v;

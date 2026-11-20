@@ -166,9 +166,48 @@
       </div>
     </header>
     <div class="sync-row hall-sync" id="hallSyncRow" data-sync-hall="1" role="status" aria-live="polite"></div>
-    <div class="hall-tabs" id="hallTabs"></div>
-    <button type="button" class="hall-titles" id="hallTitles"></button>
-    <div class="hall-body" id="hallBody"></div>
+    <div class="hall-views" id="hallViews" role="tablist" aria-label="전당 보기">
+      <button type="button" class="hall-view active" data-view="mine" role="tab" aria-selected="true">내 전당</button>
+      <button type="button" class="hall-view" data-view="global" role="tab" aria-selected="false">🏆 전체 랭킹</button>
+    </div>
+    <div class="hall-pane" id="hallMineView">
+      <div class="hall-tabs" id="hallTabs"></div>
+      <button type="button" class="hall-titles" id="hallTitles"></button>
+      <div class="hall-body" id="hallBody"></div>
+    </div>
+    <div class="hall-pane" id="hallGlobalView" hidden>
+      <div class="lg-head">
+        <div class="lg-sorts" id="lgSorts" role="group" aria-label="정렬 기준">
+          <button type="button" class="lg-sort active" data-sort="score" aria-pressed="true">총점 순</button>
+          <button type="button" class="lg-sort" data-sort="assets" aria-pressed="false">자산 순</button>
+        </div>
+        <span class="lg-count" id="lgCount">—</span>
+      </div>
+      <div class="lg-me" id="lgMe">
+        <div class="lg-me-top">
+          <span class="lg-me-badge" id="lgMeBadge">내 최고</span>
+          <b id="lgMyScore">—</b>
+          <i id="lgMyPct">—</i>
+        </div>
+        <div class="lg-me-sub" id="lgMySub">전체 랭킹을 불러오는 중…</div>
+        <div class="lg-me-tools" id="lgTools" hidden>
+          <label class="lg-nick" for="lgNick">랭킹 이름
+            <input id="lgNick" type="text" maxlength="12" placeholder="익명 플레이어" autocomplete="off" spellcheck="false" />
+          </label>
+          <button type="button" class="lg-nick-save" id="lgNickSave">저장</button>
+        </div>
+        <div class="lg-me-acts" id="lgActs" hidden>
+          <button type="button" class="lg-upload" id="lgUpload">내 최고 기록 올리기</button>
+        </div>
+        <button type="button" class="lg-clear" id="lgClear" hidden>전체 랭킹에서 내 기록 지우기</button>
+        <label class="lg-auto" id="lgAutoRow" hidden>
+          <input type="checkbox" id="lgAuto" checked />
+          <span>새 기록 자동 등록</span>
+        </label>
+        <p class="lg-private" id="lgPrivate">캐릭터 이름·점수·자산만 공개됩니다 · 이메일은 공개되지 않습니다</p>
+      </div>
+      <div class="hall-body lg-list" id="lgBody"></div>
+    </div>
   </section>
 
   <!-- ───────────── 인생 일지 시트 ───────────── -->
@@ -356,6 +395,8 @@
 <script src="assets/sharecard.js"></script>
 <!-- ☁️ 구글 로그인 · 클라우드 동기화 (선택) — 로그인하지 않으면 아무것도 하지 않는다 -->
 <script src="assets/sync.js"></script>
+<!-- 🏆 전체 유저 익명 랭킹 — 로그인한 기록을 올리고 모두의 기록을 본다 -->
+<script src="assets/leaderboard.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

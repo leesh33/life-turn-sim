@@ -13,6 +13,14 @@
   var hallReturn = 'start';
   var hallTab = 'all';
 
+  /* ── 🏆 전체 랭킹(전당 두 번째 탭) 상태 ── */
+  var hallView = 'mine';        // mine | global
+  var lgSort = 'score';         // score | assets
+  var lgData = null;
+  var lgLoading = false;
+  var lgError = '';
+  var lgToastOnce = false;
+
   /* ── 출발 시나리오 · 가문 이어받기 (2026-11-20) ──
      시작 화면에서 고른 값은 Life.newGame({ scenario, legacy }) 로 넘긴다.
      마지막에 고른 시나리오는 localStorage 에 남겨 다음 판의 기본값으로 쓴다. */
@@ -1027,6 +1035,25 @@
   }
 
   function renderHall() {
+    // 보기 전환: 내 전당 | 🏆 전체 랭킹
+    var viewBtns = $('hallViews') ? $('hallViews').querySelectorAll('.hall-view') : [];
+    for (var i = 0; i < viewBtns.length; i++) {
+      var onView = viewBtns[i].dataset.view === hallView;
+      viewBtns[i].classList.toggle('active', onView);
+      viewBtns[i].setAttribute('aria-selected', onView ? 'true' : 'false');
+    }
+    if ($('hallMineView')) $('hallMineView').hidden = hallView !== 'mine';
+    if ($('hallGlobalView')) $('hallGlobalView').hidden = hallView !== 'global';
+    if (hallView === 'global') {
+      $('hallSub').textContent = '전체 유저 익명 랭킹' +
+        (lgData && lgData.total != null ? ' · ' + lgData.total + '명 참가' : '');
+      renderHallGlobal();
+      return;
+    }
+    renderHallMine();
+  }
+
+  function renderHallMine() {
     var recs = Life.hallRecords();
     var mine = recs.filter(function (r) { return r.mine; });
     var bestMine = Life.hallBestMine();
@@ -1104,6 +1131,142 @@
     });
   }
 
+  /* ═════════════ 🏆 전체 랭킹 ═════════════
+     로그인한 사람의 기록만 서버(life_sim_leaderboard)에 올라간다 — 캐릭터 이름·엔딩 칭호·
+     점수·자산·나이·대수·시나리오뿐이고 이메일·실명은 보내지 않는다.
+     로그인하지 않았어도 모두의 기록은 볼 수 있고, '내 기록'만 이 기기 최고 기록으로 비교한다. */
+  function setHallView(view) {
+    hallView = view === 'global' ? 'global' : 'mine';
+    renderHall();
+    if (hallView === 'global' && !lgData && !lgLoading) loadGlobal();
+  }
+
+  function loadGlobal() {
+    var LB = window.Leaderboard;
+    if (!LB || lgLoading) return;
+    lgLoading = true;
+    lgError = '';
+    renderHallGlobal();
+    LB.list(lgSort).then(function (data) {
+      lgLoading = false;
+      lgData = data || null;
+      renderHallGlobal();
+      if (hallView === 'global' && screenName === 'hall') {
+        $('hallSub').textContent = '전체 유저 익명 랭킹 · ' + ((lgData && lgData.total) || 0) + '명 참가';
+      }
+    }).catch(function (e) {
+      lgLoading = false;
+      lgError = (e && e.message) || '전체 랭킹을 불러오지 못했습니다';
+      renderHallGlobal();
+    });
+  }
+
+  function scenarioShort(id) {
+    try { return Life.scenarioOf(id).short || ''; } catch (e) { return ''; }
+  }
+
+  function renderHallGlobal() {
+    var LB = window.Leaderboard;
+    if (!LB) return;
+    var signed = LB.signedIn();
+
+    // 정렬 토글
+    var btns = $('lgSorts') ? $('lgSorts').querySelectorAll('.lg-sort') : [];
+    for (var i = 0; i < btns.length; i++) {
+      var onSort = btns[i].dataset.sort === lgSort;
+      btns[i].classList.toggle('active', onSort);
+      btns[i].setAttribute('aria-pressed', onSort ? 'true' : 'false');
+    }
+
+    // 로그인했을 때만 이름·자동 등록 줄을 보여 준다
+    $('lgTools').hidden = !signed;
+    $('lgAutoRow').hidden = !signed;
+    if (signed) {
+      var input = $('lgNick');
+      if (document.activeElement !== input) input.value = LB.nick();
+      input.placeholder = LB.profileName() || '익명 플레이어';
+      $('lgAuto').checked = LB.auto();
+    }
+    var pending = signed && typeof LB.pendingRecords === 'function' ? LB.pendingRecords(1).length : 0;
+    $('lgActs').hidden = !signed || !pending;
+    $('lgClear').hidden = !signed || !(typeof LB.sentCount === 'function' && LB.sentCount() > 0);
+
+    var data = lgData;
+    var best = LB.localBest();
+    var me = (data && data.me) || null;
+    var myScore = me && typeof me.best_score === 'number' ? me.best_score : (best ? best.score : null);
+    var pct = null;
+    if (me && me.top_percent != null) pct = me.top_percent;
+    else if (myScore != null) pct = LB.localTopPercent(myScore);
+
+    $('lgMeBadge').textContent = signed ? (me ? '내 최고' : '내 기록') : '이 기기 최고';
+    $('lgMyScore').textContent = myScore == null ? '—' : scoreText(myScore);
+    $('lgMyPct').textContent = pct == null ? '기록 없음' : '상위 ' + pct + '%';
+
+    var sub;
+    if (signed) {
+      sub = (me && me.total)
+        ? me.rank + '위 / 전체 ' + me.total + '명 · ' + LB.nick()
+        : '아직 올린 기록이 없습니다 · 엔딩(졸업·80세 완주)에서 자동으로 올라갑니다';
+    } else if (best) {
+      sub = 'Google로 로그인하면 내 기록이 전체 랭킹에 오릅니다 · 지금은 이 기기 최고 기록과 비교합니다';
+    } else {
+      sub = 'Google로 로그인하면 내 기록이 전체 랭킹에 오릅니다 (위에서 로그인)';
+    }
+    $('lgMySub').textContent = sub;
+    $('lgCount').textContent = data && data.total != null ? data.total + '명' : '—';
+
+    var html;
+    if (lgLoading && !data) {
+      html = '<div class="hall-empty">전체 랭킹을 불러오는 중…</div>';
+    } else if (lgError) {
+      html = '<div class="hall-empty">' + esc(lgError) + '<br>' +
+        (signed ? '잠시 뒤 다시 열어 보세요.' : '로그인하지 않아도 모두의 기록은 볼 수 있습니다.') + '</div>';
+    } else if (!data || !(data.entries || []).length) {
+      html = '<div class="hall-empty">아직 등록된 기록이 없습니다.<br>' +
+        (signed ? '이 인생의 주인공이 되어 보세요!' : 'Google로 로그인하면 첫 기록의 주인공이 될 수 있습니다.') + '</div>';
+    } else {
+      html = (data.entries || []).map(function (r) {
+        var rank = r.rank || 0;
+        var medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
+        var big = lgSort === 'assets' ? Life.formatAsset(r.net_assets) : scoreText(r.score);
+        var small = lgSort === 'assets' ? scoreText(r.score) + '점' : Life.formatAsset(r.net_assets);
+        var meta = [esc(r.grade || '-')];
+        if (r.archetype) meta.push(esc(r.archetype));
+        var scn = scenarioShort(r.scenario);
+        if (scn) meta.push(esc(scn));
+        if (r.display_name && r.display_name !== '익명 플레이어' && r.display_name !== r.character_name) {
+          meta.push('플레이어 ' + esc(r.display_name));
+        }
+        return '<div class="lg-row' + (r.mine ? ' mine' : '') + (rank > 0 && rank <= 3 ? ' top' : '') + '">' +
+          '<div class="lg-rank">' + medal + '</div>' +
+          '<div class="lg-main">' +
+            '<div class="lg-line1"><b>' + esc(r.character_name) + '</b>' +
+              '<span class="lg-gen">' + (r.generation > 1 ? r.generation + '대' : '1대') + '</span>' +
+              '<span class="lg-age">' + Math.round(r.final_age || 0) + '세</span>' +
+              (r.mine ? '<span class="lg-mine">내 기록</span>' : '') + '</div>' +
+            (r.title ? '<div class="lg-title">' + esc(r.title) + '</div>' : '') +
+            '<div class="lg-meta">' + meta.join(' · ') + '</div>' +
+          '</div>' +
+          '<div class="lg-score"><b>' + big + '</b><span>' + small + '</span></div>' +
+          '</div>';
+      }).join('') +
+        '<p class="hall-fine">전체 랭킹은 로그인한 플레이어가 등록한 기록입니다.<br>' +
+        '이메일은 공개되지 않고, 캐릭터 이름·점수·자산만 보입니다.</p>';
+    }
+    $('lgBody').innerHTML = html;
+    $('lgBody').scrollTop = 0;
+  }
+
+  function saveNick() {
+    var LB = window.Leaderboard;
+    if (!LB) return;
+    var v = LB.setNick($('lgNick').value);
+    $('lgNick').value = v;
+    toast('랭킹 이름을 「' + v + '」로 저장했습니다 · 다음에 올리는 기록부터 적용');
+    renderHallGlobal();
+  }
+
   function bindHall() {
     $('hallBack').addEventListener('click', closeHall);
     $('hallTabs').addEventListener('click', function (e) {
@@ -1111,6 +1274,62 @@
       if (!btn) return;
       hallTab = btn.dataset.tab;
       renderHall();
+    });
+
+    // 내 전당 | 🏆 전체 랭킹
+    $('hallViews').addEventListener('click', function (e) {
+      var btn = e.target.closest('.hall-view');
+      if (!btn) return;
+      setHallView(btn.dataset.view);
+    });
+
+    // 총점 순 | 자산 순
+    $('lgSorts').addEventListener('click', function (e) {
+      var btn = e.target.closest('.lg-sort');
+      if (!btn) return;
+      var next = btn.dataset.sort === 'assets' ? 'assets' : 'score';
+      if (next === lgSort && lgData) return;
+      lgSort = next;
+      lgData = null;
+      renderHall();
+      loadGlobal();
+    });
+
+    $('lgNickSave').addEventListener('click', saveNick);
+    $('lgClear').addEventListener('click', function () {
+      var LB = window.Leaderboard;
+      if (!LB) return;
+      if (!window.confirm('전체 랭킹에 올린 내 기록을 모두 지울까요?')) return;
+      LB.clearMine().then(function (res) {
+        toast((res && res.removed ? res.removed + '건' : '내 기록을') + ' 전체 랭킹에서 지웠습니다');
+        lgData = null;
+        loadGlobal();
+      }).catch(function (e) {
+        toast('지우지 못했습니다 · ' + ((e && e.message) || '잠시 뒤 다시'));
+      });
+    });
+    $('lgUpload').addEventListener('click', function () {
+      var LB = window.Leaderboard;
+      if (!LB) return;
+      var btn = $('lgUpload');
+      btn.disabled = true;
+      LB.submitBest(3).then(function (res) {
+        btn.disabled = false;
+        if (!res || !res.results || !res.results.length) toast('올릴 기록이 없습니다');
+        lgData = null;
+        loadGlobal();
+      }).catch(function (e) {
+        btn.disabled = false;
+        toast('올리지 못했습니다 · ' + ((e && e.message) || '잠시 뒤 다시'));
+      });
+    });
+    $('lgNick').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); saveNick(); }
+    });
+    $('lgAuto').addEventListener('change', function () {
+      if (!window.Leaderboard) return;
+      var on = window.Leaderboard.setAuto($('lgAuto').checked);
+      toast(on ? '🏆 새 기록을 자동으로 올립니다' : '🏆 자동 등록을 껐습니다');
     });
   }
 
@@ -1543,6 +1762,20 @@
       toast('☁️ Google 계정과 연결했습니다');
     });
     if (window.CloudSync) window.CloudSync.start();
+
+    // 🏆 전체 랭킹 — 엔딩에서 기록이 생기면(로그인 + 자동 등록 켜짐) 서버로 올린다
+    if (window.Leaderboard) window.Leaderboard.start();
+    window.addEventListener('life-sim-leaderboard-submitted', function (e) {
+      var d = e.detail || {};
+      toast('🏆 전체 랭킹에 올렸습니다' + (d.rank ? ' · ' + d.rank + '위' : ''));
+      if (hallView === 'global' && screenName === 'hall') { lgData = null; loadGlobal(); }
+    });
+    window.addEventListener('life-sim-leaderboard-failed', function (e) {
+      if (lgToastOnce) return;
+      lgToastOnce = true;
+      var d = e.detail || {};
+      toast('전체 랭킹 등록 실패 · ' + (d.error || '잠시 뒤 다시 시도해 주세요'));
+    });
 
     // 저장된 게임이 있으면 바로 이어서 열지 않고 시작 화면에서 선택하게 둔다.
   });
