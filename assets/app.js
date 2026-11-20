@@ -1201,7 +1201,7 @@
 
     $('lgMeBadge').textContent = signed ? (me ? '내 최고' : '내 기록') : '이 기기 최고';
     $('lgMyScore').textContent = myScore == null ? '—' : scoreText(myScore);
-    $('lgMyPct').textContent = pct == null ? '기록 없음' : '상위 ' + pct + '%';
+    $('lgMyPct').textContent = pct == null ? '—' : '상위 ' + pct + '%';
 
     var sub;
     if (signed) {

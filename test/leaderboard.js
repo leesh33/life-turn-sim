@@ -108,13 +108,16 @@ const REC = {
 
   /* ═════════ ⑤ 이 기기 백분위 ═════════ */
   const envPct = makeEnv({ records: [
-    { id: 's1', score: 80 }, { id: 's2', score: 70 }, { id: 's3', score: 60 },
-    { id: 's4', score: 50 }, { id: 's5', score: 40 }
+    { id: 's1', score: 80 }, { id: 's2', score: 70 }, { id: 's3', score: 60 }, { id: 's4', score: 50 },
+    { id: 's5', score: 40 }, { id: 's6', score: 30 }, { id: 's7', score: 20 }, { id: 's8', score: 10 },
+    { id: 's9', score: 5 }, { id: 's10', score: 2 }
   ] });
   const t95 = envPct.T.localTopPercent(95), t75 = envPct.T.localTopPercent(75), t45 = envPct.T.localTopPercent(45);
   check('높은 점수일수록 상위 % 가 작다', t95 < t75 && t75 < t45, `${t95}/${t75}/${t45}`);
   check('백분위는 1~100', [t95, t75, t45].every((v) => v >= 1 && v <= 100), `${t95}/${t75}/${t45}`);
-  check('전당 5명 중 4명보다 위 = 상위 80%', t45 === 80, t45);
+  check('전당 10명 중 4명보다 위 = 상위 40%', t45 === 40, t45);
+  check('표본이 적으면(3건) 백분위를 말하지 않는다',
+    makeEnv({ records: [{ id: 'a', score: 80 }, { id: 'b', score: 60 }, { id: 'c', score: 40 }] }).T.localTopPercent(70) === null);
   check('기록이 없으면 null', makeEnv().T.localTopPercent(70) === null);
   check('점수 없으면 null', envPct.T.localTopPercent(null) === null);
 

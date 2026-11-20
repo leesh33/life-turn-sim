@@ -104,10 +104,10 @@ def main():
     shot = lambda name: args.out + "/" + name + "-" + args.tag + ".png"
     all_errors = []
 
-    def session(p, signed_in, fn):
+    def session(p, signed_in, fn, size=(390, 844)):
         browser = p.chromium.launch(executable_path=CHROME,
                                     args=["--no-sandbox", "--disable-dev-shm-usage"])
-        ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
+        ctx = browser.new_context(viewport={"width": size[0], "height": size[1]}, device_scale_factor=2,
                                   is_mobile=True, has_touch=True)
         init = "(() => { try { localStorage.setItem('lifeTurnSim.hall.v1', " + json.dumps(json.dumps(HALL, ensure_ascii=False)) + ");"
         if signed_in:
@@ -206,7 +206,7 @@ def main():
             page.wait_for_timeout(300)
             ok("내 전당으로 돌아오기", page.is_visible("#hallMineView") and not page.is_visible("#hallGlobalView"))
 
-        all_errors += session(p, False, step_guest)
+        all_errors += session(p, False, step_guest) if not live else []
 
         # ② 로그인한 사람 — 랭킹 이름·자동 등록·내 기록 올리기
         def step_member(page):
@@ -265,12 +265,29 @@ def main():
             ok("지운 뒤 올린 표시 비움", page.evaluate(
                 "() => localStorage.getItem('lifeTurnSim.leaderboard.sent.v1')") == "{}")
 
-        all_errors += session(p, True, step_member)
+        all_errors += session(p, True, step_member) if not live else []
 
-        # ③ 라이브 — 실서버 목록
+        # ③ 390×664 (아이폰 사파리 실사용 높이) — 목록이 충분히 보이고 넘침 0
+        if not live:
+            def step_small(page):
+                open_global(page)
+                h = page.eval_on_selector("#lgBody", "e => e.clientHeight")
+                ok("390×664 목록 영역 확보", h >= 110, f"{h}px")
+                ok("390×664 가로 넘침 0", page.evaluate(
+                    "() => document.documentElement.scrollWidth <= window.innerWidth"))
+                page.screenshot(path=shot("06-global-664"))
+                page.click('.lg-sort[data-sort="assets"]')
+                page.wait_for_timeout(500)
+                ok("390×664 자산 순도 넘침 0", page.evaluate(
+                    "() => document.documentElement.scrollWidth <= window.innerWidth"))
+            all_errors += session(p, True, step_small, size=(390, 664))
+
+        # ④ 라이브 — 실서버 목록
         if live:
             def step_live(page):
                 open_global(page)
+                page.wait_for_function(
+                    "() => !document.getElementById('lgBody').textContent.includes('불러오는 중')", timeout=10000)
                 body = page.inner_text("#lgBody")
                 rows = page.eval_on_selector_all("#lgBody .lg-row", "els => els.length")
                 ok("실서버 목록이 그려짐", rows > 0 or "아직 등록된 기록이 없습니다" in body,

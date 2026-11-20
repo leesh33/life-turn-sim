@@ -309,7 +309,7 @@
     try {
       if (global.Life && typeof global.Life.hallRecords === 'function') recs = global.Life.hallRecords() || [];
     } catch (e) { recs = []; }
-    if (!recs.length) return null;
+    if (recs.length < 8) return null;   // 표본이 너무 적으면 백분위를 말하지 않는다
     var better = 0;
     for (var j = 0; j < recs.length; j++) if (num(recs[j] && recs[j].score) > v) better++;
     return Math.max(1, Math.min(100, Math.ceil((100 * better) / recs.length)));
