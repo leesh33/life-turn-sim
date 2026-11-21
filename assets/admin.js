@@ -64,7 +64,8 @@
         visitors: visitors,
         views: views,
         height: visitors > 0 ? Math.max(4, height) : 0,
-        showLabel: index === list.length - 1 || index % every === 0
+        // 마지막 라벨과 붙는 주기 라벨은 건너뛰어 겹쳐 보이지 않게 한다
+        showLabel: index === list.length - 1 || (index % every === 0 && index < list.length - 2)
       };
     });
   }
