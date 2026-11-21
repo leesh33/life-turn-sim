@@ -447,12 +447,31 @@
     senior: ['천천히, 한 걸음씩', '돌아보면 다 지나갔다', '오늘 햇살이 참 좋구나']
   };
 
+  /* ── 유아기 말투 ──
+     유아기(1~7세)에 통장·멘탈·거울 같은 어른 말이 뜨면 표정과 말이 따로 논다.
+     같은 상태 신호를 아이 눈높이의 한 줄로 바꿔 말한다(문구 선택 규칙은 그대로). */
+  var BABY_SAY = {
+    hp: '기운이 없어… 엄마 품에만 있고 싶어',
+    mental: '칭얼칭얼, 오늘은 자꾸 울고 싶어',
+    assetNeg: '통장은 아직 몰라… 손에 쥔 동전이 반짝반짝',
+    mentalHigh: '오늘 기분 최고! 하루 종일 웃을래',
+    assetHigh: '내 통장이 두둑하다는데… 그거 먹는 거야?',
+    charmHigh: '거울 속 아기가 나한테 웃어',
+    intelHigh: '오늘 처음 본 것도 다 외웠어',
+    luckHigh: '손에 잡히는 게 다 잘 돼',
+    luckLow: '오늘은 자꾸 머리를 부딪혀…',
+    done: ['해냈어! 엄마가 박수 쳐 줬어', '오늘 목표 하나 클리어!', '뿌듯해, 한 번 더!'],
+    up: ['방금 그거 좋았어, 한 번 더!', '이 느낌, 기분 좋아', '오늘은 뭔가 잘 풀려'],
+    down: ['아야… 방금 그거 싫었어', '방금 그건 자꾸 생각나', '이번엔 내가 손해 봤어']
+  };
+
   function speech(state, opts) {
     opts = opts || {};
     var st = (state && state.stats) || {};
     var hp = num(st.hp, 50), mental = num(st.mental, 50), asset = num(st.asset, 0);
     var charm = num(st.charm, 50), intel = num(st.intel, 50), luck = num(st.luck, 50);
     var band = bandOf((state && state.age) || 1);
+    var baby = band.id === 'baby';
     var pickIdx = function (arr) {
       var t = num(state && state.turn, 0) + num(state && state.age, 1) + num(state && state.month, 1);
       return arr[t % arr.length];
@@ -460,17 +479,17 @@
 
     // 방금 미션을 깼다 — 가장 먼저 자랑한다
     if (opts.justDone) {
-      return pickIdx(['미션 달성! 기분 좋다', '해냈다, 이 맛에 사는 거지', '목표 하나 클리어! 다음 거 가자']);
+      return baby ? pickIdx(BABY_SAY.done) : pickIdx(['미션 달성! 기분 좋다', '해냈다, 이 맛에 사는 거지', '목표 하나 클리어! 다음 거 가자']);
     }
-    if (hp < 35) return '체력 좀 챙겨야겠다…';
-    if (mental < 35) return '멘탈이 흔들린다, 심호흡 한 번';
-    if (asset < 0) return '통장이 얇아지고 있어...';
-    if (mental >= 85) return '멘탈 최고조!';
-    if (asset >= 10000) return '재산이 불어나고 있다, 이 맛에 산다';
-    if (charm >= 80) return '거울 속 내가 꽤 괜찮은데?';
-    if (intel >= 85) return '머리가 잘 돌아간다, 이 정도면 프로';
-    if (luck >= 82) return '되는 일이 술술 풀린다';
-    if (luck <= 22) return '요즘 되는 일이 없다… 부적이라도?';
+    if (hp < 35) return baby ? BABY_SAY.hp : '체력 좀 챙겨야겠다…';
+    if (mental < 35) return baby ? BABY_SAY.mental : '멘탈이 흔들린다, 심호흡 한 번';
+    if (asset < 0) return baby ? BABY_SAY.assetNeg : '통장이 얇아지고 있어...';
+    if (mental >= 85) return baby ? BABY_SAY.mentalHigh : '멘탈 최고조!';
+    if (asset >= 10000) return baby ? BABY_SAY.assetHigh : '재산이 불어나고 있다, 이 맛에 산다';
+    if (charm >= 80) return baby ? BABY_SAY.charmHigh : '거울 속 내가 꽤 괜찮은데?';
+    if (intel >= 85) return baby ? BABY_SAY.intelHigh : '머리가 잘 돌아간다, 이 정도면 프로';
+    if (luck >= 82) return baby ? BABY_SAY.luckHigh : '되는 일이 술술 풀린다';
+    if (luck <= 22) return baby ? BABY_SAY.luckLow : '요즘 되는 일이 없다… 부적이라도?';
 
     var last = state.current && state.current.chosen !== null && state.current.deltas;
     if (last) {
@@ -480,8 +499,8 @@
         if (k === 'asset') { if (last[k] > 0) up += 4; else down += 4; return; }
         if (last[k] > 0) up += last[k]; else down += -last[k];
       });
-      if (down >= 6 && up < down) return pickIdx(['이건 좀 아팠다…', '방금 건 다시 생각난다', '몸이 기억한다, 이 손해']);
-      if (up >= 6) return pickIdx(['방금 그 선택, 제법이었어', '오, 이건 잘 골랐다', '이 느낌, 계속 가자']);
+      if (down >= 6 && up < down) return baby ? pickIdx(BABY_SAY.down) : pickIdx(['이건 좀 아팠다…', '방금 건 다시 생각난다', '몸이 기억한다, 이 손해']);
+      if (up >= 6) return baby ? pickIdx(BABY_SAY.up) : pickIdx(['방금 그 선택, 제법이었어', '오, 이건 잘 골랐다', '이 느낌, 계속 가자']);
     }
 
     return pickIdx(BAND_LINES[band.id]);

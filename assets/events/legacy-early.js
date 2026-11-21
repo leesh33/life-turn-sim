@@ -30,13 +30,13 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'formula_30', stage: 'infancy', at: [1, 2], place: '조리원', milestone: true, weight: 5,
     title: '조리원 퇴소',
-    text: '조리원에서 퇴소했습니다. 이제 집으로 왔네요.\n분유를 어느정도 먹을까요?',
+    text: '조리원에서 퇴소해 드디어 집에 왔습니다. 젖병이 눈앞에 있습니다.\n오늘 밤은 얼마나 마실까요?',
     choices: [
-      { label: '30ml, 조금씩 자주',
-        result: '적게 자주 먹는 나를 부모님이 피곤해합니다.',
+      { label: '조금씩 자주 달라고 보챈다',
+        result: '30ml씩 먹고 두 시간마다 깨서 울었습니다. 적게 자주 먹는 나를 부모님이 피곤해합니다.',
         effects: { hp: -1, mental: -2, social: 1 }, set: { 소식가: true } },
-      { label: '50ml, 한 번에 든든하게',
-        result: '잘 먹는 나를 부모님이 만족해합니다.',
+      { label: '한 번에 든든하게 먹고 푹 잔다',
+        result: '50ml를 단숨에 비우고 네 시간을 통으로 잤습니다. 잘 먹는 나를 부모님이 만족해합니다.',
         effects: { hp: 3, mental: 2, social: 2 }, set: { 대식가: true } }
     ]
   },
@@ -52,10 +52,10 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'hundred_days', stage: 'infancy', at: [1, 4], place: '스튜디오',
     title: '백일 사진',
-    text: '백일입니다. 스튜디오에서 사진을 찍는다는데, 나는 배가 고픕니다.',
+    text: '백일입니다. 스튜디오 하얀 배경 앞에 앉혔습니다. 플래시가 터질 때마다 눈이 부시고, 슬슬 배가 고픕니다.',
     choices: [
-      { label: '스튜디오에서 예쁘게 찍는다', result: '웃는 사진이 건져졌습니다. 거실 액자의 주인공은 나.', effects: { charm: 3 } },
-      { label: '집에서 폰으로 대충 찍는다', result: '흔들린 사진이지만 진짜 내 얼굴입니다. 부모님은 그게 더 좋답니다.', effects: { social: 2, mental: 1 } }
+      { label: '배고픔을 참고 방긋 웃어 준다', result: '웃는 사진이 건져졌습니다. 거실 액자의 주인공은 나.', effects: { charm: 3 } },
+      { label: '배고프다고 엉엉 울어 버린다', result: '작가님이 젖병을 내밀었습니다. 울다가 웃은 사진도 한 장 건졌습니다. 부모님은 그게 더 좋답니다.', effects: { social: 2, mental: 1 } }
     ]
   },
   {
@@ -138,10 +138,10 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'daycare_virus', stage: 'infancy', at: [3, 8], place: '소아과',
     title: '첫 열감기',
-    text: '새벽에 열이 38.5도입니다. 부모님이 대학병원 응급실에 갈지 고민하고 있습니다.',
+    text: '새벽에 열이 38.5도입니다. 부모님이 대학병원 응급실 갈지 고민하는 기색입니다.',
     choices: [
-      { label: '해열제 먹고 집에서 버틴다', result: '아침에 열이 내렸습니다. 부모님은 밤새 못 잤습니다.', effects: { hp: -2, social: 2 } },
-      { label: '응급실에 간다', result: '검사는 다 정상. 대기 4시간, 진료 5분. 그래도 안심입니다.', effects: { hp: 1, mental: 1 } }
+      { label: '해열제 먹고 축 처져 잔다', result: '아침에 열이 내렸습니다. 부모님은 밤새 못 잤습니다.', effects: { hp: -2, social: 2 } },
+      { label: '아파서 자지러지게 운다', result: '새벽에 응급실로 갔습니다. 검사는 다 정상, 대기 4시간에 진료 5분. 그래도 부모님은 안심했습니다.', effects: { hp: 1, mental: 1 } }
     ]
   },
   {
