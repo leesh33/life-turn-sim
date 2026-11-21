@@ -273,6 +273,8 @@
       scenario: pickedScenario,
       legacy: legacyId
     });
+    // 미션 출발선(그 나이대에 들어설 때의 값)을 처음부터 저장본에 남긴다
+    if (window.LifeAvatar) window.LifeAvatar.ensureBase(state);
     try { localStorage.setItem(SCENARIO_KEY, pickedScenario); } catch (e) {}
     Life.save(state);
     showScreen('play');
