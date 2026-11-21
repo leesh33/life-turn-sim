@@ -4,8 +4,9 @@
 // 만드는 상태
 //   stage03 / stage10 / stage16 / stage22 / stage32 / stage55 / stage72
 //     : 그 나이(1개월차)까지 실제로 플레이해 도착한 저장본 — 아바타 단계·말풍선·미션 확인용
-//   mission20 : 20세 · 매력 69.6 · '동아리 박람회'(col20c) 1번 선택(+1 매력)
-//     → 한 번만 누르면 20대 미션(매력 70)이 달성된다 (달성 연출·보너스 확인용)
+//   mission20 : 20세 · 매력 67.87 · 20대 미션 출발선(missionBase.youth = 60)
+//     → '동아리 박람회'(col20c) 1번 선택(+1 매력)으로 20대 미션(매력 68)이 달성된다
+//       (달성 직전 99% → 달성 연출·보너스 확인용. 미션 목표가 '출발선 + 성장폭'으로 바뀐 뒤의 값)
 const fs = require('fs');
 const path = require('path');
 const { load } = require('../tools/lib-load');
@@ -38,7 +39,9 @@ const ms = Life.newGame({ name: '상훈', gender: '남', startAge: 20 });
 ms.age = 20;
 ms.month = 4;
 ms.turn = 6;
-ms.stats = { hp: 64, mental: 58, charm: 69.6, social: 57, intel: 62, luck: 52, asset: 420 };
+ms.stats = { hp: 64, mental: 58, charm: 67.87, social: 57, intel: 62, luck: 52, asset: 420 };
+// 미션 출발선을 60(20세의 흔한 매력)으로 적어 두면 목표가 68이 되고, 지금 67.87 은 99%다
+ms.missionBase = { youth: 60 };
 ms.current = { eventId: 'col20c', chosen: null, event: null };
 ms.used = ['col20c'];
 ms.lastSeen = { col20c: 6 };

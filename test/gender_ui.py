@@ -39,6 +39,17 @@ def check(name, cond, extra=None):
     return cond
 
 
+def shot(pg, path):
+    """라이브(스크립트 40여 개)에서는 새로 연 직후 첫 캡처가 가끔 실패한다 — 한 번 더 기다렸다 다시 찍는다."""
+    for i in range(4):
+        try:
+            pg.screenshot(path=path, timeout=15000)
+            return True
+        except Exception:
+            pg.wait_for_timeout(350)
+    return False
+
+
 MEASURE = """() => {
   const card = document.getElementById('avatarCard');
   const svg = card ? card.querySelector('.av-svg') : null;
@@ -130,9 +141,9 @@ def run_page(pg, url, states, out, tag, size, dsf):
     check(f"[{tagm}] 성별 선택 칩 3개(남·여·랜덤)", [c["g"] for c in chips] == ["남", "여", "랜덤"], str([c["g"] for c in chips]))
     check(f"[{tagm}] 기본 성별은 남 (세이브 없음)", [c["g"] for c in chips if c["active"]] == ["남"],
           str([c["g"] for c in chips if c["active"]]))
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-01-start.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-01-start.png"))
     pg.locator('.age-card[data-age="1"]').click()
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-02-start-pick.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-02-start-pick.png"))
 
     # ── b) 여성으로 시작 → 유아기 여아 캐릭터 ──
     start_game(pg, "여", 1)
@@ -142,7 +153,7 @@ def run_page(pg, url, states, out, tag, size, dsf):
     check(f"[{tagm}] 유아기 단계", "유아기" in (girlBaby["label"] or ""), girlBaby["label"])
     check(f"[{tagm}] 인라인 SVG (외부 이미지 없음)", girlBaby["imgs"] == 0)
     check(f"[{tagm}] 가로 넘침 0 (유아기·여)", girlBaby["wide"] == [], str(girlBaby["wide"]))
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-03-play-girl-baby.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-03-play-girl-baby.png"))
     girlHash = hashlib.sha1((girlBaby["html"] or "").encode()).hexdigest()[:10]
 
     # 남자로 새 인생 — 같은 유아기에서 그림이 달라야 한다
@@ -157,7 +168,7 @@ def run_page(pg, url, states, out, tag, size, dsf):
     check(f"[{tagm}] 남성으로 시작하면 남성 캐릭터", (boyBaby["label"] or "").startswith("남성"), boyBaby["label"])
     boyHash = hashlib.sha1((boyBaby["html"] or "").encode()).hexdigest()[:10]
     check(f"[{tagm}] 같은 유아기라도 남녀 그림이 다름", girlHash != boyHash, f"여 {girlHash} / 남 {boyHash}")
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-04-play-boy-baby.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-04-play-boy-baby.png"))
 
     # ── c) 7단계 × 남/여 ──
     pages = [(k, v) for k, v in states.items() if k.startswith("stage")]
@@ -173,7 +184,13 @@ def run_page(pg, url, states, out, tag, size, dsf):
             check(f"[{tagm}] {key} {g} 넘침·에러 없음", mm["wide"] == [], str(mm["wide"]))
             seen[f"{key}-{g}"] = hashlib.sha1((mm["html"] or "").encode()).hexdigest()[:10]
             if g == "여":
-                pg.locator("#avatarCard").screenshot(path=os.path.join(out, f"{tag}-{tagm}-{key}-{g}.png"))
+                
+                for _ in range(3):
+                    try:
+                        pg.locator("#avatarCard").screenshot(path=os.path.join(out, f"{tag}-{tagm}-{key}-{g}.png"), timeout=15000)
+                        break
+                    except Exception:
+                        pg.wait_for_timeout(300)
     check(f"[{tagm}] 14가지 그림이 모두 다름", len(set(seen.values())) == 14, f"{len(set(seen.values()))}종")
     for key, _ in pages:
         check(f"[{tagm}] {key} 남녀 그림 다름", seen[f"{key}-남"] != seen[f"{key}-여"],
@@ -207,7 +224,7 @@ def run_page(pg, url, states, out, tag, size, dsf):
     check(f"[{tagm}] 졸업 화면에 캐릭터", gm["has"] and bool(gm["label"]), str(gm))
     check(f"[{tagm}] 졸업 캐릭터는 그 나이·성별", (gm["label"] or "").startswith("여성") and "유아기" in (gm["label"] or ""),
           str(gm["label"]))
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-04b-grad.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-04b-grad.png"))
 
     # ── e) 엔딩에도 마지막 나이·성별 캐릭터 ──
     endState = dict(pages[-1][1])
@@ -220,7 +237,7 @@ def run_page(pg, url, states, out, tag, size, dsf):
           str(em["label"]))
     check(f"[{tagm}] 엔딩 캡션", "여성" in (em["caption"] or "") and "80세" in (em["caption"] or ""), str(em["caption"]))
     check(f"[{tagm}] 엔딩 가로 넘침 0", em["wide"] == [], str(em["wide"]))
-    pg.screenshot(path=os.path.join(out, f"{tag}-{tagm}-05-ending.png"))
+    shot(pg, os.path.join(out, f"{tag}-{tagm}-05-ending.png"))
 
     check(f"[{tagm}] 콘솔·페이지 에러 0", errs == [], str(errs[:3]))
 
