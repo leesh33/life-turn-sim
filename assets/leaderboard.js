@@ -169,29 +169,47 @@
   }
 
   /* ── HTTP ── */
+  // 인증이 필요한 요청의 토큰 — sync.js 가 있으면 만료 시 갱신까지 맡긴다.
+  // (동시에 여러 곳이 갱신을 부르면 GoTrue 의 리프레시 토큰 회전 때문에 한쪽이 400 으로 거절당한다.
+  //  sync.js 의 token() 은 그 갱신을 하나로 합쳐 두었다.)
+  function authToken() {
+    try {
+      if (global.CloudSync && typeof global.CloudSync.token === 'function') {
+        return Promise.resolve(global.CloudSync.token());
+      }
+    } catch (e) { /* 아래 기본 경로 */ }
+    var s = session();
+    if (!s || !s.access_token) return Promise.reject(new Error('로그인이 필요합니다'));
+    return Promise.resolve(s.access_token);
+  }
+
   function api(path, opts) {
     opts = opts || {};
     var headers = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
-    var s = session();
-    if (opts.auth && s && s.access_token) headers.Authorization = 'Bearer ' + s.access_token;
-    return global.fetch(SUPABASE_URL + path, {
-      method: opts.method || 'POST',
-      headers: headers,
-      body: opts.body == null ? undefined : JSON.stringify(opts.body),
-      cache: 'no-store',
-      credentials: 'omit'
-    }).then(function (res) {
-      return res.text().then(function (text) {
-        var data = null;
-        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
-        if (!res.ok) {
-          var msg = (data && (data.message || data.msg || data.hint || data.error)) || ('HTTP ' + res.status);
-          var err = new Error(String(msg));
-          err.status = res.status;
-          err.code = (data && data.code) || '';
-          throw err;
-        }
-        return data;
+    var ready = Promise.resolve();
+    if (opts.auth) {
+      ready = authToken().then(function (t) { headers.Authorization = 'Bearer ' + t; });
+    }
+    return ready.then(function () {
+      return global.fetch(SUPABASE_URL + path, {
+        method: opts.method || 'POST',
+        headers: headers,
+        body: opts.body == null ? undefined : JSON.stringify(opts.body),
+        cache: 'no-store',
+        credentials: 'omit'
+      }).then(function (res) {
+        return res.text().then(function (text) {
+          var data = null;
+          try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+          if (!res.ok) {
+            var msg = (data && (data.message || data.msg || data.hint || data.error_description || data.error)) || ('HTTP ' + res.status);
+            var err = new Error(String(msg));
+            err.status = res.status;
+            err.code = (data && data.code) || '';
+            throw err;
+          }
+          return data;
+        });
       });
     });
   }
@@ -226,7 +244,9 @@
     var msg = String((e && e.message) || '');
     if (!msg || /Failed to fetch|NetworkError|Load failed/i.test(msg)) return '네트워크에 연결하지 못했습니다';
     if (e && (e.status === 404 || /does not exist|schema cache|not find/i.test(msg))) return '전체 랭킹 서버가 아직 준비 중입니다';
-    if (e && e.status === 401) return '로그인이 필요합니다';
+    if (e && e.status === 401) {
+      return signedIn() ? '로그인이 만료됐어요 · 다시 로그인해 주세요' : '로그인이 필요합니다';
+    }
     return msg.slice(0, 80);
   }
 
@@ -360,6 +380,7 @@
       localTopPercent: localTopPercent,
       onHallAdd: onHallAdd,
       friendly: friendly,
+      authToken: authToken,
       sentMap: sentMap,
       markSent: markSent,
       config: { url: SUPABASE_URL, list: RPC_LIST, submit: RPC_SUBMIT, clear: RPC_CLEAR,

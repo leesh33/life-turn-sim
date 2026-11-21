@@ -43,6 +43,7 @@ function makeEnv(opts = {}) {
   };
   g.window = g;
   if (opts.session) g.CloudSync = { session: () => opts.session };
+  if (opts.cloudToken) g.CloudSync = Object.assign({}, g.CloudSync || {}, { token: opts.cloudToken });
   if (opts.hall) g.Life = { hallMine: () => opts.hall, hallBestMine: () => (opts.hall && opts.hall[0]) || null, hallRecords: () => opts.hall };
   else if (opts.records) g.Life = { hallMine: () => opts.records, hallBestMine: () => opts.records[0] || null, hallRecords: () => opts.records };
   vm.createContext(g);
@@ -233,6 +234,27 @@ const REC = {
     fired[0] ? String(fired[0].detail.archetype) : '');
   const body = env3.T.payloadOf(fired[0].detail, '꼬야네');
   check('엔진 기록 → 랭킹 전송값 검증 통과', env3.T.validate(body).ok === true, JSON.stringify(body).slice(0, 120));
+
+  /* ═════════ ⑯ 인증 요청은 sync.js 가 갱신한 토큰을 쓴다 ═════════ */
+  const env10 = makeEnv({
+    session: { access_token: 'expired', expires_at: Date.now() - 1000, user: { id: 'u-1' } },
+    hall: [REC],
+    cloudToken: () => Promise.resolve('fresh-token'),
+    fetch: () => Promise.resolve(json(200, { ok: true, rank: 3 }))
+  });
+  await env10.L.submitRecord(REC);
+  check('만료 토큰 대신 갱신된 토큰으로 보낸다', env10.calls[0].init.headers.Authorization === 'Bearer fresh-token',
+    env10.calls[0].init.headers.Authorization);
+  const env11 = makeEnv({
+    session: { access_token: 'expired', expires_at: Date.now() - 1000, user: { id: 'u-1' } },
+    hall: [REC],
+    cloudToken: () => Promise.reject(new Error('로그인이 만료됐어요 · 다시 로그인해 주세요')),
+    fetch: () => Promise.resolve(json(200, { ok: true }))
+  });
+  let expErr = null;
+  try { await env11.L.submitRecord(REC); } catch (e) { expErr = e; }
+  check('갱신이 거절되면 요청 없이 알린다', !!expErr && env11.calls.length === 0, `${env11.calls.length}건 요청`);
+  check('만료 안내 문구', !!expErr && /다시 로그인/.test(expErr.message), String(expErr && expErr.message));
 
   /* ═════════ 결과 ═════════ */
   console.log(results.join('\n'));

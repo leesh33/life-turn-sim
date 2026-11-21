@@ -260,6 +260,155 @@ const SESSION = JSON.stringify({
   const meta = JSON.parse(forgetEnv.store.get(CFG.meta) || '{}');
   check('새로 시작은 saveAt 을 남긴다', typeof meta.saveAt === 'number' && meta.saveAt > 0);
 
+  /* ═════════ ⑫ 만료된 토큰 — 동시에 갱신해도 요청은 한 번 ═════════ */
+  const EXPIRED = JSON.stringify({
+    access_token: 'old', refresh_token: 'ref-1', expires_at: Date.now() - 1000,
+    user: { id: 'u-1', email: 'andy@example.com', user_metadata: { full_name: 'Andy Lee' } }
+  });
+  let refreshHits = 0;
+  let openGate = null;
+  const raceGate = new Promise((r) => { openGate = r; });
+  const raceEnv = makeEnv({
+    storage: { [CFG.session]: EXPIRED },
+    fetch: (url, init) => {
+      if (url.includes('grant_type=refresh_token')) {
+        refreshHits++;
+        return raceGate.then(() => json(200, { access_token: 'new-1', refresh_token: 'ref-2', expires_in: 3600,
+          user: { id: 'u-1', email: 'andy@example.com', user_metadata: { full_name: 'Andy Lee' } } }));
+      }
+      if (url.includes('/rest/v1/life_sim_user_state')) return Promise.resolve(json(200, []));
+      if (url.includes('/rest/v1/rpc/')) return Promise.resolve(json(200, JSON.parse(init.body).p_data));
+      return Promise.resolve(json(404, { message: 'unexpected ' + url }));
+    }
+  });
+  const r1 = raceEnv.S._test.tokenRefresh();
+  const r2 = raceEnv.S._test.tokenRefresh();
+  check('동시 갱신은 같은 Promise 하나를 쓴다', r1 === r2);
+  openGate();
+  const [tokA, tokB] = await Promise.all([r1, r2]);
+  check('같은 순간 갱신 요청은 1회', refreshHits === 1, refreshHits + '회');
+  check('두 곳 모두 새 토큰을 받는다', tokA === 'new-1' && tokB === 'new-1', tokA + '/' + tokB);
+  check('회전된 리프레시 토큰을 저장한다',
+    JSON.parse(raceEnv.store.get(CFG.session)).refresh_token === 'ref-2');
+
+  /* ═════════ ⑬ 리프레시 거절(400) — 죽은 세션을 정리하고 다시 로그인하게 ═════════ */
+  let deadCalls = 0;
+  const deadEnv = makeEnv({
+    storage: { [CFG.session]: EXPIRED },
+    fetch: (url) => {
+      deadCalls++;
+      if (url.includes('grant_type=refresh_token')) {
+        // 실제 Supabase 응답 모양
+        return Promise.resolve(json(400, { code: 400, error_code: 'validation_failed', msg: 'Refresh token is not valid' }));
+      }
+      return Promise.resolve(json(500, { message: 'unexpected ' + url }));
+    }
+  });
+  await deadEnv.S._test.syncNow();
+  check('리프레시 400 이면 세션을 정리한다', deadEnv.S.session() === null);
+  check('만료 상태로 안내한다', deadEnv.S._test.status().state === 'expired', deadEnv.S._test.status().state);
+  check('만료 안내는 다시 로그인 문구', /다시 로그인/.test(deadEnv.S._test.status().error), deadEnv.S._test.status().error);
+  const deadBefore = deadCalls;
+  await deadEnv.S._test.syncNow();
+  await deadEnv.S._test.syncNow();
+  check('만료 뒤 다시 시도해도 죽은 토큰으로 요청하지 않는다', deadCalls === deadBefore, (deadCalls - deadBefore) + '회');
+  check('다시 시도해도 만료 안내는 그대로', deadEnv.S._test.status().state === 'expired');
+
+  const alreadyEnv = makeEnv({
+    storage: { [CFG.session]: EXPIRED },
+    fetch: () => Promise.resolve(json(400, { error: 'invalid_grant', error_description: 'Invalid Refresh Token: Already Used' }))
+  });
+  await alreadyEnv.S._test.syncNow();
+  check("'Already Used' 도 만료로 처리", alreadyEnv.S.session() === null &&
+    alreadyEnv.S._test.status().state === 'expired', alreadyEnv.S._test.status().state);
+
+  /* ═════════ ⑭ 다른 탭이 먼저 갱신했으면 그 세션으로 이어 간다(로그아웃 금지) ═════════ */
+  const ROTATED = JSON.stringify({ access_token: 'tab2', refresh_token: 'ref-9',
+    expires_at: Date.now() + 3600e3, user: { id: 'u-1' } });
+  const seenAuth = [];
+  const tabEnv = makeEnv({
+    storage: { [CFG.session]: EXPIRED },
+    fetch: (url, init) => {
+      if (url.includes('grant_type=refresh_token')) {
+        tabEnv.store.set(CFG.session, ROTATED);   // 실패하는 사이 다른 탭이 새 세션을 저장했다
+        return Promise.resolve(json(400, { code: 400, error_code: 'validation_failed', msg: 'Refresh token is not valid' }));
+      }
+      seenAuth.push((init && init.headers && init.headers.Authorization) || '');
+      if (url.includes('/rest/v1/life_sim_user_state')) return Promise.resolve(json(200, []));
+      if (url.includes('/rest/v1/rpc/')) return Promise.resolve(json(200, JSON.parse(init.body).p_data));
+      return Promise.resolve(json(404, {}));
+    }
+  });
+  await tabEnv.S._test.syncNow();
+  check('다른 탭이 갱신했으면 그 세션으로 이어 간다', !!tabEnv.S.session() && tabEnv.S.session().access_token === 'tab2',
+    tabEnv.S.session() ? tabEnv.S.session().access_token : 'null');
+  check('멀쩡한 로그인은 지우지 않는다', tabEnv.S._test.status().state === 'synced', tabEnv.S._test.status().state);
+  check('그 뒤 요청은 새 토큰으로 나간다', seenAuth.length > 0 && seenAuth.every((h) => h === 'Bearer tab2'), seenAuth.join('|'));
+
+  /* ═════════ ⑮ 실패 사유가 아이폰 화면에서도 글자로 보인다 ═════════ */
+  function fakeChip() {
+    return {
+      innerHTML: '', attrs: {}, isConnected: true,
+      addEventListener() {},
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      getAttribute(k) { return this.attrs[k] == null ? null : this.attrs[k]; }
+    };
+  }
+  const chipEnv = makeEnv({
+    storage: {
+      [CFG.session]: SESSION,
+      [CFG.save]: JSON.stringify({ name: '내 인생', updatedAt: 10, age: 12, month: 4, history: [{}] })
+    },
+    fetch: () => Promise.reject(new Error('Failed to fetch'))
+  });
+  const chip = fakeChip();
+  chipEnv.S.mount(chip);
+  await chipEnv.S._test.syncNow();
+  check('실패 사유가 칩 아래 글자로 보인다', /sync-why/.test(chip.innerHTML) && /네트워크에 연결하지 못했습니다/.test(chip.innerHTML),
+    chip.innerHTML.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90));
+  check('칩 상태도 error', chip.attrs['data-state'] === 'error', chip.attrs['data-state']);
+  check('긴 사유는 42자로 줄인다', chipEnv.S._test.shortError('가'.repeat(80)).length === 42,
+    String(chipEnv.S._test.shortError('가'.repeat(80)).length));
+
+  const exChip = fakeChip();
+  deadEnv.S.mount(exChip);
+  check('만료되면 로그인 버튼과 안내가 함께 나온다',
+    /Google로 로그인/.test(exChip.innerHTML) && /다시 로그인/.test(exChip.innerHTML) && !/로그아웃/.test(exChip.innerHTML),
+    exChip.innerHTML.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90));
+
+  /* ═════════ ⑯ 서버가 키 순서를 바꿔 돌려줘도 두 번 올리지 않는다 ═════════ */
+  function reorder(v) {
+    if (Array.isArray(v)) return v.map(reorder);
+    if (v && typeof v === 'object') {
+      const out = {};
+      Object.keys(v).reverse().forEach((k) => { out[k] = reorder(v[k]); });
+      return out;
+    }
+    return v;
+  }
+  let rpcHits = 0;
+  const reorderEnv = makeEnv({
+    storage: { [CFG.session]: SESSION, [CFG.hall]: JSON.stringify({ v: 1, seeded: true, records: [] }) },
+    fetch: (url, init) => {
+      if (url.includes('/rest/v1/life_sim_user_state')) {
+        return Promise.resolve(json(200, [{
+          data: { v: 1, at: 500, save: null, saveAt: 500, device: 'other',
+            hall: { v: 1, seeded: true, records: [{ id: 'x1', mine: true, ts: 1, score: 50 }] },
+            titles: { a: { at: 1 } } },
+          revised_at: 500
+        }]));
+      }
+      if (url.includes('/rest/v1/rpc/')) {
+        rpcHits++;
+        return Promise.resolve(json(200, reorder(JSON.parse(init.body).p_data)));   // jsonb 는 키 순서를 바꾼다
+      }
+      return Promise.resolve(json(404, {}));
+    }
+  });
+  await reorderEnv.S._test.syncNow();
+  check('키 순서만 달라도 다시 올리지 않는다', rpcHits === 1, rpcHits + '회');
+  check('그래도 동기화는 성공', reorderEnv.S._test.status().state === 'synced', reorderEnv.S._test.status().state);
+
   /* ── 출력 ── */
   console.log(results.join('\n'));
   const fails = results.filter((r) => r.startsWith('FAIL')).length;

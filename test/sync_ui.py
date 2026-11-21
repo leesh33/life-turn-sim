@@ -75,7 +75,7 @@ def run(url, outdir, tag):
         results.append(bool(cond))
         print(("PASS" if cond else "FAIL") + " · " + name + ((" — " + str(extra)) if extra else ""))
 
-    def new_page(p, size, init=None, routes=None):
+    def new_page(p, size, init=None, routes=None, auth400=False, rest500=False):
         w, h = size
         browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox", "--disable-dev-shm-usage"])
         ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=1,
@@ -99,6 +99,18 @@ def run(url, outdir, tag):
                 if "/auth/v1/authorize" in u:
                     route.fulfill(status=200, headers=cors({"content-type": "text/html"}),
                                   body="<html><body>가짜 구글 로그인</body></html>")
+                    return
+                if "/auth/v1/token" in u and "grant_type=refresh_token" in u:
+                    if auth400:
+                        # 실제 Supabase 는 무효한 리프레시 토큰에 401 이 아니라 400 으로 답한다
+                        route.fulfill(status=400, headers=cors(), body=json.dumps(
+                            {"code": 400, "error_code": "validation_failed", "msg": "Refresh token is not valid"}))
+                    else:
+                        route.fulfill(status=404, headers=cors(), body=json.dumps({"message": "no"}))
+                    return
+                if rest500 and "/rest/v1/life_sim_user_state" in u:
+                    route.fulfill(status=503, headers=cors(),
+                                  body=json.dumps({"message": "upstream connect error"}))
                     return
                 if "/auth/v1/logout" in u:
                     route.fulfill(status=204, headers=cors())
@@ -218,6 +230,70 @@ def run(url, outdir, tag):
         ok("로그아웃해도 내 기록은 남는다", page.evaluate("() => window.Life.hallRecords().length") >= 2)
         ok("가짜 응답 밖의 요청 없음", not unmatched, unmatched[:3])
         ok("로그인·동기화 중 콘솔 오류 0건", not errors, errors[:3])
+        browser.close()
+
+        # ── ⑤ 죽은 세션(리프레시 400) — 다시 로그인 안내 ─────────────
+        #  실제 Supabase 는 무효한 리프레시 토큰에 401 이 아니라 400 으로 답한다.
+        #  예전에는 그 400 을 오류로만 보여 줘 '동기화 실패 · 다시 시도' 에 영원히 갇혔다.
+        init_dead = (
+            "(() => { try {"
+            " const s = { access_token: 'stale-token', refresh_token: 'stale-refresh',"
+            "   expires_at: Date.now() - 5000,"
+            "   user: { id: 'u-test', email: 'andy@example.com', user_metadata: { full_name: 'Andy Lee' } } };"
+            " localStorage.clear();"
+            " localStorage.setItem('lifeTurnSim.auth.session.v1', JSON.stringify(s));"
+            " } catch (e) {} })();"
+        )
+        browser, page, errors, calls, unmatched = new_page(p, (390, 844), init=init_dead,
+                                                          routes=True, auth400=True)
+        page.goto(url, wait_until="networkidle")
+        page.wait_for_timeout(1200)
+        row_text = page.locator("#syncRow").inner_text()
+        ok("만료되면 다시 로그인 안내", "다시 로그인" in row_text, row_text.replace("\n", " "))
+        ok("로그인 칩이 돌아온다", "Google로 로그인" in row_text)
+        ok("로그아웃 버튼은 사라진다", page.locator("#syncRow .sync-out").count() == 0)
+        ok("만료된 세션을 지운다", page.evaluate(
+            "() => localStorage.getItem('lifeTurnSim.auth.session.v1')") is None)
+        refresh_calls = [c for c in calls if "grant_type=refresh_token" in c["url"]]
+        ok("죽은 토큰으로 되풀이 요청하지 않는다", len(refresh_calls) == 1, f"{len(refresh_calls)}회")
+        page.evaluate("() => window.CloudSync.syncNow()")
+        page.wait_for_timeout(500)
+        page.evaluate("() => window.CloudSync.syncNow()")
+        page.wait_for_timeout(400)
+        refresh_after = [c for c in calls if "grant_type=refresh_token" in c["url"]]
+        ok("다시 시도해도 되풀이 요청 없음", len(refresh_after) == 1, f"{len(refresh_after)}회")
+        js_errors = [e for e in errors if "Failed to load resource" not in e]
+        ok("만료 안내 중 JS 오류 0건", not js_errors, js_errors[:2])
+        page.screenshot(path=os.path.join(outdir, f"sync-expired-{tag}.png"))
+        browser.close()
+
+        # ── ⑥ 동기화 실패 사유가 화면 글자로 보인다 ─────────────
+        init_ok = (
+            "(() => { try {"
+            " const s = { access_token: 'fake-token', refresh_token: 'fake-refresh',"
+            "   expires_at: Date.now() + 3600 * 1000,"
+            "   user: { id: 'u-test', email: 'andy@example.com', user_metadata: { full_name: 'Andy Lee' } } };"
+            " localStorage.clear();"
+            " localStorage.setItem('lifeTurnSim.auth.session.v1', JSON.stringify(s));"
+            " } catch (e) {} })();"
+        )
+        browser, page, errors, calls, unmatched = new_page(p, (390, 844), init=init_ok,
+                                                          routes=True, rest500=True)
+        page.goto(url, wait_until="networkidle")
+        page.wait_for_timeout(1200)
+        why = page.locator("#syncRow .sync-why")
+        ok("실패 사유가 칩 아래 글자로 보인다", why.count() == 1,
+           page.locator("#syncRow").inner_text().replace("\n", " "))
+        why_text = why.first.inner_text() if why.count() else ""
+        ok("사유에 실제 오류가 담긴다", "upstream connect error" in why_text, why_text)
+        vis = page.evaluate("() => { const e = document.querySelector('#syncRow .sync-why');"
+                            " if (!e) return null; const r = e.getBoundingClientRect();"
+                            " return { fs: parseFloat(getComputedStyle(e).fontSize), w: r.width, h: r.height,"
+                            "   clipped: e.scrollWidth > e.clientWidth + 1 }; }")
+        ok("사유가 화면 안에서 읽히는 크기", bool(vis) and vis["fs"] >= 10 and vis["h"] > 0 and not vis["clipped"],
+           vis)
+        ok("실패해도 다시 시도 버튼은 남는다", "다시 시도" in page.locator("#syncRow").inner_text())
+        page.screenshot(path=os.path.join(outdir, f"sync-error-reason-{tag}.png"))
         browser.close()
 
         # ── ④ 약관 페이지 ────────────────────────────────────

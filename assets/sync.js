@@ -40,10 +40,13 @@
   var MINE_MAX = 240;           // 엔진 HALL_MAX 와 같은 값 — 내 기록은 최근 240건
   var B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
-  var status = { state: 'off', error: '', at: 0 };   // off | syncing | synced | error
+  var EXPIRED_TEXT = '로그인이 만료됐어요 · 다시 로그인해 주세요';
+
+  var status = { state: 'off', error: '', at: 0 };   // off | syncing | synced | error | expired
   var targets = [];             // 칩을 그릴 자리(시작 화면·전당)
   var pushTimer = null;
   var inflight = null;
+  var refreshInflight = null;   // 동시에 만료된 토큰을 갱신하려는 요청은 하나로 합친다
   var dirty = false;
   var wrapped = false;
   var started = false;
@@ -84,8 +87,17 @@
   function writeJson(key, value) {
     try { writeRaw(key, JSON.stringify(value)); } catch (e) {}
   }
+  // 서버는 jsonb 라 키 순서를 바꿔 돌려준다 → 키 순서를 맞춰 놓고 비교한다
+  // (순서만 달라도 "다르다"고 보면 저장을 한 번 더 하게 된다)
+  function canon(v) {
+    if (v == null || typeof v !== 'object') return v;
+    if (Array.isArray(v)) return v.map(canon);
+    var out = {}, keys = Object.keys(v).sort(), i;
+    for (i = 0; i < keys.length; i++) out[keys[i]] = canon(v[keys[i]]);
+    return out;
+  }
   function same(a, b) {
-    try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+    try { return JSON.stringify(canon(a)) === JSON.stringify(canon(b)); } catch (e) { return false; }
   }
 
   /* ── 세션 ── */
@@ -174,36 +186,77 @@
     });
   }
 
+  // 리프레시 토큰이 거절당했는가 — Supabase GoTrue 는 이 경우 401 이 아니라 400 으로 답한다
+  //   (예: {code:400, error_code:'validation_failed', msg:'Refresh token is not valid'},
+  //        'Invalid Refresh Token: Already Used')
+  function refreshDead(e) {
+    var st = e && e.status;
+    return st === 400 || st === 401;
+  }
+
+  // 죽은 세션 정리 — 이 기기에서 로그인 정보만 지우고, 화면에는 다시 로그인할 수 있게 안내를 남긴다.
+  // (예전에는 400 을 그대로 오류로만 보여 줘서, 죽은 리프레시 토큰을 든 채로
+  //  '동기화 실패 · 다시 시도' 에 영원히 갇혔다)
+  function expireSession() {
+    removeRaw(SESSION_KEY);
+    removeRaw(PKCE_KEY);
+    if (pushTimer) { global.clearTimeout(pushTimer); pushTimer = null; }
+    dirty = false;
+    setStatus('expired', EXPIRED_TEXT);
+  }
+
   function tokenRefresh() {
+    if (refreshInflight) return refreshInflight;   // 같은 순간 여러 곳이 불러도 요청은 한 번만
     var s = session();
-    if (!s || !s.refresh_token) return Promise.reject(new Error('로그인이 필요합니다'));
-    return api('/auth/v1/token?grant_type=refresh_token', {
+    if (!s || !s.refresh_token) return Promise.reject(new Error(EXPIRED_TEXT));
+    var used = s.refresh_token;
+    refreshInflight = api('/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
-      body: { refresh_token: s.refresh_token }
+      body: { refresh_token: used }
     }).then(function (tok) {
+      refreshInflight = null;
       return sessionSave(tok).access_token;
+    }, function (e) {
+      refreshInflight = null;
+      // 이 요청이 실패하는 사이 다른 탭·기기가 먼저 갱신해 리프레시 토큰이 바뀌었으면
+      // 저장소에 새로 들어온 세션으로 이어 간다(멀쩡한 로그인을 지우지 않는다).
+      var fresh = session();
+      if (fresh && fresh.refresh_token && fresh.refresh_token !== used &&
+          fresh.expires_at - 60000 > now()) return fresh.access_token;
+      if (refreshDead(e)) expireSession();   // 정말 만료됐다 → 다시 로그인 안내
+      throw e;
     });
+    return refreshInflight;
   }
 
   function token() {
     var s = session();
-    if (!s) return Promise.reject(new Error('로그인이 필요합니다'));
+    if (!s) return Promise.reject(new Error(EXPIRED_TEXT));
     if (s.expires_at - 60000 > now()) return Promise.resolve(s.access_token);
     return tokenRefresh();
   }
 
-  // 본인 행 읽기/쓰기. 401 이면 토큰을 한 번 갱신하고 다시 시도한다.
+  // 본인 행 읽기/쓰기. 401(만료)이면 한 번 더 시도한다 —
+  // 그 사이 다른 탭이 토큰을 갱신해 두었으면 새 토큰을 그대로 쓰고, 아니면 한 번만 갱신한다.
   function withToken(fn, retried) {
+    var used = '';
     return token().then(function (t) {
+      used = t;
       return fn(t);
     }).catch(function (e) {
-      if (e && e.status === 401 && !retried) {
-        return tokenRefresh().then(function () { return withToken(fn, true); }).catch(function (re) {
-          signOutLocal();
-          throw re;
-        });
+      if (!e || e.status !== 401 || retried) throw e;
+      var s = session();
+      if (!s) throw e;
+      var next;
+      if (s.access_token && s.access_token !== used && s.expires_at - 60000 > now()) {
+        next = Promise.resolve(s.access_token);        // 다른 탭이 이미 갱신했다
+      } else if (!s.refresh_token) {
+        expireSession();
+        throw e;
+      } else {
+        next = tokenRefresh();                         // 동시 호출은 하나로 합쳐진다
       }
-      throw e;
+      return next.then(function () { return withToken(fn, true); });
     });
   }
 
@@ -634,16 +687,24 @@
   }
 
   function syncNow() {
-    if (!session()) { setStatus('off'); return Promise.resolve(null); }
+    if (!session()) {
+      if (status.state !== 'expired') setStatus('off');   // 만료 안내는 그대로 두고 다시 로그인하게
+      return Promise.resolve(null);
+    }
     if (inflight) { dirty = true; return inflight; }
     setStatus('syncing');
     inflight = doSync().then(function (res) {
       inflight = null;
+      if (!session()) return null;          // 도중에 만료돼 정리됐으면 만료 안내를 지우지 않는다
       if (dirty) { dirty = false; return syncNow(); }
       return res;
     }).catch(function (e) {
       inflight = null;
       dirty = false;
+      if (!session()) {                     // 만료로 세션을 정리한 경우 → 다시 로그인 안내
+        if (status.state !== 'expired') setStatus('expired', EXPIRED_TEXT);
+        return null;
+      }
       setStatus('error', friendlyError(e));
       return null;
     });
@@ -653,7 +714,16 @@
   function friendlyError(e) {
     var msg = String((e && e.message) || '');
     if (!msg || /Failed to fetch|NetworkError|Load failed/i.test(msg)) return '네트워크에 연결하지 못했습니다';
-    return msg.slice(0, 80);
+    if (refreshDead(e)) return EXPIRED_TEXT;
+    if (e && e.status === 401) return '로그인 확인이 필요해요 · 다시 시도해 주세요';
+    return msg.slice(0, 60);
+  }
+
+  // 모바일에서는 title 툴팁이 보이지 않는다 → 칩 아래에 짧은 사유를 글자로 남긴다
+  function shortError(msg) {
+    var v = String(msg || '').replace(/\s+/g, ' ').trim();
+    if (v.length > 42) v = v.slice(0, 41).trim() + '…';
+    return v;
   }
 
   function queuePush() {
@@ -680,7 +750,8 @@
     var hall = el.getAttribute('data-sync-hall') === '1';
     var html;
 
-    if (status.state === 'off') {
+    if (status.state === 'off' || status.state === 'expired') {
+      var expired = status.state === 'expired';
       html = '<button type="button" class="sync-pill" data-sync="in">' +
           '<span class="sp-g" aria-hidden="true">G</span><span>Google로 로그인</span></button>';
       // Apple 로그인 — SHOW_APPLE_SIGNIN 이 켜졌을 때만 내보낸다
@@ -688,20 +759,25 @@
         html += '<button type="button" class="sync-pill apple" data-sync="apple">' +
           '<span class="sp-apple" aria-hidden="true">\uF8FF</span><span>Apple로 로그인</span></button>';
       }
-      html += '<span class="sync-note">' + (hall
-          ? '로그인하면 전당·칭호·진행이 기기 사이로 이어집니다 (선택)'
-          : '로그인하면 기기 간에 이어집니다 (선택)') + '</span>';
+      html += '<span class="sync-note' + (expired ? ' warn' : '') + '">' + esc(expired
+          ? (status.error || EXPIRED_TEXT)
+          : (hall
+            ? '로그인하면 전당·칭호·진행이 기기 사이로 이어집니다 (선택)'
+            : '로그인하면 기기 간에 이어집니다 (선택)')) + '</span>';
     } else {
       var label = status.state === 'syncing' ? '동기화 중…'
         : status.state === 'error' ? '동기화 실패 · 다시 시도' : '동기화됨';
       var who = displayName();
       var mail = displayEmail();
       var detail = hall && mail ? ' · ' + mail : '';
+      // 실패 사유는 title 툴팁에만 두면 아이폰에서는 보이지 않는다 → 짧게 글자로도 남긴다
+      var why = status.state === 'error' && status.error
+        ? '<span class="sync-why">' + esc(shortError(status.error)) + '</span>' : '';
       html = '<button type="button" class="sync-pill on' + (status.state === 'error' ? ' err' : '') +
           '" data-sync="' + (status.state === 'error' ? 'retry' : 'info') + '"' +
           (status.error ? ' title="' + esc(status.error) + '"' : '') + '>' +
           '<span class="sp-cloud" aria-hidden="true">☁️</span><span>' + esc(label) + '</span></button>' +
-        '<span class="sync-note">' + esc(who) + esc(detail) + '</span>' +
+        '<span class="sync-note">' + esc(who) + esc(detail) + '</span>' + why +
         '<button type="button" class="sync-out" data-sync="out">로그아웃</button>';
     }
 
@@ -772,9 +848,14 @@
     wrapEngine();
 
     var onVisible = function () {
+      var s = session();
+      if (!s) return;
       if (global.document && global.document.visibilityState === 'hidden') {
-        if (session() && !inflight) syncNow();
-      } else if (session()) {
+        // 앱이 곧 멈출 수 있는 순간에 토큰 갱신을 "시작"하면, iOS 가 페이지를 재우는 사이
+        // 서버는 리프레시 토큰을 회전시켰는데 응답을 받지 못해 세션이 죽는다.
+        // 그래서 아직 유효한 토큰일 때만 남은 저장을 흘려보낸다.
+        if (!inflight && s.expires_at - 60000 > now()) syncNow();
+      } else {
         syncNow();
       }
     };
@@ -807,6 +888,7 @@
     deleteAccount: deleteAccount,
     forgetRun: forgetRun,
     session: session,
+    token: token,              // 만료면 갱신까지 해서 유효한 액세스 토큰을 준다 (leaderboard.js 가 쓴다)
     status: function () { return { state: status.state, error: status.error, at: status.at }; },
     name: displayName,
     email: displayEmail,
@@ -828,6 +910,10 @@
       randomString: randomString,
       challengeFor: challengeFor,
       sessionSave: sessionSave,
+      tokenRefresh: tokenRefresh,
+      expireSession: expireSession,
+      canon: canon,
+      shortError: shortError,
       status: function () { return status; },
       config: { url: SUPABASE_URL, table: TABLE, rpc: RPC_PUT,
         wipe: RPC_WIPE, lbClear: RPC_LB_CLEAR,
