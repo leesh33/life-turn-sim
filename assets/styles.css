@@ -2967,7 +2967,11 @@ body {
 .sync-out:active { color: var(--ink-2); }
 
 /* 전당 화면 — 제목 바로 아래, 조금 더 넓게 */
+/* 전당 화면은 세로 flex 라, 줄어들 수 있는 유일한 항목이던 이 줄이 내용 높이를 잃고
+   아래 `내 전당 | 전체 랭킹` 탭 위로 겹쳐 그려졌다 → 높이를 내용에 고정하고
+   남는 세로 공간은 스크롤되는 `.hall-pane` 이 가져가게 한다. */
 .hall-sync {
+  flex: 0 0 auto;
   margin: 0 0 8px;
   padding: 0 16px;
 }

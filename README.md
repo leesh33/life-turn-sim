@@ -441,6 +441,10 @@ python3 test/leaderboard_ui.py --url https://life-turn-sim.vercel.app/ --tag liv
 python3 test/sync_ui.py --serve .
 python3 test/sync_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
+# 🏆 전당 상단 겹침(390×844·390×664) — 로그인 안내 줄이 높이를 지키고 `내 전당 | 전체 랭킹` 탭과 겹치지 않는지
+python3 test/hall_sync_ui.py --serve .
+python3 test/hall_sync_ui.py --url https://life-turn-sim.vercel.app/ --tag live
+
 # 🧬 이전 회차 인물 — 0건/1건/3건, 이름 같은 사람 제외, 친구→연인→부부, 이별·실패, 저장 호환(v4→v5)
 node test/cameo.js
 
