@@ -489,8 +489,8 @@ body {
   border-bottom: 1px solid var(--line-2);
   z-index: 5;
 }
-.sb-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-/* 이름은 절대 줄이지 않는다 — 전에 '오…'로 잘렸다. 남는 폭은 나이 영역이 흡수한다. */
+.sb-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; row-gap: 4px; }
+/* 이름은 절대 줄이지 않는다 — 전에 '오…'로 잘렸다. 자리가 모자라면 버튼 줄이 다음 줄로 내려간다. */
 .sb-who { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .sb-name {
   font-size: 11.5px;
@@ -506,8 +506,8 @@ body {
 .sb-age { font-size: 15.5px; font-weight: 800; letter-spacing: -0.6px; white-space: nowrap; }
 .sb-age .dot { color: var(--ink-4); margin: 0 3px; font-weight: 600; }
 /* 상단 버튼 4개(전당·제보·요약·새로 시작)가 390px 한 줄에 들어가도록 압축 */
-.sb-actions { display: flex; gap: 2px; flex: 0 0 auto; }
-.sb-actions .ghost-btn { font-size: 9.5px; padding: 5px 5px; letter-spacing: -0.3px; }
+.sb-actions { display: flex; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+.sb-actions .ghost-btn { font-size: 9.5px; padding: 5px 4px; letter-spacing: -0.3px; }
 
 .stats {
   display: grid;
@@ -2223,9 +2223,11 @@ body {
 }
 .fb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* 좁은 화면(360px 이하)에서는 상단 이름을 접어 나이·개월차와 버튼 4개를 한 줄에 유지 */
+/* 좁은 화면(379px 이하)에서도 이름은 감추지 않는다 — 이름·나이를 살짝 줄여 한 줄을 지킨다. */
 @media (max-width: 379px) {
-  .sb-name { display: none; }
+  .sb-name { font-size: 11px; max-width: 46px; }
+  .sb-age { font-size: 15px; }
+  .sb-actions .ghost-btn { padding: 5px 3px; }
 }
 
 /* 글자 수 카운터가 입력 글자를 가리지 않게 */
@@ -2656,7 +2658,8 @@ body {
   border-color: rgba(181, 139, 42, 0.32);
   padding: 8px 10px;
 }
-.sb-actions .ghost-btn { padding: 6px 7px; }
+/* 상단 버튼은 390px 한 줄에 이름·나이와 함께 들어가도록 압축한다 (위 .sb-actions 규칙과 같은 값) */
+.sb-actions .ghost-btn { padding: 5px 4px; }
 
 /* 명예의 전당 안의 칭호 도감 진입 카드 */
 .hall-titles {
