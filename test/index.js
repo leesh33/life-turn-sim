@@ -16,7 +16,8 @@ const SUITE = [
   ['cameo', 'test/cameo.js'],
   ['phase1', 'test/phase1.js'],
   ['sync', 'test/sync.js'],
-  ['leaderboard', 'test/leaderboard.js']
+  ['leaderboard', 'test/leaderboard.js'],
+  ['appstore', 'test/appstore.js']
 ];
 
 let failed = 0;

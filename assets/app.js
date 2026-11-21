@@ -25,6 +25,7 @@
      시작 화면에서 고른 값은 Life.newGame({ scenario, legacy }) 로 넘긴다.
      마지막에 고른 시나리오는 localStorage 에 남겨 다음 판의 기본값으로 쓴다. */
   var SCENARIO_KEY = 'lifeTurnSim.scenario.v1';
+  var FLASH_KEY = 'lifeTurnSim.flash.v1';      // 화면을 새로 열며 한 번 보여 줄 안내(삭제 완료 등)
   var pickedScenario = 'kr';
   var pickedLegacy = null;
   try {
@@ -723,23 +724,39 @@
     heal: '체력·멘탈이 30 이하일 때 쓸 수 있어요'
   };
 
+  /* ── 보상형 광고 · 앱 스위치 ──
+     assets/config.js 의 SHOW_ADS_PROTOTYPE 가 꺼져 있으면(기본값 · App Store 심사 2.1)
+     · 하단 스폰서 배너를 감추고
+     · 「광고 보고 …」 문구 대신 바로 쓸 수 있는 안내를 보여 주고
+     · 보상형 광고 모달 없이 효과를 바로 적용한다(무료).
+     나중에 AdMob 을 붙이면 플래그만 켜면 된다. */
+  function adsOn() {
+    return !!(window.LifeFlags && window.LifeFlags.SHOW_ADS_PROTOTYPE);
+  }
+
   function renderRewards() {
     var bar = $('rewardBar');
     if (!bar || !state) return;
     var r = Life.rewardState(state);
     var undo = $('rewardUndo'), reroll = $('rewardReroll'), heal = $('rewardHeal');
+    var free = !adsOn();
 
     undo.disabled = !r.canUndo;
-    undo.querySelector('.rb-sub').textContent = r.canUndo ? '광고 보고 1턴 전으로' : '기록 없음';
+    undo.querySelector('.rb-sub').textContent = r.canUndo
+      ? (free ? '1턴 전으로' : '광고 보고 1턴 전으로')
+      : '기록 없음';
 
     reroll.disabled = !r.canReroll;
-    reroll.querySelector('.rb-sub').textContent = r.canReroll ? '광고 보고 다시 뽑기' : '지금은 불가';
+    reroll.querySelector('.rb-sub').textContent = r.canReroll
+      ? (free ? '다른 사건으로' : '광고 보고 다시 뽑기')
+      : '지금은 불가';
 
     heal.disabled = !r.canHeal;
     var healSub = heal.querySelector('.rb-sub');
     if (r.healLeft <= 0) healSub.textContent = '이번 판 소진';
-    else if (r.canHeal) healSub.textContent = '광고 보고 +' + r.healAmount + ' (' + r.healLeft + '회 남음)';
-    else healSub.textContent = '체력·멘탈 ' + r.healThreshold + ' 이하';
+    else if (r.canHeal) {
+      healSub.textContent = (free ? '+' : '광고 보고 +') + r.healAmount + ' (' + r.healLeft + '회 남음)';
+    } else healSub.textContent = '체력·멘탈 ' + r.healThreshold + ' 이하';
   }
 
   function requestReward(kind) {
@@ -748,6 +765,8 @@
     var r = Life.rewardState(state);
     var ok = kind === 'undo' ? r.canUndo : kind === 'reroll' ? r.canReroll : r.canHeal;
     if (!ok) { toast(REWARD_HINT[kind] || '지금은 쓸 수 없어요'); return; }
+    // 광고 지면을 감춘 상태에서는 광고 모달 없이 바로 적용한다.
+    if (!adsOn()) { applyReward(kind); return; }
     if (typeof window.showRewardedAd !== 'function') { toast('광고 모듈을 찾지 못했습니다'); return; }
     window.showRewardedAd(kind, applyReward);
   }
@@ -799,7 +818,14 @@
   var BANNER_KEY = 'lifeTurnSim.bannerClosed';
   function initAdZone() {
     var zone = $('adZone');
+    var modal = $('adModal');
+    if (modal) { modal.hidden = true; modal.setAttribute('aria-hidden', 'true'); }
     if (!zone) return;
+    // 프로토타입 광고를 감춘 상태 — 배너·모달 모두 내보내지 않는다.
+    if (!adsOn()) {
+      zone.hidden = true;
+      return;
+    }
     var closed = false;
     try { closed = localStorage.getItem(BANNER_KEY) === '1'; } catch (e) {}
     zone.hidden = closed;
@@ -811,6 +837,108 @@
         toast('배너를 접었습니다 (아래 버튼은 그대로)');
       });
     }
+  }
+
+  /* ── 🗑️ 계정 및 클라우드 기록 삭제(회원탈퇴) ──
+     App Store 5.1.1(v) — 계정을 만드는 앱은 앱 안에서 삭제할 수 있어야 한다.
+     명예의 전당 상단(로그인 상태바)에 로그인했을 때만 보이는 버튼을 두고,
+     2단계 확인(설명 → 「삭제」 입력)을 거친 뒤 CloudSync.deleteAccount() 로 지운다. */
+  var ACCT_WORD = '삭제';
+
+  function signedIn() {
+    try { return !!(window.CloudSync && window.CloudSync.session()); } catch (e) { return false; }
+  }
+
+  function updateAcctRow() {
+    var row = $('acctRow');
+    if (!row) return;
+    row.hidden = !signedIn();
+  }
+
+  function openAcct() {
+    var m = $('acctModal');
+    if (!m) return;
+    var step2 = $('amStep2');
+    if (step2) step2.hidden = true;
+    if ($('amNext')) { $('amNext').hidden = false; $('amNext').disabled = false; $('amNext').textContent = '계속'; }
+    if ($('amConfirm')) { $('amConfirm').hidden = true; $('amConfirm').disabled = true; $('amConfirm').textContent = '모두 삭제'; }
+    if ($('amWord')) $('amWord').value = '';
+    if ($('amError')) { $('amError').hidden = true; $('amError').textContent = ''; }
+    var fine = $('amFine');
+    if (fine) fine.hidden = false;
+    m.hidden = false;
+    m.setAttribute('aria-hidden', 'false');
+    if ($('amNext')) $('amNext').focus();
+  }
+
+  function closeAcct() {
+    var m = $('acctModal');
+    if (!m) return;
+    m.hidden = true;
+    m.setAttribute('aria-hidden', 'true');
+  }
+
+  function acctNext() {
+    if ($('amStep2')) $('amStep2').hidden = false;
+    if ($('amNext')) $('amNext').hidden = true;
+    var go = $('amConfirm');
+    if (go) { go.hidden = false; go.disabled = true; }
+    var input = $('amWord');
+    if (input) { input.value = ''; input.focus(); }
+  }
+
+  function acctError(msg) {
+    var e = $('amError');
+    if (!e) { toast(msg); return; }
+    e.textContent = msg;
+    e.hidden = false;
+  }
+
+  function acctConfirm() {
+    var word = $('amWord') ? $('amWord').value.trim() : '';
+    if (word !== ACCT_WORD) { acctError('확인을 위해 「' + ACCT_WORD + '」를 입력해 주세요'); return; }
+    if (!window.CloudSync || typeof window.CloudSync.deleteAccount !== 'function') {
+      acctError('지금은 삭제할 수 없습니다 · 잠시 뒤 다시 시도해 주세요');
+      return;
+    }
+    var go = $('amConfirm');
+    if (go) { go.disabled = true; go.textContent = '지우는 중…'; }
+    if ($('amNext')) $('amNext').disabled = true;
+    window.CloudSync.deleteAccount().then(function (out) {
+      var msg = out && out.accountDeleted
+        ? '🗑️ 계정과 인생 한 턴 기록을 모두 삭제했습니다'
+        : '🗑️ 인생 한 턴 기록을 모두 삭제했습니다 · 다른 앱에서 쓰는 계정은 그대로 두었습니다';
+      try { localStorage.setItem(FLASH_KEY, msg); } catch (e) {}
+      closeAcct();
+      setTimeout(function () { try { location.reload(); } catch (e) { showScreen('start'); renderStart(); } }, 250);
+    }).catch(function (e) {
+      if (go) { go.disabled = false; go.textContent = '모두 삭제'; }
+      if ($('amNext')) $('amNext').disabled = false;
+      acctError('지우지 못했습니다 · ' + ((e && e.message) || '잠시 뒤 다시 시도해 주세요'));
+    });
+  }
+
+  function bindAcct() {
+    var del = $('acctDel');
+    if (del) del.addEventListener('click', openAcct);
+    if ($('amClose')) $('amClose').addEventListener('click', closeAcct);
+    if ($('amCancel')) $('amCancel').addEventListener('click', closeAcct);
+    if ($('amNext')) $('amNext').addEventListener('click', acctNext);
+    if ($('amConfirm')) $('amConfirm').addEventListener('click', acctConfirm);
+    if ($('amWord')) {
+      $('amWord').addEventListener('input', function () {
+        var go = $('amConfirm');
+        if (go) go.disabled = $('amWord').value.trim() !== ACCT_WORD;
+      });
+      $('amWord').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); if (!$('amConfirm').disabled) acctConfirm(); }
+      });
+    }
+    var m = $('acctModal');
+    if (m) {
+      m.addEventListener('click', function (e) { if (e.target === m) closeAcct(); });
+    }
+    updateAcctRow();
   }
 
   function timewarp() {
@@ -1030,6 +1158,7 @@
   function openHall(from) {
     autoClear();
     hallReturn = from || screenName;
+    updateAcctRow();
     renderHall();
     showScreen('hall');
   }
@@ -1055,8 +1184,7 @@
     if ($('hallMineView')) $('hallMineView').hidden = hallView !== 'mine';
     if ($('hallGlobalView')) $('hallGlobalView').hidden = hallView !== 'global';
     if (hallView === 'global') {
-      $('hallSub').textContent = '전체 유저 익명 랭킹' +
-        (lgData && lgData.total != null ? ' · ' + lgData.total + '명 참가' : '');
+      $('hallSub').textContent = '전체 유저 익명 랭킹' + globalCountNote(lgData);
       renderHallGlobal();
       return;
     }
@@ -1162,13 +1290,20 @@
       lgData = data || null;
       renderHallGlobal();
       if (hallView === 'global' && screenName === 'hall') {
-        $('hallSub').textContent = '전체 유저 익명 랭킹 · ' + ((lgData && lgData.total) || 0) + '명 참가';
+        $('hallSub').textContent = '전체 유저 익명 랭킹' + globalCountNote(lgData);
       }
     }).catch(function (e) {
       lgLoading = false;
       lgError = (e && e.message) || '전체 랭킹을 불러오지 못했습니다';
       renderHallGlobal();
     });
+  }
+
+  /* 전체 랭킹 머리말 — 0명일 때도 어색하지 않게 */
+  function globalCountNote(data) {
+    if (!data || data.total == null) return '';
+    var n = data.total || 0;
+    return n > 0 ? ' · ' + n + '명 참가' : ' · 아직 0명 — 첫 참가자를 기다리는 중';
   }
 
   function scenarioShort(id) {
@@ -1224,7 +1359,9 @@
       sub = 'Google로 로그인하면 내 기록이 전체 랭킹에 오릅니다 (위에서 로그인)';
     }
     $('lgMySub').textContent = sub;
-    $('lgCount').textContent = data && data.total != null ? data.total + '명' : '—';
+    $('lgCount').textContent = data && data.total != null
+      ? (data.total > 0 ? data.total + '명' : '아직 0명')
+      : '—';
 
     var html;
     if (lgError) {
@@ -1233,8 +1370,11 @@
     } else if (!data) {
       html = '<div class="hall-empty">전체 랭킹을 불러오는 중…</div>';
     } else if (!(data.entries || []).length) {
-      html = '<div class="hall-empty">아직 등록된 기록이 없습니다.<br>' +
-        (signed ? '이 인생의 주인공이 되어 보세요!' : 'Google로 로그인하면 첫 기록의 주인공이 될 수 있습니다.') + '</div>';
+      html = '<div class="hall-empty">🏆 아직 등록된 기록이 없습니다.<br>' +
+        (signed
+          ? '<b>첫 번째 주인공</b>이 되어 보세요 — 인생을 마치면(졸업·80세 완주) 기록이 자동으로 올라갑니다.'
+          : '<b>첫 번째 주인공</b>이 되어 보세요! Google로 로그인하고 인생을 마치면 이 자리에 오릅니다.') +
+        '</div>';
     } else {
       html = (data.entries || []).map(function (r) {
         var rank = r.rank || 0;
@@ -1671,6 +1811,7 @@
       btn.addEventListener('click', function () { requestReward(btn.dataset.reason); });
     });
     initAdZone();
+    bindAcct();
     bindHall();
     initSfx();
 
@@ -1770,6 +1911,15 @@
     bindStart();
     bind();
 
+    // 🗑️ 계정 삭제를 마치고 새로 열린 화면에서 한 번만 안내한다
+    try {
+      var flash = localStorage.getItem(FLASH_KEY);
+      if (flash) {
+        localStorage.removeItem(FLASH_KEY);
+        setTimeout(function () { toast(flash); }, 350);
+      }
+    } catch (e) {}
+
     // ☁️ 동기화가 화면을 다시 그릴 수 있게 앱 상태를 열어 둔다
     //   (플레이 중에는 이 기기의 인생을 지키는 판단에 쓰인다)
     window.LifeApp = {
@@ -1785,6 +1935,7 @@
       renderStart();
       toast('☁️ Google 계정과 연결했습니다');
     });
+    window.addEventListener('life-sim-sync', function () { updateAcctRow(); });
     if (window.CloudSync) window.CloudSync.start();
 
     // 🏆 전체 랭킹 — 엔딩에서 기록이 생기면(로그인 + 자동 등록 켜짐) 서버로 올린다

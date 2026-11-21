@@ -1,0 +1,21 @@
+{
+  "appId": "com.odol.lifeturn",
+  "appName": "인생 한 턴",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#F4F1EB",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#F4F1EB",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "server": {
+    "iosScheme": "capacitor",
+    "allowNavigation": [
+      "life-turn-sim.vercel.app",
+      "zdcdvjlssncsawpqsjwe.supabase.co",
+      "accounts.google.com",
+      "appleid.apple.com"
+    ]
+  }
+}

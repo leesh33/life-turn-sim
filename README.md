@@ -273,7 +273,8 @@
 
 **로그인 없이 그대로 노는 게 기본**입니다. 구글 로그인은 기기를 바꿔도 이어서 하고 싶을 때만 쓰는 선택 기능이고, 로그인하지 않으면 네트워크 요청이 **0건**입니다.
 
-- **진입**: 시작 화면 `인생 시작하기` 아래 `G Google로 로그인` 칩(안내줄 `로그인하면 기기 간에 이어집니다 (선택)`) · 명예의 전당 제목 아래 같은 줄. 로그인하면 `☁️ 동기화됨 · 이름` + `로그아웃`으로 바뀝니다.
+- **진입**: 시작 화면 `인생 시작하기` 아래 `G Google로 로그인` 칩(안내줄 `로그인하면 기기 간에 이어집니다 (선택)`) · 명예의 전당 제목 아래 같은 줄. 로그인하면 `☁️ 동기화됨 · 이름` + `로그아웃`으로 바뀝니다. (`SHOW_APPLE_SIGNIN` 을 켜면 `Apple로 로그인` 칩이 옆에 함께 뜹니다.)
+- **회원탈퇴**: 로그인 상태의 명예의 전당에 `계정 및 클라우드 기록 삭제` — 위 「🍎 App Store 출시 준비」 참고.
 - **무엇이 이어지나**: 진행 중 인생(`lifeTurnSim.save.v1`) · 명예의 전당(`lifeTurnSim.hall.v1`, 🧬 카메오 인물의 근거) · 칭호 도감(`lifeTurnSim.titles.v1`). 화면 설정(자동 넘김·배너 접기)과 제보 게시판의 기기별 제한은 기기에 남깁니다.
 - **합치기(merge) 규칙** — 잃지 않는 쪽으로
   - 전당: `id` 기준 합집합(같은 기록은 한 번), 내 기록은 최근 240건까지
@@ -404,9 +405,9 @@
 - **유아기 시점**: 1~7세 이벤트의 선택지는 주인공(아기·아이)이 실제로 할 수 있는 행동입니다. 병원·구매·사과·사진 고르기처럼 보호자가 결정하는 일은 아이의 반응(우는지·잠드는지·웃는지)으로 바꾸고, 결과에서 부모의 판단이 드러나게 했습니다(`백일 사진` = 배고픔을 참고 웃는다 / 엉엉 운다).
 - **나이 고증**: 모든 이벤트는 `minAge`/`maxAge`를 갖습니다. 새벽 수유·이유식·배밀이·조리원·돌잡이 같은 영아기 이벤트는 `maxAge: 1`이라 2세 이후에는 절대 나오지 않습니다.
 
-## 보상형 광고 (프로토타입)
+## 보상형 광고 (프로토타입 · 기본 꺼짐)
 
-수익화 구조를 체험할 수 있게 세 가지 보상을 넣었습니다. 실제 SDK 없이 **3초 카운트다운 모달**로 광고 시청을 흉내냅니다.
+수익화 구조를 체험할 수 있게 세 가지 보상을 넣었습니다. 지금은 **광고 없이 바로 동작**합니다 — App Store 심사 2.1(가짜 광고 금지) 때문입니다.
 
 | 버튼 | 조건 | 효과 |
 | --- | --- | --- |
@@ -414,10 +415,28 @@
 | 🎲 다시 뽑기 | 선택을 하기 전 | 지금 사건을 다른 사건으로 바꿉니다 |
 | 💊 긴급 회복 | 체력 또는 멘탈 **30 이하** | 체력·멘탈 각 +12, 한 판에 **3회까지** |
 
-- 하단에 44px 높이의 `AD · 스폰서 배너 영역` 자리를 두었습니다(✕로 접을 수 있고, 접힘 상태는 저장됩니다).
+- **스위치**: `assets/config.js` 의 `SHOW_ADS_PROTOTYPE`(기본 `false`).
+  - `false` — 하단 `AD · 스폰서 배너 영역`·광고 모달·`광고 보고` 문구가 모두 나오지 않고, 세 버튼은 무료로 바로 동작합니다(`1턴 전으로` · `다른 사건으로` · `+12 (3회 남음)`).
+  - `true` — 예전 프로토타입 지면(3초 카운트다운 모달 · 44px 배너)이 다시 나타납니다. AdMob 연동 뒤에 켭니다.
 - 광고 재생은 `assets/ads.js`의 `showRewardedAd(reason, onReward)` 하나로 분리되어 있습니다.
   AdMob(Capacitor) · AdSense 보상형(H5 Games Ads) · 앱인토스 SDK 교체 예시를 파일 상단 주석에 적어 두었습니다.
 - 보상 효과 자체는 엔진에 있습니다: `Life.rewardState(s)`, `Life.undo(s)`, `Life.reroll(s)`, `Life.heal(s)`.
+
+## 🍎 App Store 출시 준비 (2026-11-21)
+
+| 항목 | 상태 |
+| --- | --- |
+| **2.1** 가짜 광고 | `SHOW_ADS_PROTOTYPE = false` — 배너·모달·문구 숨김, 보상은 무료로 바로 |
+| **5.1.1(v)** 계정 삭제 | 명예의 전당 → 로그인 상태에 `계정 및 클라우드 기록 삭제`(2단계 확인: 설명 → `삭제` 입력) |
+| **4.8** Sign in with Apple | `SHOW_APPLE_SIGNIN` 스위치 + `signInWithOAuth({ provider: 'apple' })` 경로 준비(기본 꺼짐) |
+| **전체 랭킹 0명** | `아직 0명 — 첫 참가자를 기다리는 중` · `첫 번째 주인공이 되어 보세요!` |
+| **iOS 래핑** | `capacitor.config.json`(`com.odol.lifeturn` · `인생 한 턴` · `webDir: www`) · `docs/ios-capacitor.md` · `tools/pack-www.sh` |
+
+- **회원탈퇴가 지우는 것**: `life_sim_leaderboard` · `life_sim_user_state` 의 본인 행, 이 기기의 `lifeTurnSim.*` 기록(이어하기·전당·칭호·세션).
+  서버 함수 `public.life_sim_delete_my_account()`(`supabase/life_sim_account_delete.sql`)가 있으면 **다른 앱(릴스핀)에 같은 계정의 기록이 없을 때만** `auth.users` 행까지 지웁니다 — 릴스핀 데이터에 손대지 않기 위한 가드입니다.
+  SQL 을 아직 돌리지 않아 함수가 없으면 앱이 아는 길(랭킹 clear RPC + 본인 상태행 DELETE(RLS))로 **기록만** 지우고 그 사실을 화면에 알립니다. 실패하면 이 기기 기록은 건드리지 않습니다.
+- **개인정보처리방침** 3·6항에 앱 안 삭제 절차를 적었습니다(`privacy.html`).
+- iOS 빌드는 맥 + Xcode 에서: `docs/ios-capacitor.md` 참고.
 
 ## 로컬 실행
 
@@ -430,7 +449,7 @@ python3 -m http.server 8811
 ## 테스트
 
 ```bash
-# 전체 자동 검사 (sim · routes · branches · stats · fun · infancy · avatar · cameo · phase1 · sync · leaderboard · missions)
+# 전체 자동 검사 (sim · routes · branches · stats · fun · infancy · avatar · cameo · phase1 · sync · leaderboard · missions · appstore)
 node test/
 
 # 이벤트 정적 검사 + 7개 시작 나이 × 3회 완주 + 폴백 0회 + 나이 고증 + 스탯 밸런스
@@ -444,6 +463,13 @@ node test/sync.js
 
 # 🏆 전체 유저 익명 랭킹 — 보낼 값(이메일 없음)·점수↔재산 정합성·자동 등록 토글·중복 방지·엔진 연결 62항목
 node test/leaderboard.js
+
+# 🚀 App Store 정비 — 광고 스위치·회원탈퇴(서버 함수 있음/없음/실패)·Apple 로그인 스위치·Capacitor 설정 47항목
+node test/appstore.js
+
+# 🚀 App Store 화면(390×844) — 광고 지면 0 · 보상 버튼 바로 동작 · 0명 안내 · 계정 삭제 2단계 모달·실행·완료 안내
+python3 test/appstore_ui.py --serve .
+python3 test/appstore_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
 # 🏆 전체 랭킹 화면(390×844) — 두 탭·정렬·메달·상위 %·이름 저장·등록·지우기·가로 넘침 0
 python3 test/leaderboard_ui.py --serve .

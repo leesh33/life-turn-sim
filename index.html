@@ -123,20 +123,21 @@
     <div class="paidbar" id="rewardBar" aria-label="보상형 광고">
       <button type="button" class="reward-btn" id="rewardUndo" data-reason="undo" disabled>
         <span class="rb-main"><span class="rb-emoji">⏪</span> 되돌리기</span>
-        <span class="rb-sub">광고 보고</span>
+        <span class="rb-sub">1턴 전으로</span>
       </button>
       <button type="button" class="reward-btn" id="rewardReroll" data-reason="reroll" disabled>
         <span class="rb-main"><span class="rb-emoji">🎲</span> 다시 뽑기</span>
-        <span class="rb-sub">광고 보고</span>
+        <span class="rb-sub">다른 사건으로</span>
       </button>
       <button type="button" class="reward-btn" id="rewardHeal" data-reason="heal" disabled>
         <span class="rb-main"><span class="rb-emoji">💊</span> 긴급 회복</span>
-        <span class="rb-sub">광고 보고 +12</span>
+        <span class="rb-sub">+12 (3회 남음)</span>
       </button>
     </div>
 
-    <!-- ── 얇은 광고 배너 자리 ── -->
-    <div class="adzone" id="adZone">
+    <!-- ── 얇은 광고 배너 자리 ──
+         기본은 감춤(hidden). assets/config.js 의 SHOW_ADS_PROTOTYPE 를 켜면 나타난다. -->
+    <div class="adzone" id="adZone" hidden>
       <span class="ad-tag">AD</span>
       <span class="ad-slot"><b>스폰서 배너 영역</b> · 320×50 프로토타입</span>
       <button type="button" class="ad-zone-close" id="adZoneClose" aria-label="배너 접기">✕</button>
@@ -172,6 +173,10 @@
       </div>
     </header>
     <div class="sync-row hall-sync" id="hallSyncRow" data-sync-hall="1" role="status" aria-live="polite"></div>
+    <!-- 로그인했을 때만 보인다 — 계정 및 클라우드 기록 삭제(회원탈퇴) -->
+    <div class="acct-row" id="acctRow" hidden>
+      <button type="button" class="acct-del" id="acctDel">계정 및 클라우드 기록 삭제</button>
+    </div>
     <div class="hall-views" id="hallViews" role="tablist" aria-label="전당 보기">
       <button type="button" class="hall-view active" data-view="mine" role="tab" aria-selected="true">내 전당</button>
       <button type="button" class="hall-view" data-view="global" role="tab" aria-selected="false">🏆 전체 랭킹</button>
@@ -350,8 +355,43 @@
       <p class="ad-fine">실제 SDK 연동 시 <code>showRewardedAd(reason, onReward)</code>의 시청 완료 콜백으로 교체됩니다</p>
     </div>
   </div>
+
+  <!-- ───────────── 🗑️ 계정 및 클라우드 기록 삭제 (회원탈퇴 · 2단계 확인) ───────────── -->
+  <div class="acct-modal" id="acctModal" hidden aria-hidden="true">
+    <div class="am-card" role="dialog" aria-modal="true" aria-labelledby="amTitle">
+      <header class="am-head">
+        <h2 id="amTitle">🗑️ 계정 및 기록 삭제</h2>
+        <button type="button" class="am-close" id="amClose" aria-label="닫기">✕</button>
+      </header>
+
+      <div class="am-body">
+        <p class="am-lead">인생 한 턴에 저장된 <b>클라우드 기록과 계정 연결</b>을 지웁니다.</p>
+        <ul class="am-list">
+          <li>진행 중인 인생 · 명예의 전당 · 칭호 도감 (클라우드)</li>
+          <li>🏆 전체 랭킹에 올린 내 기록</li>
+          <li>이 기기에 저장된 기록 — 이어하기도 사라집니다</li>
+        </ul>
+        <p class="am-warn">지운 기록은 되돌릴 수 없습니다.</p>
+
+        <div class="am-step2" id="amStep2" hidden>
+          <p class="am-step2-lead">정말 지울까요? 아래에 <b>삭제</b>를 입력하면 진행됩니다.</p>
+          <input id="amWord" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="삭제" aria-label="삭제라고 입력" />
+        </div>
+        <p class="am-error" id="amError" hidden></p>
+        <p class="am-fine" id="amFine">같은 Google 계정으로 다시 로그인하면 새 기록으로 시작합니다.</p>
+      </div>
+
+      <div class="am-actions">
+        <button type="button" class="btn am-cancel" id="amCancel">취소</button>
+        <button type="button" class="btn am-next" id="amNext">계속</button>
+        <button type="button" class="btn am-del" id="amConfirm" hidden disabled>모두 삭제</button>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- 앱 스위치(광고·Apple 로그인) — 가장 먼저 읽는다 -->
+<script src="assets/config.js"></script>
 <script src="assets/engine.js"></script>
 <script src="assets/avatar.js"></script>
 <!-- 이벤트 모듈 (생애주기별) — _def.js 가 먼저, zz-finalize.js 가 마지막 -->

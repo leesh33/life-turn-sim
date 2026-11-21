@@ -23,6 +23,8 @@
 
   var TABLE = 'life_sim_user_state';
   var RPC_PUT = 'life_sim_put_state';
+  var RPC_WIPE = 'life_sim_delete_my_account';        // supabase/life_sim_account_delete.sql
+  var RPC_LB_CLEAR = 'life_sim_leaderboard_clear';    // supabase/life_sim_leaderboard.sql
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
   var HALL_KEY = 'lifeTurnSim.hall.v1';
@@ -229,12 +231,25 @@
   }
 
   /* ── 로그인 / 로그아웃 ── */
-  function signIn() {
+  // 기본은 Google. Apple 은 assets/config.js 의 SHOW_APPLE_SIGNIN 이 켜졌을 때만 내보낸다
+  // (Apple Developer 콘솔·Supabase Apple provider 준비 전에 누르면 오류가 난다).
+  var PROVIDER_LABEL = { google: 'Google', apple: 'Apple' };
+
+  function providerOn(name) {
+    if (name === 'apple') return !!(global.LifeFlags && global.LifeFlags.SHOW_APPLE_SIGNIN);
+    return true;
+  }
+
+  function signIn(provider) {
+    provider = provider === 'apple' ? 'apple' : 'google';
+    if (!providerOn(provider)) {
+      return Promise.reject(new Error(PROVIDER_LABEL[provider] + ' 로그인은 아직 준비 중입니다'));
+    }
     var base = global.location ? global.location.origin + global.location.pathname : '';
     var verifier = randomString(56);
     writeJson(PKCE_KEY, { verifier: verifier, at: now() });
     return challengeFor(verifier).then(function (challenge) {
-      var url = SUPABASE_URL + '/auth/v1/authorize?provider=google' +
+      var url = SUPABASE_URL + '/auth/v1/authorize?provider=' + provider +
         '&redirect_to=' + encodeURIComponent(base) +
         (challenge ? '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=s256' : '');
       if (global.location) global.location.assign(url);
@@ -247,7 +262,6 @@
     removeRaw(PKCE_KEY);
     setStatus('off');
   }
-
   function signOut() {
     var s = session();
     setStatus('off');
@@ -482,6 +496,103 @@
     } catch (e) {}
   }
 
+  /* ── 🗑️ 계정 및 클라우드 기록 삭제(회원탈퇴) ──
+     App Store 5.1.1(v). 두 갈래로 동작한다.
+       1) 서버 함수 life_sim_delete_my_account 가 있으면 그것으로
+          · life_sim_leaderboard · life_sim_user_state 의 본인 행을 지우고
+          · 같은 계정을 쓰는 다른 앱(릴스핀)에 기록이 없을 때만 auth 계정까지 지운다
+          (supabase/life_sim_account_delete.sql — 안 돌렸으면 2번으로)
+       2) 함수가 없으면 앱이 아는 길로 지운다 — 랭킹 clear RPC + 본인 상태행 DELETE(RLS).
+     끝나면 이 기기의 인생 한 턴 기록(lifeTurnSim.*)과 로그인 세션을 지운다.
+     릴스핀은 다른 주소·다른 저장소라 이 기기 기록에는 손대지 않는다. */
+  function num0(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }
+
+  function purgeLocal() {
+    var keys = {};
+    // ① 앱이 아는 키(열거가 안 되는 환경에서도 반드시 지운다)
+    [SAVE_KEY, HALL_KEY, TITLES_KEY, SESSION_KEY, PKCE_KEY, META_KEY, DEVICE_KEY,
+      'lifeTurnSim.leaderboard.nick.v1', 'lifeTurnSim.leaderboard.auto.v1',
+      'lifeTurnSim.leaderboard.sent.v1', 'lifeTurnSim.bannerClosed',
+      'lifeTurnSim.scenario.v1', 'lifeTurnSim.flash.v1', 'lifeTurnSim.autoPaused'
+    ].forEach(function (k) { keys[k] = 1; });
+    // ② 나머지 lifeTurnSim.* 도 있으면 함께(릴스핀 등 다른 앱 키는 다른 접두사라 건드리지 않는다)
+    var s = store();
+    if (s) {
+      try {
+        for (var i = 0; i < (s.length || 0); i++) {
+          var k = s.key ? s.key(i) : null;
+          if (k && k.indexOf('lifeTurnSim') === 0) keys[k] = 1;
+        }
+      } catch (e) { /* 열거 불가 — ① 만으로 충분 */ }
+    }
+    Object.keys(keys).forEach(removeRaw);
+  }
+
+  function deletionOut(res, fallbackMode) {
+    res = (res && typeof res === 'object') ? res : {};
+    return {
+      ok: true,
+      mode: fallbackMode || 'rpc',
+      accountDeleted: !!res.account_deleted,
+      keptForOtherApps: !!res.kept_for_other_apps,
+      stateRows: num0(res.state_rows),
+      leaderboardRows: num0(res.leaderboard_rows)
+    };
+  }
+
+  // 서버 함수가 아직 없을 때 — 앱이 아는 범위에서 지운다(릴스핀 테이블은 건드리지 않는다)
+  function wipeByApp(t, uid) {
+    var out = { ok: true, account_deleted: false, kept_for_other_apps: false,
+      state_rows: 0, leaderboard_rows: 0 };
+    return api('/rest/v1/rpc/' + RPC_LB_CLEAR, { method: 'POST', token: t, body: {} })
+      .then(function (r) { out.leaderboard_rows = num0(r && r.removed); }, function () { /* 있으면 좋고 */ })
+      .then(function () {
+        return api('/rest/v1/' + TABLE + '?user_id=eq.' + encodeURIComponent(uid), {
+          method: 'DELETE', token: t, prefer: 'return=representation'
+        }).then(function (rows) {
+          out.state_rows = Array.isArray(rows) ? rows.length : 0;
+        });
+      })
+      .then(function () { return out; });
+  }
+
+  function deleteAccount() {
+    var s = session();
+    if (!s || !s.user || !s.user.id) return Promise.reject(new Error('다시 로그인한 뒤 시도해 주세요'));
+    var uid = s.user.id;
+    setStatus('syncing');
+    return withToken(function (t) {
+      return api('/rest/v1/rpc/' + RPC_WIPE, { method: 'POST', token: t, body: {} })
+        .then(function (res) { return deletionOut(res, 'rpc'); })
+        .catch(function (e) {
+          if (e && e.status === 401) throw e;
+          var msg = String((e && e.message) || '');
+          var missing = (e && (e.status === 404 || e.status === 400)) &&
+            /does not exist|schema cache|Could not find|not find/i.test(msg);
+          if (!missing) throw e;
+          return wipeByApp(t, uid).then(function (res) { return deletionOut(res, 'app'); });
+        });
+    }).then(function (out) {
+      purgeLocal();
+      removeRaw(SESSION_KEY);
+      removeRaw(PKCE_KEY);
+      setStatus('off');
+      notifyDeleted(out);
+      return out;
+    }).catch(function (e) {
+      setStatus(session() ? 'error' : 'off', friendlyError(e));
+      throw new Error(friendlyError(e));
+    });
+  }
+
+  function notifyDeleted(out) {
+    try {
+      if (typeof global.CustomEvent === 'function' && global.dispatchEvent) {
+        global.dispatchEvent(new global.CustomEvent('life-sim-account-deleted', { detail: out || {} }));
+      }
+    } catch (e) {}
+  }
+
   function notifySignedIn() {
     try {
       if (typeof global.CustomEvent === 'function' && global.dispatchEvent) {
@@ -571,8 +682,13 @@
 
     if (status.state === 'off') {
       html = '<button type="button" class="sync-pill" data-sync="in">' +
-          '<span class="sp-g" aria-hidden="true">G</span><span>Google로 로그인</span></button>' +
-        '<span class="sync-note">' + (hall
+          '<span class="sp-g" aria-hidden="true">G</span><span>Google로 로그인</span></button>';
+      // Apple 로그인 — SHOW_APPLE_SIGNIN 이 켜졌을 때만 내보낸다
+      if (providerOn('apple')) {
+        html += '<button type="button" class="sync-pill apple" data-sync="apple">' +
+          '<span class="sp-apple" aria-hidden="true">\uF8FF</span><span>Apple로 로그인</span></button>';
+      }
+      html += '<span class="sync-note">' + (hall
           ? '로그인하면 전당·칭호·진행이 기기 사이로 이어집니다 (선택)'
           : '로그인하면 기기 간에 이어집니다 (선택)') + '</span>';
     } else {
@@ -607,7 +723,8 @@
         var btn = e.target.closest ? e.target.closest('[data-sync]') : null;
         if (!btn) return;
         var act = btn.getAttribute('data-sync');
-        if (act === 'in') { e.preventDefault(); signIn(); }
+        if (act === 'in') { e.preventDefault(); signIn('google'); }
+        else if (act === 'apple') { e.preventDefault(); signIn('apple').catch(function (er) { setStatus('error', friendlyError(er)); }); }
         else if (act === 'out') { e.preventDefault(); signOut(); }
         else if (act === 'retry') { e.preventDefault(); syncNow(); }
       });
@@ -687,6 +804,7 @@
     syncNow: syncNow,
     signIn: signIn,
     signOut: signOut,
+    deleteAccount: deleteAccount,
     forgetRun: forgetRun,
     session: session,
     status: function () { return { state: status.state, error: status.error, at: status.at }; },
@@ -702,12 +820,17 @@
       parseQuery: parseQuery,
       completeRedirect: completeRedirect,
       signIn: signIn,
+      providerOn: providerOn,
+      deleteAccount: deleteAccount,
+      wipeByApp: wipeByApp,
+      purgeLocal: purgeLocal,
       syncNow: syncNow,
       randomString: randomString,
       challengeFor: challengeFor,
       sessionSave: sessionSave,
       status: function () { return status; },
       config: { url: SUPABASE_URL, table: TABLE, rpc: RPC_PUT,
+        wipe: RPC_WIPE, lbClear: RPC_LB_CLEAR,
         save: SAVE_KEY, hall: HALL_KEY, titles: TITLES_KEY,
         session: SESSION_KEY, meta: META_KEY, device: DEVICE_KEY }
     }
