@@ -292,9 +292,11 @@ const SESSION = JSON.stringify({
     JSON.parse(raceEnv.store.get(CFG.session)).refresh_token === 'ref-2');
 
   /* ═════════ ⑬ 리프레시 거절(400) — 죽은 세션을 정리하고 다시 로그인하게 ═════════ */
+  const gameSave = JSON.stringify({ name: '내 인생', updatedAt: 10, age: 12, month: 4, history: [{}] });
+  const gameHall = JSON.stringify({ v: 1, seeded: true, records: [{ id: 'mine-1', mine: true, ts: 3, score: 55 }] });
   let deadCalls = 0;
   const deadEnv = makeEnv({
-    storage: { [CFG.session]: EXPIRED },
+    storage: { [CFG.session]: EXPIRED, [CFG.save]: gameSave, [CFG.hall]: gameHall },
     fetch: (url) => {
       deadCalls++;
       if (url.includes('grant_type=refresh_token')) {
@@ -306,6 +308,8 @@ const SESSION = JSON.stringify({
   });
   await deadEnv.S._test.syncNow();
   check('리프레시 400 이면 세션을 정리한다', deadEnv.S.session() === null);
+  check('만료돼도 진행 중 인생은 지킨다', deadEnv.store.get(CFG.save) === gameSave);
+  check('만료돼도 전당·칭호는 지킨다', deadEnv.store.get(CFG.hall) === gameHall);
   check('만료 상태로 안내한다', deadEnv.S._test.status().state === 'expired', deadEnv.S._test.status().state);
   check('만료 안내는 다시 로그인 문구', /다시 로그인/.test(deadEnv.S._test.status().error), deadEnv.S._test.status().error);
   const deadBefore = deadCalls;

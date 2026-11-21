@@ -243,6 +243,9 @@
   function friendly(e) {
     var msg = String((e && e.message) || '');
     if (!msg || /Failed to fetch|NetworkError|Load failed/i.test(msg)) return '네트워크에 연결하지 못했습니다';
+    if (e && (e.status === 400 || e.status === 401) && /refresh token|invalid_grant|expired/i.test(msg)) {
+      return '로그인이 만료됐어요 · 다시 로그인해 주세요';
+    }
     if (e && (e.status === 404 || /does not exist|schema cache|not find/i.test(msg))) return '전체 랭킹 서버가 아직 준비 중입니다';
     if (e && e.status === 401) {
       return signedIn() ? '로그인이 만료됐어요 · 다시 로그인해 주세요' : '로그인이 필요합니다';
