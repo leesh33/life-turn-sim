@@ -8,6 +8,20 @@
 - 저장소: https://github.com/leesh33/life-turn-sim
 - 별도 백엔드 없음 · 진행 상황은 브라우저 `localStorage`에 자동 저장 (원하면 구글 로그인으로 기기 간 동기화 — 선택)
 
+## 📊 어드민 — 접속자 통계 (`/admin.html`)
+
+관리자 계정으로 로그인했을 때만 보이는 작은 관리자 화면입니다. **오늘 접속자 · 전체(누적) 접속자 · 일별 추이(14일 / 30일)** 를 보여 줍니다.
+
+- **DB** — 릴스핀과 함께 쓰는 Supabase(`zdcdvjlssncsawpqsjwe`)에 [`supabase/app_visits.sql`](supabase/app_visits.sql) 을 한 번 실행합니다(다시 실행해도 안전). SQL Editor 에 그대로 붙여 넣고 Run 하면 `Success. No rows returned`.
+  - `public.app_visits` — `app_id`(`'reelpin'` · `'life-turn'`) · **한국 시간(KST) 날짜** · `visitor_id` · `views`. PK 는 `(app_id, visit_date, visitor_id)` 라 **같은 사람·같은 날은 한 줄**이고, 다시 열면 같은 줄의 `views` 만 늘어납니다.
+  - `app_visit_track(p_app_id, p_visitor_id)` — **비로그인 포함 누구나** 실행(anon). 잘못된 앱 id·방문자 id 는 `22023` 으로 거부합니다.
+  - `app_visit_stats(p_app_id, p_days default 14)` — **관리자만**. `auth.jwt() ->> 'email'` 이 관리자 화이트리스트(`andy.leesh33@gmail.com` · `shhy@kakao.com` — 릴스핀 어드민과 같은 목록)일 때만 통계를 돌려주고, 아니면 `42501 forbidden` 입니다. 응답은 `today_visitors` · `today_views` · `total_visitors`(누적 **서로 다른** visitor_id) · `total_views` · `daily`(최근 p_days 일, 기록 없는 날은 **0 으로 채움** · 1~90일 클램프).
+  - 테이블은 RLS 를 켜고 정책을 두지 않아 **직접 select/insert 가 안 되고 RPC 로만** 동작합니다. `service_role` 키는 쓰지 않습니다.
+  - SQL SHA-256 `c732b521e7d204e73b68fe55bc6e394f006378468e2e65ef95b1231887343712` (릴스핀 저장소의 같은 파일과 동일).
+- **앱 기록** — [`assets/visits.js`](assets/visits.js) 가 첫 화면을 열 때 **한 번** `app_visit_track('life-turn', …)` 을 부릅니다. 방문자 id 는 이 기기에서 처음 만든 **임의의 UUID**(`lifeTurnSim.visit.id.v1`, localStorage)로, 이메일·위치·기기 정보는 보내지 않습니다. 실패(오프라인·설정 없음)하면 조용히 넘어가 게임에는 영향이 없습니다.
+- **화면** — [`admin.html`](admin.html) · [`assets/admin.js`](assets/admin.js) · [`assets/admin.css`](assets/admin.css). 앱과 같은 Gmarket Sans·따뜻한 라이트 톤이고, `assets/sync.js` 의 **로그인 세션·토큰 갱신**을 그대로 씁니다(앱에서 로그인했으면 그대로 열립니다). 로그인 전에는 `Google로 로그인`, 비관리자에게는 `이 계정에는 어드민 권한이 없어요`, SQL 미적용이면 실행 안내를 보여 줍니다. 추이는 외부 차트 라이브러리 없이 div 막대로 그립니다.
+- **들어가는 곳** — 앱의 **명예의 전당** 머리 오른쪽 `📊 어드민` (관리자 이메일로 로그인했을 때만 보이고, 비관리자에게는 DOM 에서도 숨김), 또는 주소로 `/admin.html`.
+
 ## 플레이 방식
 
 1. 시작 나이 7개 중 하나를 고릅니다.

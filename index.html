@@ -173,6 +173,8 @@
         <h2>🏆 명예의 전당</h2>
         <p id="hallSub">—</p>
       </div>
+      <!-- 📊 관리자 계정으로 로그인했을 때만 보인다 (app.js 가 이메일로 보여 줄지 정한다) -->
+      <a class="hall-admin" id="adminLink" href="admin.html" title="접속자 통계" hidden>📊 어드민</a>
     </header>
     <div class="sync-row hall-sync" id="hallSyncRow" data-sync-hall="1" role="status" aria-live="polite"></div>
     <!-- 로그인했을 때만 보인다 — 계정 및 클라우드 기록 삭제(회원탈퇴) -->
@@ -443,6 +445,8 @@
 <script src="assets/sharecard.js"></script>
 <!-- ☁️ 구글 로그인 · 클라우드 동기화 (선택) — 로그인하지 않으면 아무것도 하지 않는다 -->
 <script src="assets/sync.js"></script>
+<!-- 📊 익명 접속자 기록 — 첫 화면을 열 때 한 번 (어드민 통계용 · 개인정보 없음) -->
+<script src="assets/visits.js"></script>
 <!-- 🏆 전체 유저 익명 랭킹 — 로그인한 기록을 올리고 모두의 기록을 본다 -->
 <script src="assets/leaderboard.js"></script>
 <script src="assets/app.js"></script>

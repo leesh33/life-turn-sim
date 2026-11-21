@@ -851,8 +851,24 @@
 
   function updateAcctRow() {
     var row = $('acctRow');
-    if (!row) return;
-    row.hidden = !signedIn();
+    if (row) row.hidden = !signedIn();
+    updateAdminLink();
+  }
+
+  /* 📊 어드민 링크 — 관리자 이메일로 로그인했을 때만 보인다.
+     실제 통계는 /admin.html 이 서버(DB 함수)에서 다시 확인하므로, 여기서는 보여 줄지만 정한다. */
+  function updateAdminLink() {
+    var link = $('adminLink');
+    if (!link) return;
+    var email = '';
+    try {
+      email = window.CloudSync && typeof window.CloudSync.email === 'function' ? window.CloudSync.email() : '';
+    } catch (e) { email = ''; }
+    var ok = false;
+    try {
+      ok = !!(window.LifeVisits && window.LifeVisits.isAdmin(email));
+    } catch (e) { ok = false; }
+    link.hidden = !ok;
   }
 
   function openAcct() {

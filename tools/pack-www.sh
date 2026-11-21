@@ -10,7 +10,7 @@ OUT="$ROOT/www"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-cp "$ROOT/index.html" "$ROOT/privacy.html" "$ROOT/terms.html" "$OUT/"
+cp "$ROOT/index.html" "$ROOT/privacy.html" "$ROOT/terms.html" "$ROOT/admin.html" "$OUT/"
 cp -R "$ROOT/assets" "$OUT/assets"
 # 소유 인증(VibeAiClub) 정적 파일 — 웹과 같은 경로로 앱 번들에도 함께 넣는다
 cp -R "$ROOT/.well-known" "$OUT/.well-known"
