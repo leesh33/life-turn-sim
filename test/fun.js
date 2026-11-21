@@ -228,6 +228,9 @@ function passRun(mental, flags) {
   const g = Life.newGame({ name: '발표', gender: '남', startAge: 19 });
   g.current = { eventId: 'tn_h50', chosen: null, event: null };
   g.stats.mental = mental;
+  // 19세는 시작 나이 선택지가 아니라 프리셋이 없다(1세 프리셋 = 신생아 체력 38로 시작).
+  // 이 검사는 '지난 3년을 쌓은 고3'의 합격선을 보는 것이므로 고3다운 체력을 넣어 둔다.
+  g.stats.hp = 62;
   Object.assign(g.flags, flags || {});
   const res = Life.choose(g, 0);
   return { res, g };

@@ -72,9 +72,11 @@
 
   // 시작 스탯은 50~60대 — 한두 번의 선택으로 100이 되지 않게 낮게 잡는다
   /* 역량(intel)은 나이가 들수록 조금씩 올라 출발하고(배운 것이 쌓인다),
-     행운(luck)은 어느 시작점에서나 50 근처에서 흔들린다 — 타고나는 값에 가깝다. */
+     행운(luck)은 어느 시작점에서나 50 근처에서 흔들린다 — 타고나는 값에 가깝다.
+     1세(출산)만은 예외다 — 신생아의 몸은 어른과 같은 60대일 수 없으므로
+     체력 38·호감도 46 에서 출발한다(체력 30 이하 긴급 회복 조건에도 걸리지 않는다). */
   var PRESETS = {
-    1:  { stats: { hp: 60, mental: 62, charm: 52, social: 58, intel: 44, luck: 52, asset: 0 },
+    1:  { stats: { hp: 38, mental: 62, charm: 52, social: 46, intel: 44, luck: 52, asset: 0 },
           flags: {} },
     8:  { stats: { hp: 62, mental: 58, charm: 54, social: 56, intel: 48, luck: 50, asset: 5 },
           flags: { 초등학생: true } },

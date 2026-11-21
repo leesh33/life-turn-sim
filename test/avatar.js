@@ -103,22 +103,36 @@ Avatar.BANDS.forEach((b) => {
   check(`${b.id} 진행률 0~100`, m.pct >= 0 && m.pct <= 100, m.pct + '%');
 });
 
-// 체력 65 미션 — 진행률과 달성
-const baby = S(3, { hp: 52, mental: 60 });
-check('체력 52 → 80%', Avatar.mission(baby).pct === 80, Avatar.mission(baby).pct + '%');
+// 유아 미션 — 신생아는 '체력'이 아니라 '호감도'로 자란다 (목표 호감도 65 · 출발선 36)
+const babyStart = Life.newGame({ name: '아기', gender: '남', startAge: 1 });
+check('1세 시작 체력은 신생아 수준(35~42)', babyStart.stats.hp >= 35 && babyStart.stats.hp <= 42,
+  `체력 ${babyStart.stats.hp}`);
+check('1세 시작 호감도 45~50', babyStart.stats.social >= 45 && babyStart.stats.social <= 50,
+  `호감도 ${babyStart.stats.social}`);
+check('신생아 체력은 긴급 회복 조건(30 이하)에 걸리지 않음', Life.rewardState(babyStart).canHeal === false,
+  `체력 ${babyStart.stats.hp}`);
+const bm = Avatar.mission(babyStart);
+check('유아 미션 목표는 호감도 65', bm.key === 'social' && bm.target === 65 && /호감도 65/.test(bm.goal), bm.goal);
+check('유아 미션은 체력으로 재지 않음', bm.key !== 'hp', bm.key);
+check('시작하자마자 98%가 아니라 30~40%대', bm.pct >= 30 && bm.pct <= 40, bm.pct + '%');
+
+// 진행률은 출발선(36)에서 목표(65)까지 — 호감도 50.5 이면 50%
+const baby = S(3, { social: 50.5, hp: 38, mental: 60 });
+check('호감도 50.5 → 50%', Avatar.mission(baby).pct === 50, Avatar.mission(baby).pct + '%');
 check('미달이면 달성 아님', Avatar.checkMission(baby) === null);
 check('미달이면 기록도 없음', !baby.missions || Object.keys(baby.missions).length === 0);
 
-baby.stats.hp = 66;
+baby.stats.social = 65;
 const got = Avatar.checkMission(baby);
-check('체력 66 이면 미션 달성', !!got, got ? got.label : '없음');
-check('달성 보너스 = 체력+2·멘탈+2', got && got.deltas.hp === 2 && got.deltas.mental === 2,
+check('호감도 65 이면 미션 달성', !!got, got ? got.label : '없음');
+check('달성 보너스 = 호감도+3·매력+2', got && got.deltas.social === 3 && got.deltas.charm === 2,
   got ? JSON.stringify(got.deltas) : '-');
-check('보너스가 실제 능력치에 반영', baby.stats.hp === 68 && baby.stats.mental === 62,
-  `체력 ${baby.stats.hp} · 멘탈 ${baby.stats.mental}`);
+check('보너스가 실제 능력치에 반영', baby.stats.social === 68 && baby.stats.charm === 57,
+  `호감도 ${baby.stats.social} · 매력 ${baby.stats.charm}`);
 check('달성 기록이 저장본에 남음', !!baby.missions.m_baby, JSON.stringify(baby.missions));
 check('같은 미션은 두 번 주지 않음', Avatar.checkMission(baby) === null);
 check('카드에는 달성으로 표시', Avatar.mission(baby).done === true && Avatar.mission(baby).pct === 100);
+check('체력이 낮아도 미션은 달성된다', baby.stats.hp === 38);
 
 // 재산 미션이 빚이면 목표가 '빚 청산'으로 바뀐다
 const debt = S(30, { asset: -1200 });
@@ -142,6 +156,20 @@ check('재산 보너스 반영', adult.stats.asset === 3200, adult.stats.asset +
 const top = S(16, { intel: 99 });
 const got3 = Avatar.checkMission(top);
 check('역량 보너스는 100에서 멈춤', !!got3 && top.stats.intel === 100, String(top.stats.intel));
+
+// 유아 미션은 유아기(1~7세) 안에 실제로 달성된다 — 시작 34%에서 차오른다
+const kid = Life.newGame({ name: '유아', gender: '여', startAge: 1 });
+const kidStartPct = Avatar.mission(kid).pct;
+let babyDoneAge = null, bg = 0;
+while (kid.age <= 7 && bg++ < 200 && !kid.ended) {
+  Life.choose(kid, 0);
+  const m = Avatar.checkMission(kid);
+  if (m && m.id === 'm_baby') babyDoneAge = kid.age;
+  const r = Life.advance(kid);
+  if (r.graduation) Life.graduate(kid, false);
+}
+check('유아 미션 시작 진행률 30~40%', kidStartPct >= 30 && kidStartPct <= 40, kidStartPct + '%');
+check('유아 미션이 유아기 안에 달성됨', babyDoneAge !== null, babyDoneAge ? `${babyDoneAge}세` : '미달성');
 
 /* ═════════ ⑥ 실제 플레이에서 미션이 걸리는가 ═════════ */
 const run = Life.newGame({ name: '미션', gender: '남', startAge: 1 });

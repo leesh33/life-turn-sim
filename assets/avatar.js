@@ -23,7 +23,7 @@
   var BANDS = [
     { id: 'baby', from: 1, to: 7, name: '유아기', emoji: '🍼', tint: '#FFF0E3', tint2: '#FFDFC4',
       hair: '#43312A', hair2: '#5A4338', cloth: '#F8C3AC', cloth2: '#FFF9F2', accent: '#E79C80',
-      mission: { id: 'm_baby', label: '유아 미션', goal: '체력 65 달성', key: 'hp', target: 65, bonus: { hp: 2, mental: 2 } } },
+      mission: { id: 'm_baby', label: '유아 미션', goal: '호감도 65 달성', key: 'social', target: 65, base: 36, bonus: { social: 3, charm: 2 } } },
     { id: 'child', from: 8, to: 13, name: '초등학교', emoji: '🎒', tint: '#E9F1FF', tint2: '#D2E3FB',
       hair: '#2E251F', hair2: '#463930', cloth: '#3D5A99', cloth2: '#FFFFFF', accent: '#E0603C',
       mission: { id: 'm_child', label: '초등 미션', goal: '역량 60 돌파', key: 'intel', target: 60, bonus: { intel: 3 } } },
@@ -380,16 +380,22 @@
     return sign + n.toLocaleString('ko-KR') + '만';
   }
 
-  /* ── 단기 미션 ── */
+  /* ── 단기 미션 ──
+     · def.target 은 그 나이대가 끝날 때까지 닿으면 좋은 값.
+     · def.base(선택)는 진행률의 출발선이다 — 유아 미션처럼 '태어날 때 이미
+       어느 정도 있는 값'을 목표로 삼을 때, (지금값-base)/(목표-base)로 재서
+       0%에서 차오르게 한다. base 가 없으면 지금값/목표 그대로(기존 규칙). */
   function mission(state) {
     var band = bandOf(state.age);
     var def = band.mission;
     var st = state.stats || {};
     var cur = def.key === 'asset' ? num(st.asset, 0) : num(st[def.key], 0);
+    var base = typeof def.base === 'number' ? def.base : 0;
+    var span = Math.max(1, def.target - base);
     // 재산 미션은 빚(마이너스)이면 목표가 '빚 청산'으로 바뀐다 — 0원을 넘는 순간 달성
     var inDebt = def.key === 'asset' && cur < 0;
     var goal = inDebt ? '빚 청산' : def.goal;
-    var pct = inDebt ? 0 : clamp((cur / def.target) * 100, 0, 100);
+    var pct = inDebt ? 0 : clamp(((cur - base) / span) * 100, 0, 100);
     var done = !!(state.missions && state.missions[def.id]);
     var bonusLabel = Object.keys(def.bonus).map(function (k) {
       if (k === 'asset') return '재산 +' + manText(def.bonus[k]) + '원';

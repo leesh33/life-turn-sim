@@ -619,8 +619,9 @@
       boomHtml +
       '<div class="choices' + (isChosen ? ' locked' : '') + '" id="choices">' + choices + '</div>' +
       resultHtml +
-      '</article>' +
-      stageNote(stage);
+      '</article>';
+
+    renderLifeBar();
 
     if (!isChosen) {
       $('choices').addEventListener('click', function (e) {
@@ -641,6 +642,13 @@
         (n.rel && n.rel !== 'none' && n.relLabel ? ' · ' + esc(n.relLabel) : '') + '</div>' +
       (n.record ? '<p class="cameo-line">' + esc(n.record) + '</p>' : '') +
       '</div>';
+  }
+
+  /* 🍼 인생 진행도 — 이벤트 카드에서 빼내 하단 도크 바로 위에 붙박이로 그린다 */
+  function renderLifeBar() {
+    var host = $('lifeBar');
+    if (!host || !state) return;
+    host.innerHTML = stageNote(Life.stageOf(state.age));
   }
 
   function stageNote(stage) {

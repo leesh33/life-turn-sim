@@ -145,7 +145,8 @@ check('대수 없던 옛 기록은 2대', Life.ancestors()[0].gen === 2);
 putHall([PARENT]);
 const heir = Life.newGame({ name: '유솔', gender: '여', startAge: 1, legacy: 'r-parent' });
 check('이어받기: 재산 = 유산', heir.stats.asset === 1920, String(heir.stats.asset));
-check('이어받기: 재능 +3', heir.stats.social === 61, String(heir.stats.social));
+// 1세(신생아) 시작 호감도 46 + 물려받은 재능 3 = 49
+check('이어받기: 재능 +3', heir.stats.social === 49, String(heir.stats.social));
 check('이어받기: 대수 2대', heir.generation === 2 && heir.legacy && heir.legacy.gen === 2);
 check('이어받기: 플래그', heir.flags['가문_이어받음'] === true);
 check('이어받기: 부모 소개', heir.legacy.family === '부모님: 상훈 ♥ 희연');
