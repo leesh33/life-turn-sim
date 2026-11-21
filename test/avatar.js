@@ -223,6 +223,62 @@ const back = Life.load();
 check('저장본에 미션 기록 유지', !!back && Object.keys(back.missions || {}).length === done.length);
 check('불러온 뒤 같은 미션 재지급 없음', Avatar.checkMission(back) === null);
 
+/* ═════════ ⑦ 성별 2 × 7단계 = 14가지 모습 ═════════
+   유저 피드백: "처음에 성별을 고르고 단계별로 성장하는 모습의 캐릭터가 있으면"
+    · 성별·나이대 조합 14가지가 서로 다른 그림인가
+    · 낭독기(aria-label)에도 성별이 들어가는가
+    · 성별이 저장·불러오기·전당 기록까지 따라가는가
+    · 성별이 없던 옛 저장도 안전하게 그려지는가 */
+const GENDERS = ['남', '여'];
+const variant = {};
+Avatar.BANDS.forEach((b) => GENDERS.forEach((g) => {
+  variant[g + '-' + b.id] = Avatar.svg(S(b.from + 2, {}, { gender: g }));
+}));
+check('성별×나이대 14가지 모습이 모두 다름', new Set(Object.values(variant)).size === 14,
+  new Set(Object.values(variant)).size + '종');
+check('일곱 나이대 모두 남녀 그림이 다름',
+  Avatar.BANDS.every((b) => variant['남-' + b.id] !== variant['여-' + b.id]),
+  Avatar.BANDS.filter((b) => variant['남-' + b.id] === variant['여-' + b.id]).map((b) => b.id).join(',') || '전부 다름');
+check('같은 성별·나이대는 늘 같은 그림', Avatar.svg(S(30, {}, { gender: '여' })) === Avatar.svg(S(30, {}, { gender: '여' })));
+check('낭독기에 여성 표기', /aria-label="여성 [^"]+ 모습"/.test(Avatar.svg(S(30, {}, { gender: '여' }))),
+  Avatar.svg(S(30, {}, { gender: '여' })).match(/aria-label="[^"]+"/)[0]);
+check('낭독기에 남성 표기', /aria-label="남성 [^"]+ 모습"/.test(Avatar.svg(S(30, {}, { gender: '남' }))),
+  Avatar.svg(S(30, {}, { gender: '남' })).match(/aria-label="[^"]+"/)[0]);
+check('여성 그림도 숫자 오류 없음', !/NaN|undefined|Infinity/.test(Object.keys(variant).filter((k) => k.startsWith('여')).map((k) => variant[k]).join('')));
+check('여성 그림 크기 7KB 이하', Object.keys(variant).filter((k) => k.startsWith('여')).every((k) => variant[k].length < 7000),
+  Math.max(...Object.keys(variant).filter((k) => k.startsWith('여')).map((k) => variant[k].length)) + 'B');
+// 나이대마다 옷색이 바뀐다 — 여성 팔레트가 나이대 사이에서 겹치지 않는다
+const clothIds = Avatar.BANDS.map((b) => (variant['여-' + b.id].match(/id="avCloth([a-z]+)f"/) || [])[1]).filter(Boolean);
+check('여성 옷 그라데이션이 나이대마다 따로', clothIds.length === 7, clothIds.join(','));
+
+// 성별이 없던 옛 저장 — 남성 그림으로 안전하게 그린다(던지지 않음)
+const legacySave = S(30);
+delete legacySave.gender;
+let legacySvg = '';
+try { legacySvg = Avatar.svg(legacySave); } catch (e) { legacySvg = 'ERR ' + e.message; }
+check('성별 없는 옛 저장도 그려짐', /^<svg/.test(legacySvg) && !/NaN|undefined/.test(legacySvg));
+
+// 저장 → 불러오기에서 성별이 유지되는가
+const girl = Life.newGame({ name: '성별', gender: '여', startAge: 8 });
+check('새 인생 성별 = 여', girl.gender === '여', girl.gender);
+Life.save(girl);
+const girlBack = Life.load();
+check('저장본에서 성별 유지', !!girlBack && girlBack.gender === '여', girlBack && girlBack.gender);
+const auto = Life.newGame({ name: '랜덤' });
+check('성별을 안 고르면 남/여 중 하나', auto.gender === '남' || auto.gender === '여', auto.gender);
+check('랜덤 선택도 남/여로 정해짐', Life.newGame({ name: '랜덤2', gender: '랜덤' }).gender !== '랜덤');
+
+// 명예의 전당 기록에도 성별이 남는다
+const hallRun = Life.newGame({ name: '전당여성', gender: '여', startAge: 1 });
+let hg = 0;
+while (hallRun.age < 8 && !hallRun.ended && hg++ < 400) {
+  Life.choose(hallRun, 0);
+  Life.advance(hallRun);
+}
+Life.graduate(hallRun, true);
+const mine = Life.hallMine()[0];
+check('전당 기록에 성별이 남음', !!mine && mine.gender === '여', mine ? mine.gender + ' · ' + mine.name : '기록 없음');
+
 /* ═════════ 출력 ═════════ */
 console.log(results.join('\n'));
 const fails = results.filter((r) => r.startsWith('FAIL')).length;

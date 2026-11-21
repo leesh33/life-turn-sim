@@ -25,12 +25,15 @@
      시작 화면에서 고른 값은 Life.newGame({ scenario, legacy }) 로 넘긴다.
      마지막에 고른 시나리오는 localStorage 에 남겨 다음 판의 기본값으로 쓴다. */
   var SCENARIO_KEY = 'lifeTurnSim.scenario.v1';
+  var GENDER_KEY = 'lifeTurnSim.gender.v1';     // 마지막에 고른 성별 — 다음 판의 기본값
   var FLASH_KEY = 'lifeTurnSim.flash.v1';      // 화면을 새로 열며 한 번 보여 줄 안내(삭제 완료 등)
   var pickedScenario = 'kr';
   var pickedLegacy = null;
   try {
     var savedScenario = localStorage.getItem(SCENARIO_KEY);
     if (savedScenario && Life && Life.scenarioOf(savedScenario).id === savedScenario) pickedScenario = savedScenario;
+    var savedGender = localStorage.getItem(GENDER_KEY);
+    if (savedGender === '남' || savedGender === '여' || savedGender === '랜덤') pickedGender = savedGender;
   } catch (e) {}
 
   /* ── 5초 자동 넘김 ──
@@ -56,6 +59,14 @@
   function scoreText(v) {
     var n = Math.round((v || 0) * 10) / 10;
     return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  /* 마지막에 고른 성별을 칩에 되살린다 — 안 골랐으면 첫 번째(남)가 켜져 있다 */
+  function syncGenderChips() {
+    Array.prototype.forEach.call(document.querySelectorAll('#genderChips .chip'), function (c) {
+      c.classList.toggle('active', c.dataset.g === pickedGender);
+      c.setAttribute('aria-pressed', c.dataset.g === pickedGender ? 'true' : 'false');
+    });
   }
 
   /* ── 시작 화면 ── */
@@ -222,9 +233,8 @@
       var chip = e.target.closest('.chip');
       if (!chip) return;
       pickedGender = chip.dataset.g;
-      Array.prototype.forEach.call(document.querySelectorAll('#genderChips .chip'), function (c) {
-        c.classList.toggle('active', c === chip);
-      });
+      try { localStorage.setItem(GENDER_KEY, pickedGender); } catch (err) {}
+      syncGenderChips();
     });
 
     $('startBtn').addEventListener('click', startGame);
@@ -274,6 +284,7 @@
       scenario: pickedScenario,
       legacy: legacyId
     });
+    try { localStorage.setItem(GENDER_KEY, pickedGender); } catch (e) {}
     // 미션 출발선(그 나이대에 들어설 때의 값)을 처음부터 저장본에 남긴다
     if (window.LifeAvatar) window.LifeAvatar.ensureBase(state);
     try { localStorage.setItem(SCENARIO_KEY, pickedScenario); } catch (e) {}
@@ -494,7 +505,7 @@
     var animate = band.id !== lastBandId;
     lastBandId = band.id;
     var pct = m.done ? 100 : Math.max(3, Math.min(100, m.pct));
-    return '<section class="avatar-card' + (animate ? '' : ' noanim') + (m.done ? ' done' : '') +
+    return '<section class="avatar-card' + (animate ? ' bandup' : ' noanim') + (m.done ? ' done' : '') +
       (missionFlash ? ' flash' : '') + '" id="avatarCard" aria-label="성장 아바타">' +
       '<div class="av-tile">' + A.svg(state) + '</div>' +
       '<div class="av-body">' +
@@ -1118,6 +1129,7 @@
 
     var html =
       '<div class="grad-hero">' +
+        (window.LifeAvatar ? '<div class="grad-avatar">' + window.LifeAvatar.svg({ age: info.age, gender: state.gender, stats: state.stats }) + '</div>' : '') +
         '<div class="gh-emoji">' + def.emoji + '</div>' +
         '<div class="grad-kicker">' + info.age + '세 · 12개월차 · ' + esc(def.short) + '</div>' +
         '<h2 class="grad-name">' + esc(def.name) + '</h2>' +
@@ -1525,6 +1537,8 @@
         '<div class="g-meta">' + (isFinal ? '인생을 마쳤습니다' : '여기까지의 인생') + '</div></div>' +
       '</div>' +
       '<div class="ending-card">' +
+        (window.LifeAvatar ? '<div class="end-avatar">' + window.LifeAvatar.svg(state) +
+          '<span>' + (state.gender === '여' ? '여성' : '남성') + ' · ' + state.age + '세의 모습</span></div>' : '') +
         '<div class="end-kicker">' + (isFinal ? '당신의 인생은' : '지금까지의 인생은') + '</div>' +
         (sum.archetype ? '<div class="end-arch">' + sum.archetype.emoji + ' ' + esc(sum.archetype.label) + '</div>' : '') +
         '<h2 class="end-title">' + esc(sum.title) + '</h2>' +
@@ -1924,6 +1938,7 @@
 
   window.addEventListener('DOMContentLoaded', function () {
     renderStart();
+    syncGenderChips();
     bindStart();
     bind();
 

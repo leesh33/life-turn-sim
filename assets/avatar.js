@@ -97,20 +97,76 @@
     return '#' + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
   }
 
+  /* ═════════ 옷 색 — 성별로 갈린다 ═════════
+     남성은 나이대 기본 팔레트를 그대로 쓰고,
+     여성은 같은 나이대에서 한 단계 부드럽고 따뜻한 색으로 바꾼다.
+     (그림 자체도 성별·나이대마다 다르다 — 머리 모양·옷 모양·든 물건) */
+  var FEMALE_PAL = {
+    baby: { cloth: '#F2A2B6', cloth2: '#FFF6F8', accent: '#D9557D' },
+    child: { cloth: '#4A6BB2', cloth2: '#FFFFFF', accent: '#D9557D' },
+    teen: { cloth: '#8B6AD6', cloth2: '#FFFFFF', accent: '#D9557D' },
+    youth: { cloth: '#DE8A72', cloth2: '#FFF7F1', accent: '#B95C43' },
+    adult: { cloth: '#37425E', cloth2: '#FFFFFF', accent: '#C2557A' },
+    midlife: { cloth: '#7E8CA0', cloth2: '#FDF6EC', accent: '#A9744F' },
+    senior: { cloth: '#A98FB6', cloth2: '#FBF5EF', accent: '#8A6A93' }
+  };
+  function pal(band, female) {
+    var f = female ? FEMALE_PAL[band.id] : null;
+    return f || { cloth: band.cloth, cloth2: band.cloth2, accent: band.accent };
+  }
+  function palId(band, female) { return 'avCloth' + band.id + (female ? 'f' : 'm'); }
+
   /* ═════════ 머리카락 ═════════
      작게(44~60px) 줄여도 실루엣이 읽히도록 큼직한 덩어리로 그린다.
      머리: 중심 (36, 30) 반지름 19  →  x 17~55, y 11~49
      앞머리 높이(fringe)가 낮을수록 이마가 덮여 어려 보이고,
-     높을수록 이마가 넓어 나이 들어 보인다. */
+     높을수록 이마가 넓어 나이 들어 보인다.
+     여성은 나이대마다 묶는 법이 다르다 —
+       유아(옆머리 두 줌·리본) → 초등(양 갈래 땋은머리) → 10대(높은 말총) →
+       20대(긴 웨이브) → 30·40대(단정한 어깨머리) → 50대(보브) → 노년(쪽머리). */
   function hairBack(band, female) {
     if (!female) return '';
     var h = 'fill="' + band.hair + '"';
-    var tip = band.id === 'child' ? 50 : band.id === 'baby' ? 42 : band.id === 'adult' ? 52 : 58;
-    var lock = 'M19 22 C11.6 30 10.6 ' + (tip - 10) + ' 13 ' + tip + ' C15.4 ' + (tip + 4) + ' 22 ' + (tip + 2) + ' 23.4 ' + (tip - 4) +
-      ' C20 ' + (tip - 12) + ' 19.8 32 21.6 24 Z';
-    var flip = 'M53 22 C60.4 30 61.4 ' + (tip - 10) + ' 59 ' + tip + ' C56.6 ' + (tip + 4) + ' 50 ' + (tip + 2) + ' 48.6 ' + (tip - 4) +
-      ' C52 ' + (tip - 12) + ' 52.2 32 50.4 24 Z';
-    return '<path d="' + lock + '" ' + h + '/>' + '<path d="' + flip + '" ' + h + '/>';
+    var h2 = 'fill="' + band.hair2 + '"';
+    var bow = '#F0806E';
+    switch (band.id) {
+      case 'baby': // 옆머리 두 줌 + 리본
+        return '<path d="M18.4 28 q-3.4 4.6 -2.6 8.4 q2.8 -0.6 4.6 -4.4 z" ' + h + '/>' +
+          '<path d="M53.6 28 q3.4 4.6 2.6 8.4 q-2.8 -0.6 -4.6 -4.4 z" ' + h + '/>' +
+          '<path d="M45 14.4 l4.8 -2.6 l0.2 4.6 z" fill="' + bow + '"/>' +
+          '<path d="M45 14.4 l4.6 2.8 l-0.2 -4.4 z" fill="#F59183"/>';
+      case 'child': // 양 갈래 땋은머리 + 머리끈
+        return '<ellipse cx="17.4" cy="33.4" rx="3.6" ry="4.6" ' + h + '/>' +
+          '<ellipse cx="16.8" cy="41" rx="3.2" ry="4.2" ' + h + '/>' +
+          '<ellipse cx="16.6" cy="47.6" rx="2.6" ry="3.4" ' + h + '/>' +
+          '<ellipse cx="54.6" cy="33.4" rx="3.6" ry="4.6" ' + h + '/>' +
+          '<ellipse cx="55.2" cy="41" rx="3.2" ry="4.2" ' + h + '/>' +
+          '<ellipse cx="55.4" cy="47.6" rx="2.6" ry="3.4" ' + h + '/>' +
+          '<circle cx="16.6" cy="50.4" r="1.8" fill="' + bow + '"/>' +
+          '<circle cx="55.4" cy="50.4" r="1.8" fill="' + bow + '"/>';
+      case 'teen': // 높게 묶은 말총
+        return '<path d="M52.4 16.4 q9 -2.4 10 5.6 q1 6.8 -5 10 q-2.8 -3.6 -0.6 -7.4 q2 -3.8 -4.8 -4.6 z" ' + h + '/>' +
+          '<path d="M19.4 25 q-2.6 6 -1.4 10.6 q2.8 -2 3.6 -7 z" ' + h + '/>' +
+          '<circle cx="53.4" cy="18" r="2.1" fill="' + bow + '"/>';
+      case 'youth': // 긴 웨이브
+        return '<path d="M19 21 C12 30 11.4 47 14.8 57.6 q4.6 1.4 5.8 -2.8 C16.8 44 18.6 29 21.6 22 Z" ' + h + '/>' +
+          '<path d="M53 21 C60 30 60.6 47 57.2 57.6 q-4.6 1.4 -5.8 -2.8 C59.2 44 57.4 29 54.4 22 Z" ' + h + '/>' +
+          '<path d="M20 27 C16.6 36 16.6 46 18 52" stroke="' + band.hair2 + '" stroke-width="1.3" fill="none" opacity="0.35" stroke-linecap="round"/>' +
+          '<path d="M52 27 C55.4 36 55.4 46 54 52" stroke="' + band.hair2 + '" stroke-width="1.3" fill="none" opacity="0.35" stroke-linecap="round"/>';
+      case 'adult': // 단정한 어깨머리 (뒤로 묶은 끝이 살짝)
+        return '<path d="M18.6 23 C13.4 31 12.8 45 15.8 50 q4 1.6 5.4 -2.4 C18 41 19.4 28 22 24 Z" ' + h + '/>' +
+          '<path d="M53.4 23 C58.6 31 59.2 45 56.2 50 q-4 1.6 -5.4 -2.4 C54 41 52.6 28 50 24 Z" ' + h + '/>' +
+          '<path d="M53.2 36 q4.4 4 4.2 11 q-0.2 5.4 -3.2 6.2 q-1.6 -3.8 0.2 -7.4 q1.8 -3.6 -2 -6.6 z" ' + h + '/>';
+      case 'midlife': // 보브 + 관자놀이 센 머리
+        return '<path d="M18.2 23 C13 32 12.6 45 15.6 49.6 q4.6 1.8 6 -2.8 C17.8 40 19 28 21.8 24 Z" ' + h + '/>' +
+          '<path d="M53.8 23 C59 32 59.4 45 56.4 49.6 q-4.6 1.8 -6 -2.8 C54.2 40 53 28 50.2 24 Z" ' + h + '/>' +
+          '<path d="M19.6 26 q-2 6 -1 10" stroke="' + band.hair2 + '" stroke-width="1.4" fill="none" opacity="0.75" stroke-linecap="round"/>' +
+          '<path d="M52.4 26 q2 6 1 10" stroke="' + band.hair2 + '" stroke-width="1.4" fill="none" opacity="0.75" stroke-linecap="round"/>';
+      default: // senior — 쪽머리 + 짧은 옆머리
+        return '<circle cx="54.2" cy="16.8" r="5" ' + h2 + '/>' +
+          '<path d="M18.6 26 q-2.8 6 -1.6 10 q2.8 -2.2 3.6 -7 z" ' + h + '/>' +
+          '<path d="M53.4 26 q2.8 6 1.6 10 q-2.8 -2.2 -3.6 -7 z" ' + h + '/>';
+    }
   }
 
   // 머리 전체를 덮는 큰 덩어리 — 위는 머리보다 살짝 크게, 아래는 앞머리선까지
@@ -122,7 +178,50 @@
       'C' + (22 - side) + ' ' + fringe + ' ' + (17.6 - side) + ' ' + (fringe + 8) + ' ' + (17.6 - side) + ' 33 Z" ' + h + '/>';
   }
 
+  /* 여성 앞머리 — 나이대마다 가르마·숱이 다르다 */
+  function hairFrontF(band) {
+    var h = 'fill="' + band.hair + '"';
+    var h2 = 'fill="' + (band.id === 'senior' || band.id === 'midlife' ? band.hair2 : shade(band.hair, 0.22)) + '"';
+    switch (band.id) {
+      case 'baby': // 솜털
+        return '<path d="M31 13 q0.4 -5.6 4.2 -6.6 q-1.2 3.2 1 6 q-2.8 -1.4 -5.2 0.6 z" ' + h + '/>' +
+          '<path d="M41.6 13 q1.8 -4.6 5.2 -4 q-2.6 1.8 -2.6 4.4 z" ' + h + '/>';
+      case 'child': // 단발 앞머리 + 가운데 가르마 + 리본
+        return hairMass(band, 28.6, 1.2) +
+          '<path d="M36 13.6 v9" stroke="' + shade(band.hair, 0.16) + '" stroke-width="1.1" opacity="0.7"/>' +
+          '<path d="M24 27.4 q12 -3.4 24 0 q-12 2.2 -24 0 z" fill="rgba(255,255,255,0.14)"/>' +
+          '<path d="M45.4 17.2 q4.2 -2.6 5.4 0.6 q-3 -0.6 -4.4 0.8 z" fill="#F0806E"/>';
+      case 'teen': // 옆으로 넘긴 앞머리
+        return hairMass(band, 26.8, 1.6) +
+          '<path d="M21.6 26.6 q5.6 -12.6 19.4 -12 q-9.6 1.4 -13.6 6.6 q-3.4 3.4 -5.8 5.4 z" ' + h2 + '/>' +
+          '<path d="M24 25.4 q6.4 -8.6 14.6 -9.4 q-8 2.6 -11.4 7.4 z" ' + h + '/>' +
+          '<path d="M17.6 30.6 q-1.4 5.4 0.6 8.4 q2.6 -2.6 2.2 -7.2 z" ' + h + '/>';
+      case 'youth': // 커튼 앞머리
+        return hairMass(band, 26.2, 1.8) +
+          '<path d="M36 22.6 q-9.4 -1.4 -12.6 6.4 q4.2 -4.4 12.6 -3.6 z" ' + h2 + '/>' +
+          '<path d="M36 22.6 q9.4 -1.4 12.6 6.4 q-4.2 -4.4 -12.6 -3.6 z" ' + h2 + '/>' +
+          '<path d="M36 22 q-2.4 3.4 -2.2 6.6" stroke="' + shade(band.hair, 0.2) + '" stroke-width="1" fill="none" opacity="0.6"/>';
+      case 'adult': // 단정한 옆가르마
+        return hairMass(band, 25.4, 1.2) +
+          '<path d="M40.6 13.6 q-3.6 6.2 -3.2 11.2" stroke="' + shade(band.hair, -0.18) + '" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
+          '<path d="M40.8 25.4 q8.2 -0.6 12.4 5.6 q-6 -3.6 -12.4 -3.2 z" ' + h2 + '/>' +
+          '<path d="M18.2 31 q-0.6 4.4 0.8 6.8 q2 -2.4 1.8 -6.6 z" ' + h + '/>';
+      case 'midlife': // 보브 단발 — 이마가 조금 보인다
+        return hairMass(band, 24.6, 1) +
+          '<path d="M21 21.8 q2 -5 6.2 -6.6 q-2.8 3.4 -3 7 z" ' + h2 + '/>' +
+          '<path d="M51 21.8 q-2 -5 -6.2 -6.6 q2.8 3.4 3 7 z" ' + h2 + '/>' +
+          '<path d="M26 27.2 q10 -2.6 20 0 q-10 1.8 -20 0 z" fill="rgba(255,255,255,0.12)"/>';
+      default: // senior — 은발 짧은 웨이브
+        return hairMass(band, 23.2, 0.8) +
+          '<path d="M22.6 22.6 q4.4 -3 8.6 -3.6 q-4.6 2 -6 4.8 z" ' + h2 + '/>' +
+          '<path d="M49.4 22.6 q-4.4 -3 -8.6 -3.6 q4.6 2 6 4.8 z" ' + h2 + '/>' +
+          '<path d="M19.6 30 q-2 5.6 0.4 9.4 q3 -2.6 2.8 -7.6 z" ' + h + '/>' +
+          '<path d="M52.4 30 q2 5.6 -0.4 9.4 q-3 -2.6 -2.8 -7.6 z" ' + h + '/>';
+    }
+  }
+
   function hairFront(band, opt) {
+    if (opt && opt.female) return hairFrontF(band);
     var h2 = 'fill="' + (band.id === 'senior' || band.id === 'midlife' ? band.hair2 : shade(band.hair, 0.22)) + '"';
     var h = 'fill="' + band.hair + '"';
     switch (band.id) {
@@ -130,14 +229,12 @@
         return '<path d="M32 13.4 q0.6 -5.8 4.4 -7 q-1.4 3.4 0.8 6.4 q-2.8 -1.6 -5.2 0.6 z" ' + h + '/>' +
           '<path d="M40.6 13 q2 -4.8 5.4 -4.4 q-2.8 2 -2.6 4.8 z" ' + h + '/>' +
           '<path d="M18.8 26 q-1.6 5 -1 9 q2.8 -0.6 3.6 -5 z" ' + h + '/>' +
-          '<path d="M53.2 26 q1.6 5 1 9 q-2.8 -0.6 -3.6 -5 z" ' + h + '/>' +
-          (opt.female ? '<path d="M47.4 16.6 l3 -2 l0.6 3.2 z" fill="#F0806E"/>' : '');
+          '<path d="M53.2 26 q1.6 5 1 9 q-2.8 -0.6 -3.6 -5 z" ' + h + '/>';
       case 'child': // 보울컷 — 이마를 덮는 두툼한 단발
         return hairMass(band, 28.4, 1.2) +
           '<path d="M17.4 30 q-1 5 0.8 7.6 q2.2 -2.4 2 -6.4 z" ' + h + '/>' +
           '<path d="M54.6 30 q1 5 -0.8 7.6 q-2.2 -2.4 -2 -6.4 z" ' + h + '/>' +
-          '<path d="M25 29.6 q11 -2.6 22 0 q-11 2.4 -22 0 z" fill="rgba(255,255,255,0.16)"/>' +
-          (opt.female ? '<path d="M47.4 17.4 q4.6 -1.6 5.6 2 q-3.2 -0.8 -4.6 0.6 z" fill="#F0806E"/>' : '');
+          '<path d="M25 29.6 q11 -2.6 22 0 q-11 2.4 -22 0 z" fill="rgba(255,255,255,0.16)"/>';
       case 'teen': // 삐죽 앞머리 + 옆머리
         return hairMass(band, 27.4, 1.6) +
           '<path d="M26 15.6 l2.4 -5.4 l2 5.6 z" ' + h + '/>' +
@@ -173,88 +270,194 @@
   }
 
   /* ═════════ 몸 · 옷 ═════════
-     어깨는 좁게, 아래로 살짝 퍼지는 상반신. y 53 ~ 90 */
+     어깨는 좁게, 아래로 살짝 퍼지는 상반신. y 53 ~ 90
+     여성은 같은 몸 위에 치마·카디건·목걸이를 얹어 실루엣을 바꾼다. */
   function bodyPath() {
     return 'M36 52.4 c-6.6 0 -10.8 2.6 -12.4 7.6 L20.2 90 h31.6 L48.4 60 C46.8 55 42.6 52.4 36 52.4 Z';
   }
 
-  function sleeve(side, band) {
+  function sleeve(side, P) {
     var d = side === 'l'
       ? 'M24.6 57.6 q-4 4.8 -4.4 11.8 l-0.8 20.4 h5.6 l0.8 -20 q0.4 -7.8 2.8 -10.6 z'
       : 'M47.4 57.6 q4 4.8 4.4 11.8 l0.8 20.4 h-5.6 l-0.8 -20 q-0.4 -7.8 -2.8 -10.6 z';
-    return '<path d="' + d + '" fill="' + shade(band.cloth, -0.07) + '"/>';
+    return '<path d="' + d + '" fill="' + shade(P.cloth, -0.07) + '"/>';
+  }
+
+  function pleats(xs, y0, y1, color) {
+    return xs.map(function (x) {
+      return '<path d="M' + x + ' ' + y0 + ' l' + (-0.6) + ' ' + (y1 - y0) + '" stroke="' + color + '" stroke-width="0.9" opacity="0.55" stroke-linecap="round"/>';
+    }).join('');
   }
 
   function clothes(band, opt) {
+    var female = !!(opt && opt.female);
+    var P = pal(band, female);
+    var c = 'fill="url(#' + palId(band, female) + ')"';
+    var c2 = 'fill="' + P.cloth2 + '"';
+    var ac = 'fill="' + P.accent + '"';
+    var sk = 'fill="' + shade(P.cloth, -0.16) + '"/>';
     var out = '';
-    var c = 'fill="url(#avCloth' + band.id + ')"';
-    var c2 = 'fill="' + band.cloth2 + '"';
-    var ac = 'fill="' + band.accent + '"';
 
-    out += sleeve('l', band) + sleeve('r', band);
+    out += sleeve('l', P) + sleeve('r', P);
     out += '<path d="' + bodyPath() + '" ' + c + '/>';
     // 손
     out += '<circle cx="22.2" cy="87.8" r="3" fill="' + SKIN + '"/>';
     out += '<circle cx="49.8" cy="87.8" r="3" fill="' + SKIN + '"/>';
 
+    if (female) {
+      switch (band.id) {
+        case 'baby': { // 핑크 원피스 + 하트 턱받이
+          var sc = '';
+          for (var i = 0; i < 5; i++) sc += '<circle cx="' + (24.8 + i * 5.6) + '" cy="82.8" r="2.5" fill="' + P.cloth2 + '" stroke="' + P.accent + '" stroke-width="0.6"/>';
+          out += '<path d="M28.4 62.6 q7.6 2.6 15.2 0 l4.8 20.4 q-12.4 2.4 -24.8 0 z" ' + sk;
+          out += sc;
+          out += '<path d="M28.6 61.8 q7.4 2.6 14.8 0" stroke="' + P.accent + '" stroke-width="1" fill="none" stroke-linecap="round"/>';
+          out += '<path d="M31.4 65.4 q4.6 6 9.2 0 q-1.4 8.8 -4.6 8.8 q-3.2 0 -4.6 -8.8 z" fill="#FFFDF8" stroke="' + P.accent + '" stroke-width="0.8"/>';
+          out += '<path d="M34.2 69.6 q1.8 -2 3.6 0 q1.8 2 0 3.2 q-1.8 1.2 -3.6 0 q-1.8 -1.2 0 -3.2 z" ' + ac + '/>';
+          out += '<circle cx="27.6" cy="73.4" r="0.9" fill="#FFFFFF" opacity="0.9"/>';
+          out += '<circle cx="44.4" cy="75" r="0.9" fill="#FFFFFF" opacity="0.9"/>';
+          break;
+        }
+        case 'child': // 세일러 블라우스 + 리본 + 주름 치마 + 책가방 끈
+          out += '<path d="M36 53.4 l-7 5.6 l7 10.4 l7 -10.4 z" ' + c2 + '/>';
+          out += '<path d="M36 60.6 l-5.6 -2.6 q2.4 3.4 5.6 6.4 q3.2 -3 5.6 -6.4 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M36 64.6 l-3.4 2 l3.4 4.8 l3.4 -4.8 z" ' + ac + '/>';
+          out += '<path d="M28.6 69.6 q7.4 1.8 14.8 0 l4.4 20.2 q-11.8 2.2 -23.6 0 z" ' + sk;
+          out += pleats([32.4, 36, 39.6], 71.6, 88.4, shade(P.cloth, -0.32));
+          out += '<path d="M28.4 69.4 q7.6 1.6 15.2 0" stroke="' + P.accent + '" stroke-width="1.3" fill="none"/>';
+          out += '<path d="M20.6 60.6 q-1.4 14 0.6 29.4 h4.6 L24 60.6 z" fill="' + P.accent + '" opacity="0.9"/>';
+          out += '<path d="M51.4 60.6 q1.4 14 -0.6 29.4 h-4.6 L48 60.6 z" fill="' + P.accent + '" opacity="0.9"/>';
+          out += '<path d="M25 56 q-1.4 2.6 -1.4 4.8 l3 -3 z" fill="#FFFFFF" opacity="0.85"/>';
+          break;
+        case 'teen': // 교복 셔츠 + 리본 + 재킷 + 치마
+          out += '<path d="M36 53.4 l-6.6 5.2 l6.6 10.6 l6.6 -10.6 z" ' + c2 + '/>';
+          out += '<path d="M36 61 l-3.4 2 l3.4 4.8 l3.4 -4.8 z" ' + ac + '/>';
+          out += '<path d="M21.6 56.4 q-3 12 -1.4 30.4 h5.6 L27 56.4 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M50.4 56.4 q3 12 1.4 30.4 h-5.6 L45 56.4 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M28.4 69.4 q7.6 1.8 15.2 0 l4.6 20.4 q-12.2 2.2 -24.4 0 z" ' + sk;
+          out += pleats([32.2, 36, 39.8], 71.4, 88.6, shade(P.cloth, -0.34));
+          out += '<path d="M28.2 69.2 q7.8 1.6 15.6 0" stroke="' + P.accent + '" stroke-width="1.2" fill="none"/>';
+          out += '<path d="M24.6 57.4 q-1.4 2.6 -1.4 4.8 l3 -3 z" fill="#FFFFFF" opacity="0.85"/>';
+          break;
+        case 'youth': // 크롭 가디건 + 캐미솔 + 하이웨스트 스커트
+          out += '<path d="M30.6 53.6 q5.4 3.6 10.8 0 l0.6 15 h-12 z" ' + c2 + '/>';
+          out += '<path d="M36 61.4 q-3.6 1 -4.8 2.6 q4.8 2.6 9.6 0 q-1.2 -1.6 -4.8 -2.6 z" fill="' + P.accent + '" opacity="0.45"/>';
+          out += '<path d="M22 56 q-3 7.6 -1.8 15 q3.4 -1.6 4.8 -6 q1 -3.6 0.2 -9 z" ' + c + '/>';
+          out += '<path d="M50 56 q3 7.6 1.8 15 q-3.4 -1.6 -4.8 -6 q-1 -3.6 -0.2 -9 z" ' + c + '/>';
+          out += '<path d="M28.6 68.4 q7.4 1.8 14.8 0 l4.2 21.2 q-11.6 2.2 -23.2 0 z" fill="' + P.cloth2 + '"/>';
+          out += '<path d="M28.6 69.6 q7.4 1.6 14.8 0" stroke="' + P.accent + '" stroke-width="2" fill="none"/>';
+          out += '<circle cx="36" cy="69.4" r="1.6" fill="' + P.accent + '"/>';
+          out += pleats([32.4, 36, 39.6], 73, 88.6, 'rgba(120,100,90,0.35)');
+          break;
+        case 'adult': // 블레이저 + 블라우스 + 스카프 + 펜슬 스커트
+          out += '<path d="M36 53.4 l-7.4 5.4 l7.4 16 l7.4 -16 z" ' + c2 + '/>';
+          out += '<path d="M36 61.4 l-4.4 2.4 q4.4 3.2 8.8 0 z" ' + ac + '/>';
+          out += '<path d="M23.2 57.4 q-2.6 12 -1.2 28.6 h6.6 L28.2 57.4 z" fill="' + shade(P.cloth, -0.12) + '"/>';
+          out += '<path d="M48.8 57.4 q2.6 12 1.2 28.6 h-6.6 L43.8 57.4 z" fill="' + shade(P.cloth, -0.12) + '"/>';
+          out += '<path d="M28.8 69.8 q7.2 1.8 14.4 0 l3.4 20.4 q-10.6 2 -21.2 0 z" ' + sk;
+          out += '<path d="M28.6 70.4 q7.4 1.6 14.8 0" stroke="' + P.accent + '" stroke-width="1.6" fill="none"/>';
+          out += '<path d="M36 86.6 v4.4" stroke="' + shade(P.cloth, -0.3) + '" stroke-width="1" opacity="0.8"/>';
+          out += '<rect x="45.8" y="83.2" width="10.4" height="7.4" rx="2.6" fill="' + P.accent + '"/>';
+          out += '<path d="M47.8 83.2 q3.2 -4.6 6.4 0" stroke="' + P.accent + '" stroke-width="1.1" fill="none"/>';
+          out += '<circle cx="51" cy="86.4" r="1" fill="#FFF3F6" opacity="0.9"/>';
+          break;
+        case 'midlife': // 카디건 + 블라우스 + 진주 목걸이 + 주름 치마
+          out += '<path d="M36 53.6 l-7 5 l7 14.6 l7 -14.6 z" fill="' + P.cloth2 + '"/>';
+          out += '<path d="M27.6 57.6 q3.4 1.6 5 4.6 q-3.6 1.2 -6 -0.6 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M44.4 57.6 q-3.4 1.6 -5 4.6 q3.6 1.2 6 -0.6 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M24.4 62 q-2 7.4 -1 14.4 q3 -1.4 4 -5.6 q0.8 -3.4 0 -8.8 z" fill="' + P.cloth + '" opacity="0.55"/>';
+          out += '<path d="M47.6 62 q2 7.4 1 14.4 q-3 -1.4 -4 -5.6 q-0.8 -3.4 0 -8.8 z" fill="' + P.cloth + '" opacity="0.55"/>';
+          out += '<circle cx="31.6" cy="64.6" r="0.9" fill="#FFFDF8"/><circle cx="36" cy="65.8" r="0.9" fill="#FFFDF8"/><circle cx="40.4" cy="64.6" r="0.9" fill="#FFFDF8"/>';
+          out += '<path d="M28.6 69.6 q7.4 1.8 14.8 0 l4 20.4 q-11.4 2.2 -22.8 0 z" fill="' + shade(P.cloth2, -0.06) + '"/>';
+          out += '<path d="M28.6 70.6 q7.4 1.6 14.8 0" stroke="' + P.accent + '" stroke-width="1.6" fill="none"/>';
+          out += pleats([32.4, 36, 39.6], 73.4, 88.6, 'rgba(120,100,80,0.3)');
+          out += '<rect x="45.8" y="83.6" width="10" height="7" rx="2.4" fill="' + P.accent + '"/>';
+          out += '<path d="M47.8 83.6 q3 -4.2 6 0" stroke="' + P.accent + '" stroke-width="1.1" fill="none"/>';
+          break;
+        default: // senior — 니트 카디건 + 긴 치마 + 목걸이 + 지팡이
+          out += '<path d="M36 53.4 l-7.2 4.8 l7.2 14.8 l7.2 -14.8 z" fill="' + P.cloth2 + '"/>';
+          out += '<path d="M25.6 57.6 q4.4 2.4 6 6.2 q-4 1.4 -7 -1 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M46.4 57.6 q-4.4 2.4 -6 6.2 q4 1.4 7 -1 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M24 61 q-2 8 -1 18 q3 -1.6 4 -6 q1 -4 0.2 -11 z" fill="' + P.cloth + '"/>';
+          out += '<path d="M48 61 q2 8 1 18 q-3 -1.6 -4 -6 q-1 -4 -0.2 -11 z" fill="' + P.cloth + '"/>';
+          out += '<circle cx="31.4" cy="64.4" r="0.9" fill="#FFFDF8"/><circle cx="36" cy="65.6" r="0.9" fill="#FFFDF8"/><circle cx="40.6" cy="64.4" r="0.9" fill="#FFFDF8"/>';
+          out += '<path d="M28.4 69 q7.6 1.8 15.2 0 l4.4 20.8 q-12 2.2 -24 0 z" fill="' + shade(P.cloth2, -0.04) + '"/>';
+          out += '<path d="M28.4 70 q7.6 1.6 15.2 0" stroke="' + P.accent + '" stroke-width="1.6" fill="none"/>';
+          out += '<path d="M30.6 74 q5.4 1.4 10.8 0" stroke="rgba(140,120,100,0.35)" stroke-width="0.9" fill="none"/>';
+          out += '<path d="M29.8 79 q6.2 1.4 12.4 0" stroke="rgba(140,120,100,0.35)" stroke-width="0.9" fill="none"/>';
+          out += '<path d="M53.6 79.4 q4.2 -1.6 4.6 2.6 q0.2 2.4 -1.8 3.8" stroke="#8A6B4A" stroke-width="2" fill="none" stroke-linecap="round"/>';
+          out += '<path d="M56.6 85.6 L54.2 92.4" stroke="#8A6B4A" stroke-width="2" stroke-linecap="round"/>';
+          break;
+      }
+      return out;
+    }
+
     switch (band.id) {
       case 'baby': // 우주복 느낌의 배내옷 + 턱받이
         out += '<path d="M23 60 q13 7.4 26 0 q-2.4 -5.6 -13 -5.6 q-10.6 0 -13 5.6 z" ' + c2 + '/>';
-        out += '<path d="M31 66 q5 6.6 10 0 q-1.6 9.6 -5 9.6 q-3.4 0 -5 -9.6 z" fill="#FFFDF8" stroke="' + band.accent + '" stroke-width="0.8"/>';
+        out += '<path d="M31 66 q5 6.6 10 0 q-1.6 9.6 -5 9.6 q-3.4 0 -5 -9.6 z" fill="#FFFDF8" stroke="' + P.accent + '" stroke-width="0.8"/>';
         out += '<circle cx="36" cy="70.6" r="1.1" ' + ac + '/>';
-        out += '<path d="M28 62.4 q8 3.6 16 0" stroke="' + band.accent + '" stroke-width="1" fill="none" stroke-linecap="round"/>';
+        out += '<path d="M28 62.4 q8 3.6 16 0" stroke="' + P.accent + '" stroke-width="1" fill="none" stroke-linecap="round"/>';
         out += '<circle cx="36" cy="80.6" r="1.5" fill="#FFFFFF" opacity="0.85"/>';
         break;
-      case 'child': // 교복 블레이저 + 셔츠 + 리본
+      case 'child': // 교복 블레이저 + 셔츠 + 리본 + 책가방 끈
         out += '<path d="M36 53.4 l-7.6 6.6 l7.6 17.4 l7.6 -17.4 z" ' + c2 + '/>';
         out += '<path d="M36 60.2 l-5.4 -2.8 q2.6 3.6 5.4 6.8 z" ' + ac + '/>';
         out += '<path d="M36 60.2 l5.4 -2.8 q-2.6 3.6 -5.4 6.8 z" ' + ac + '/>';
         out += '<circle cx="36" cy="60.8" r="1.5" ' + ac + '/>';
-        out += '<path d="M36 66.4 v10.8" stroke="' + band.accent + '" stroke-width="1.2" opacity="0.6"/>';
-        out += '<path d="M20.6 60.6 q-1.4 14 0.6 29.4 h4.6 L24 60.6 z" fill="' + band.accent + '" opacity="0.92"/>';
-        out += '<path d="M51.4 60.6 q1.4 14 -0.6 29.4 h-4.6 L48 60.6 z" fill="' + band.accent + '" opacity="0.92"/>';
+        out += '<path d="M36 66.4 v10.8" stroke="' + P.accent + '" stroke-width="1.2" opacity="0.6"/>';
+        out += '<path d="M20.6 60.6 q-1.4 14 0.6 29.4 h4.6 L24 60.6 z" fill="' + P.accent + '" opacity="0.92"/>';
+        out += '<path d="M51.4 60.6 q1.4 14 -0.6 29.4 h-4.6 L48 60.6 z" fill="' + P.accent + '" opacity="0.92"/>';
         out += '<path d="M24.4 55.6 q-1.6 3 -1.6 5.4 l3.4 -3.4 z" fill="#FFFFFF" opacity="0.9"/>';
         break;
       case 'teen': // 후드 티
-        out += '<path d="M21 56 q15 9.6 30 0 q-4 -5.4 -15 -5.4 q-11 0 -15 5.4 z" fill="' + band.accent + '"/>';
+        out += '<path d="M21 56 q15 9.6 30 0 q-4 -5.4 -15 -5.4 q-11 0 -15 5.4 z" fill="' + P.accent + '"/>';
         out += '<path d="M36 53.2 c-5.6 0 -9.6 1.8 -11.6 4 q11.6 6 23.2 0 c-2 -2.2 -6 -4 -11.6 -4 z" ' + c2 + '/>';
         out += '<path d="M31.6 60.4 v9.2" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.92"/>';
         out += '<path d="M40.4 60.4 v9.2" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.92"/>';
         out += '<circle cx="31.6" cy="70" r="1.2" ' + c2 + '/><circle cx="40.4" cy="70" r="1.2" ' + c2 + '/>';
-        out += '<path d="M26 78 h20 q2.2 0 2.2 2.2 v4.4 q0 2.2 -2.2 2.2 h-20 q-2.2 0 -2.2 -2.2 v-4.4 q0 -2.2 2.2 -2.2 z" fill="' + band.accent + '" opacity="0.4"/>';
+        out += '<path d="M26 78 h20 q2.2 0 2.2 2.2 v4.4 q0 2.2 -2.2 2.2 h-20 q-2.2 0 -2.2 -2.2 v-4.4 q0 -2.2 2.2 -2.2 z" fill="' + P.accent + '" opacity="0.4"/>';
         break;
       case 'youth': // 오픈 재킷 + 흰 티
         out += '<path d="M36 53.4 l-7 5.8 l7 14.6 l7 -14.6 z" ' + c2 + '/>';
-        out += '<path d="M36 63.6 v26.2" stroke="' + band.accent + '" stroke-width="1.2" opacity="0.75"/>';
-        out += '<path d="M23.6 61.6 q-2.2 13 -0.6 28.4 h3.4 L25.4 61.6 z" fill="' + band.accent + '" opacity="0.6"/>';
-        out += '<path d="M48.4 61.6 q2.2 13 0.6 28.4 h-3.4 L46.6 61.6 z" fill="' + band.accent + '" opacity="0.6"/>';
+        out += '<path d="M36 63.6 v26.2" stroke="' + P.accent + '" stroke-width="1.2" opacity="0.75"/>';
+        out += '<path d="M23.6 61.6 q-2.2 13 -0.6 28.4 h3.4 L25.4 61.6 z" fill="' + P.accent + '" opacity="0.6"/>';
+        out += '<path d="M48.4 61.6 q2.2 13 0.6 28.4 h-3.4 L46.6 61.6 z" fill="' + P.accent + '" opacity="0.6"/>';
         out += '<path d="M31 85.4 h10" stroke="#FFFFFF" stroke-width="1.1" opacity="0.6"/>';
-        out += '<circle cx="38.6" cy="72" r="1.6" fill="' + band.accent + '" opacity="0.9"/>';
+        out += '<circle cx="38.6" cy="72" r="1.6" fill="' + P.accent + '" opacity="0.9"/>';
         break;
-      case 'adult': // 정장 + 셔츠 + 넥타이
+      case 'adult': // 정장 + 셔츠 + 넥타이 + 서류가방
         out += '<path d="M36 53.4 l-8.4 6 l8.4 20.6 l8.4 -20.6 z" ' + c2 + '/>';
         out += '<path d="M36 61 l-2.8 3.6 l2.8 12.6 l2.8 -12.6 z" ' + ac + '/>';
         out += '<path d="M36 60 l3.6 -3.6 h-7.2 z" ' + ac + '/>';
-        out += '<path d="M26 59.6 q-3.4 4.4 -4 11 q3.8 -3 7.2 -7.2 z" fill="' + shade(band.cloth, -0.1) + '"/>';
-        out += '<path d="M46 59.6 q3.4 4.4 4 11 q-3.8 -3 -7.2 -7.2 z" fill="' + shade(band.cloth, -0.1) + '"/>';
+        out += '<path d="M26 59.6 q-3.4 4.4 -4 11 q3.8 -3 7.2 -7.2 z" fill="' + shade(P.cloth, -0.1) + '"/>';
+        out += '<path d="M46 59.6 q3.4 4.4 4 11 q-3.8 -3 -7.2 -7.2 z" fill="' + shade(P.cloth, -0.1) + '"/>';
         out += '<path d="M42 81.4 h7 v4.8 h-7 z" fill="#FFFFFF" opacity="0.88"/>';
         out += '<circle cx="36" cy="76" r="1.2" fill="#E8DCC8" opacity="0.9"/>';
+        out += '<rect x="45.6" y="82.2" width="12" height="8.4" rx="1.8" fill="#6B4A33"/>';
+        out += '<path d="M49 82.2 v-2.2 h5.2 v2.2" stroke="#6B4A33" stroke-width="1.2" fill="none"/>';
+        out += '<path d="M45.6 85.4 h12" stroke="#4F3626" stroke-width="1"/>';
         break;
-      case 'midlife': // 카디건 + 셔츠
-        out += '<path d="M36 53.6 l-7.4 5.4 l7.4 16 l7.4 -16 z" fill="' + band.cloth2 + '"/>';
+      case 'midlife': // 카디건 + 셔츠 + 서류가방
+        out += '<path d="M36 53.6 l-7.4 5.4 l7.4 16 l7.4 -16 z" fill="' + P.cloth2 + '"/>';
         out += '<path d="M36 60.6 v29.2" stroke="#E3D7C6" stroke-width="1.3"/>';
         out += '<path d="M36 57.6 l-4.6 -3.2 q2.2 3.6 4.6 7 z" fill="#E3D7C6"/>';
         out += '<path d="M36 57.6 l4.6 -3.2 q-2.2 3.6 -4.6 7 z" fill="#E3D7C6"/>';
         out += '<circle cx="38.8" cy="66" r="1" fill="#E3D7C6"/><circle cx="38.8" cy="73" r="1" fill="#E3D7C6"/><circle cx="38.8" cy="80" r="1" fill="#E3D7C6"/>';
-        out += '<path d="M24.4 61 q-2.8 6.4 -2.6 12.6 q3 -3.2 3.8 -8.4 z" fill="' + band.accent + '" opacity="0.4"/>';
+        out += '<path d="M24.4 61 q-2.8 6.4 -2.6 12.6 q3 -3.2 3.8 -8.4 z" fill="' + P.accent + '" opacity="0.4"/>';
+        out += '<rect x="45.6" y="82.4" width="11.6" height="8" rx="1.8" fill="#4B3A2C"/>';
+        out += '<path d="M48.8 82.4 v-2 h5 v2" stroke="#4B3A2C" stroke-width="1.2" fill="none"/>';
+        out += '<path d="M45.6 85.4 h11.6" stroke="#3A2C21" stroke-width="1"/>';
         break;
-      default: // senior — 조끼 + 셔츠 + 목도리
-        out += '<path d="M36 53.4 l-8 5.2 l8 18.4 l8 -18.4 z" fill="' + band.cloth2 + '"/>';
-        out += '<path d="M24.4 58 q4.4 2.6 6 6.4 q-3.6 1.4 -6.8 -1 z" fill="' + band.cloth2 + '"/>';
-        out += '<path d="M47.6 58 q-4.4 2.6 -6 6.4 q3.6 1.4 6.8 -1 z" fill="' + band.cloth2 + '"/>';
-        out += '<path d="M24.6 58.4 q11.4 7 23.2 0 q-1.8 3.8 -11.6 3.8 q-9.8 0 -11.6 -3.8 z" fill="' + band.accent + '" opacity="0.6"/>';
+      default: // senior — 조끼 + 셔츠 + 목도리 + 지팡이
+        out += '<path d="M36 53.4 l-8 5.2 l8 18.4 l8 -18.4 z" fill="' + P.cloth2 + '"/>';
+        out += '<path d="M24.4 58 q4.4 2.6 6 6.4 q-3.6 1.4 -6.8 -1 z" fill="' + P.cloth2 + '"/>';
+        out += '<path d="M47.6 58 q-4.4 2.6 -6 6.4 q3.6 1.4 6.8 -1 z" fill="' + P.cloth2 + '"/>';
+        out += '<path d="M24.6 58.4 q11.4 7 23.2 0 q-1.8 3.8 -11.6 3.8 q-9.8 0 -11.6 -3.8 z" fill="' + P.accent + '" opacity="0.6"/>';
         out += '<circle cx="38.8" cy="72" r="1.1" fill="#E3D7C6" opacity="0.85"/>';
         out += '<circle cx="38.8" cy="79" r="1.1" fill="#E3D7C6" opacity="0.85"/>';
+        out += '<path d="M53.6 79.4 q4.2 -1.6 4.6 2.6 q0.2 2.4 -1.8 3.8" stroke="#8A6B4A" stroke-width="2" fill="none" stroke-linecap="round"/>';
+        out += '<path d="M56.6 85.6 L54.2 92.4" stroke="#8A6B4A" stroke-width="2" stroke-linecap="round"/>';
         break;
     }
     return out;
@@ -308,7 +511,7 @@
   }
 
   /* ═════════ 상태 소품 ═════════ */
-  function props(band, state, flags) {
+  function props(band, state, flags, female) {
     var st = state.stats || {};
     var p = [];
     var hp = num(st.hp, 50), mental = num(st.mental, 50), asset = num(st.asset, 0);
@@ -317,6 +520,14 @@
     if (hp < 35 || mental < 35) {
       p.push('<path d="M56.4 24.6 q3.8 5 3.8 7.4 a3.8 3.8 0 0 1 -7.6 0 q0 -2.4 3.8 -7.4 z" fill="#8CC4EE" opacity="0.95"/>');
       p.push('<circle cx="55" cy="31.8" r="1" fill="#FFFFFF" opacity="0.85"/>');
+    }
+    // 성별이 또렷해지는 작은 장식 — 여성은 귀걸이, 남성은 단정한 귀
+    if (female && (band.id === 'youth' || band.id === 'adult' || band.id === 'midlife' || band.id === 'senior')) {
+      p.push('<circle cx="17.4" cy="35.6" r="1.2" fill="#F2C24C" opacity="0.9"/><circle cx="54.6" cy="35.6" r="1.2" fill="#F2C24C" opacity="0.9"/>');
+    }
+    if (!female && (band.id === 'adult' || band.id === 'midlife')) {
+      // 단정한 수염 자욱 — 남성 30·40대의 인상
+      p.push('<path d="M29.6 40.2 q6.4 6.4 12.8 0" stroke="rgba(52,40,30,0.18)" stroke-width="2.4" fill="none" stroke-linecap="round"/>');
     }
     if (asset < 0) {
       p.push('<g transform="rotate(-18 47.4 41.2)"><rect x="42.4" y="38.8" width="10" height="4.6" rx="2.1" fill="#F4DFC0" stroke="#D9BE97" stroke-width="0.7"/>' +
@@ -351,25 +562,27 @@
     var mood = moodOf(state);
     var st = state.stats || {};
     var female = state.gender === '여';
+    var P = pal(band, female);
+    var gid = palId(band, female);
     var flags = { sunglasses: num(st.asset, 0) >= 3000 };
-    var label = band.name + ' 모습';
+    var label = (female ? '여성' : '남성') + ' ' + band.name + ' 모습';
 
     var out = [];
     out.push('<svg class="av-svg" viewBox="0 0 72 94" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + label + '">');
     out.push('<defs>' +
       '<linearGradient id="avSky-' + band.id + '" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="' + band.tint + '"/><stop offset="1" stop-color="' + band.tint2 + '"/></linearGradient>' +
-      '<linearGradient id="avCloth-' + band.id + '" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0" stop-color="' + shade(band.cloth, 0.06) + '"/><stop offset="1" stop-color="' + shade(band.cloth, -0.1) + '"/></linearGradient>' +
+      '<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + shade(P.cloth, 0.06) + '"/><stop offset="1" stop-color="' + shade(P.cloth, -0.1) + '"/></linearGradient>' +
       '</defs>');
     out.push('<circle cx="36" cy="45" r="33" fill="url(#avSky-' + band.id + ')"/>');
     out.push('<ellipse cx="36" cy="88" rx="17" ry="2.6" fill="rgba(27,26,24,0.07)"/>');
     out.push(hairBack(band, female));
     out.push('<path d="M32.4 42 h7.2 v9 h-7.2 z" fill="' + SKIN_SH + '"/>');
-    out.push(clothes(band, {}));
+    out.push(clothes(band, { female: female }));
     out.push(face(band, mood, st, flags));
     out.push(hairFront(band, { female: female }));
-    out.push(props(band, state, flags));
+    out.push(props(band, state, flags, female));
     out.push('</svg>');
     return out.join('');
   }
