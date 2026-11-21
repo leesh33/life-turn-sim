@@ -121,7 +121,9 @@
   align-items: flex-end;
   gap: 2px;
   height: 148px;
-  overflow: hidden;
+  /* 날짜 라벨이 양 끝에서 잘리지 않도록 넘침을 열어 둔다 (가로 넘침은 페이지에서 0) */
+  overflow: visible;
+  padding: 0 10px;
 }
 .bar-col {
   flex: 1 1 0;
@@ -161,6 +163,8 @@
 .bar-day {
   height: 14px;
   margin-top: 3px;
+  width: 36px;
+  text-align: center;
   font-size: 8px;
   line-height: 14px;
   color: var(--ink-3);
