@@ -295,6 +295,18 @@
 - `privacy.html` · `terms.html` — 시작 화면 맨 아래 `개인정보처리방침 · 이용약관` 링크(각 문서에서 게임으로 돌아가는 링크도 있음). 스타일은 `assets/legal.css`.
 - 로그인하지 않으면 기록은 브라우저에만 남고, 로그인하면 Supabase(미국)에 이메일·게임 기록이 저장된다는 점을 두 문서에 적었습니다. 문의처는 게시판과 운영자 메일.
 
+## 🔤 글꼴 — Gmarket Sans (2026-11-21)
+
+앱 화면 전체를 **Gmarket Sans** 로 그립니다(상훈 님 선택: 앱스토어 타이틀과 통일되는 또렷한 개성파 UI).
+
+- **본문 300·400·500 → `Medium`, 제목·버튼·라벨 600·700·800·900 → `Bold`** — `assets/styles.css` 맨 위 `@font-face` 7개(굵기마다 따로 찍어 브라우저가 합성 볼드로 흉내내지 않게).
+- **CDN 없이 self-host** — `assets/fonts/GmarketSans-{Medium,Bold}.{woff2,woff}`. `index.html` 에서 woff2 두 개를 `preload`(`font-display: swap`)해 첫 화면부터 같은 글꼴로 뜨고, 늦게 와도 시스템 글꼴로 먼저 보여 줍니다.
+- ⚠️ **Gmarket Sans 에는 띄어쓰기(U+0020) 글자가 없습니다.** 그래서 `--font` 에서 이모지 글꼴(`Apple Color Emoji`·`Noto Color Emoji`)은 **항상 맨 뒤**에 둡니다. 이모지 글꼴을 앞에 두면 띄어쓰기가 1.2em 로 벌어져 문장이 흩어져 보입니다(실측 4px → 19px).
+- 숫자는 `font-variant-numeric: tabular-nums` — 폰트가 늦게 도착해 시스템 글꼴로 먼저 그릴 때도 자릿수가 흔들리지 않습니다.
+- `📸 결과 카드`(canvas)도 같은 글꼴로 그립니다 — 웹폰트가 도착하기 전에 눌렀다면 도착한 뒤 한 번 더 그립니다.
+- 회고 편지(`.recall-card`)만 **명조**를 그대로 씁니다(편지 느낌의 의도된 예외).
+- 390px 폭 재점검: 출발 시나리오 칩 4개가 스크롤 없이 한 줄에 들어오도록 칩 글자·간격을 10.5px·4px 로 줄였습니다.
+
 ## 스탯
 
 일곱 가지입니다(상단 HUD에 이 순서로 한 줄). 앞의 여섯 개는 0~100 게이지, 재산만 만원 단위 눈금입니다.
@@ -440,6 +452,10 @@ python3 test/leaderboard_ui.py --url https://life-turn-sim.vercel.app/ --tag liv
 # ☁️ 화면 검증(390×664·390×844) — 칩·약관 링크·한 화면·로그인 요청(PKCE)·동기화됨·로그아웃·약관 페이지
 python3 test/sync_ui.py --serve .
 python3 test/sync_ui.py --url https://life-turn-sim.vercel.app/ --tag live
+
+# 🔤 글꼴(390×844·390×664) — document.fonts 로드 · 시작/플레이/결과/전당(내·전체)/엔딩/결과 카드/시작 화면(664) 2줄 밀림·잘림·겹침·가로 넘침 0
+python3 test/font_ui.py --serve .
+python3 test/font_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
 # 🏆 전당 상단 겹침(390×844·390×664) — 로그인 안내 줄이 높이를 지키고 `내 전당 | 전체 랭킹` 탭과 겹치지 않는지
 python3 test/hall_sync_ui.py --serve .

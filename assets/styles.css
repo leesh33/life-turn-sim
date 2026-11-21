@@ -3,6 +3,69 @@
    390×844 (iPhone) 우선, 데스크톱은 중앙 프레임
    ───────────────────────────────────────────── */
 
+/* ── Gmarket Sans (self-host) ─────────────────────────────
+   CDN 을 거치지 않고 앱 안에서 바로 받는다 — 아이폰 사파리·홈 화면 앱·지하철에서도
+   늘 같은 글꼴로 뜬다. 파일은 `assets/fonts/` 에 함께 들어 있다(woff2 우선, woff 예비).
+   굵기는 앱이 실제로 쓰는 값마다 하나씩 찍는다(브라우저가 합성 볼드로 흉내내지 않게).
+     본문 300·400·500 → Medium / 제목·버튼 600·700·800·900 → Bold
+   `font-display: swap` — 폰트가 늦게 와도 시스템 글꼴로 먼저 보여 주고, 오면 바꾼다. */
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Medium.woff2") format("woff2"),
+       url("fonts/GmarketSans-Medium.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Medium.woff2") format("woff2"),
+       url("fonts/GmarketSans-Medium.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Medium.woff2") format("woff2"),
+       url("fonts/GmarketSans-Medium.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Bold.woff2") format("woff2"),
+       url("fonts/GmarketSans-Bold.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Bold.woff2") format("woff2"),
+       url("fonts/GmarketSans-Bold.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Bold.woff2") format("woff2"),
+       url("fonts/GmarketSans-Bold.woff") format("woff");
+}
+@font-face {
+  font-family: "Gmarket Sans";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("fonts/GmarketSans-Bold.woff2") format("woff2"),
+       url("fonts/GmarketSans-Bold.woff") format("woff");
+}
+
 :root {
   --bg: #f4f1eb;
   --bg-2: #efeae1;
@@ -25,8 +88,14 @@
   --radius-sm: 14px;
   --shadow: 0 10px 30px rgba(48, 40, 30, 0.07), 0 1px 2px rgba(48, 40, 30, 0.05);
   --shadow-lift: 0 18px 44px rgba(48, 40, 30, 0.13), 0 2px 6px rgba(48, 40, 30, 0.05);
-  --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
-    "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  /* Gmarket Sans 뒤의 글꼴은 'Gmarket Sans 에 없는 글자'만 맡는다 — 이모지·기호 등.
+     한글 11,172자·라틴·숫자·문장부호는 Gmarket Sans 가 직접 그린다.
+     ⚠️ Gmarket Sans 에는 띄어쓰기(U+0020) 글자가 없다 → 그 자리는 **이모지 글꼴보다 앞의**
+        일반 글꼴이 맡아야 한다. 'Noto Color Emoji' 를 앞에 두면 띄어쓰기가 1.2em 로 벌어져
+        문장이 흩어져 보인다(실측 4px → 19px). 그래서 이모지 글꼴은 항상 맨 뒤에 둔다. */
+  --font: "Gmarket Sans", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
@@ -43,6 +112,12 @@ html, body {
 
 body {
   font-family: var(--font);
+  /* 숫자·이모지 정리
+     · tabular-nums — Gmarket Sans 가 늦게 와서 시스템 글꼴로 먼저 그릴 때도 자릿수가 흔들리지 않게.
+       (Gmarket Sans 자체는 자리폭이 거의 같은 숫자를 갖고 있어, 폰트가 오면 그대로 정렬된다.)
+     · 이모지는 컬러 글꼴로 — 흑백 네모(□)나 이상한 자간이 생기지 않게. */
+  font-variant-numeric: tabular-nums;
+  font-kerning: normal;
   color: var(--ink);
   background:
     radial-gradient(1100px 620px at 82% -12%, #fde7d8 0%, rgba(253, 231, 216, 0) 62%),
@@ -3020,7 +3095,8 @@ body {
 }
 .scenario-row {
   display: flex;
-  gap: 5px;
+  /* Gmarket Sans 는 글자가 조금 넓어, 칩 4개가 390px 한 줄에 들어오도록 간격을 좁혔다 */
+  gap: 4px;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 2px;
@@ -3034,14 +3110,15 @@ body {
   align-items: center;
   gap: 4px;
   font-family: inherit;
-  font-size: 11px;
+  /* 넓은 글꼴에서도 네 칩(한국 현실·90년대생·재벌가 막내·흙수저)이 스크롤 없이 한 줄에 */
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: -0.3px;
   color: var(--ink-2);
   background: #fff;
   border: 1.5px solid transparent;
   border-radius: 12px;
-  padding: 9px 9px;
+  padding: 9px 8px;
   min-height: 36px;
   cursor: pointer;
   box-shadow: var(--shadow);
@@ -3291,8 +3368,8 @@ body {
 /* ── 짧은 화면 보정 (시작 화면이 밀리지 않게) ── */
 @media (max-height: 760px) {
   .scenario-block { margin-top: 10px; }
-  .scenario-row { gap: 5px; }
-  .scenario-chip { padding: 7px 9px; font-size: 11px; min-height: 32px; }
+  .scenario-row { gap: 4px; }
+  .scenario-chip { padding: 7px 8px; font-size: 10.5px; min-height: 32px; }
   .legacy-row { margin-top: 6px; padding: 8px 11px; }
 }
 

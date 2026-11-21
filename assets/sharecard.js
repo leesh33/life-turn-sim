@@ -17,7 +17,7 @@
   var W = 1080;
   var H = 1350;
   var PAD = 76;
-  var FONT = '"Noto Sans CJK KR", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, "Malgun Gothic", sans-serif';
+  var FONT = '"Gmarket Sans", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, "Malgun Gothic", sans-serif';
   var BRAND = '인생 한 턴';
   var URL_TEXT = 'life-turn-sim.vercel.app';
 

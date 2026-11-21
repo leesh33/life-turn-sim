@@ -1434,6 +1434,20 @@
     $('smShare').hidden = !window.ShareCard.canShareFiles();
     $('shareModal').hidden = false;
     $('shareModal').setAttribute('aria-hidden', 'false');
+    /* 카드도 앱과 같은 Gmarket Sans 로 — 첫 진입에서 웹폰트가 아직 도착 전이면
+       도착한 뒤 한 번 더 그린다(안 그러면 시스템 글꼴로 그린 카드가 남는다). */
+    if (document.fonts && document.fonts.load) {
+      var life = state;
+      Promise.all([
+        document.fonts.load('600 28px "Gmarket Sans"'),
+        document.fonts.load('700 28px "Gmarket Sans"')
+      ]).then(function () {
+        if ($('shareModal').hidden) return;
+        var again = window.ShareCard.render(life);
+        if (!again) return;
+        try { $('smImg').src = again.toDataURL('image/png'); } catch (e) {}
+      }).catch(function () {});
+    }
   }
 
   function closeShareCard() {
