@@ -425,13 +425,15 @@
       base = from - ratio * (target - from);
     } else if (from >= (def.ceil || 100)) {
       // 이미 그 나이대 목표선(천장)을 넘어선 능력치 — 더 올릴 곳이 없으니 목표는 천장, 달성으로 본다
-      target = Math.round(def.ceil || 100); base = target - 1;
+      target = Math.round(def.ceil || 100); base = from - 1;
     } else {
       target = Math.round(Math.min(from + def.gain, def.ceil || 100, 100));
       if (target - from < 1) target = Math.min(Math.round(from) + 1, 100);
       base = from - ratio * (target - from);
     }
-    var span = Math.max(1, target - base);
+    // 목표가 1점 안쪽으로 가까워도 비율은 그대로 재야 한다 (span 을 1로 올리면 35%가 깨진다)
+    var span = target - base;
+    if (!(span > 0)) span = 1;
     var inDebt = def.key === 'asset' && cur < 0;
     var goal = inDebt
       ? '빚 청산'
