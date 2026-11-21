@@ -469,8 +469,11 @@ node test/branches.js
 # 성장 아바타 · 말풍선 · 단기 미션 — 7단계 그림·표정·소품, 말풍선 문구, 미션 진행률·1회 보너스
 node test/avatar.js
 
-# 전 연령대 미션 출발선·달성 — 7개 시작 나이·1세부터 이월 플레이 모두 35% 출발, 구간 안 달성, 저장 유지 (80항목)
+# 전 연령대 미션 출발선·달성 — 7개 시작 나이·1세부터 이월 플레이 모두 35% 출발, 구간 안 달성, 저장 유지 (83항목)
 node test/missions.js
+
+# 미션 화면 (라이브/로컬) — 14·20·35세 시작 화면의 미션 35%·목표 문구·넘침·콘솔 에러 0
+python3 test/mission_ui.py --url https://life-turn-sim.vercel.app/ --tag live --ages 14,20,35 --dsf 1
 
 # 하단 도크 위 생애 진행도 막대 — 스크롤 영역 밖 배치, 배너 유무·여러 뷰포트에서 넘침/겹침 0
 python3 test/lifebar_ui.py --serve --out ../downloads/life-sim-lifebar
