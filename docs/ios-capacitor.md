@@ -32,7 +32,7 @@ cd life-turn-sim
 ```bash
 npm init -y                                        # package.json 이 없을 때만
 npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/ios@6
-npx cap init "인생 한 턴" com.odol.lifeturn --web-dir=www   # 이미 있는 capacitor.config.json 을 그대로 씁니다
+# capacitor.config.json 이 저장소에 이미 있습니다 — `npx cap init` 은 실행하지 않습니다(설정을 덮어쓸 수 있음).
 npx cap add ios
 npx cap sync ios
 npx cap open ios                                    # Xcode 가 열립니다
@@ -70,7 +70,8 @@ npx cap open ios                                    # Xcode 가 열립니다
   AdMob 을 붙인 뒤 플래그를 켜면 됩니다.
 - **5.1.1(v) 계정 삭제**: 명예의 전당 → 로그인 상태에서 **「계정 및 클라우드 기록 삭제」**.
   2단계 확인(설명 → `삭제` 입력) 뒤 Supabase 의 내 기록과 계정 연결을 지웁니다.
-  서버 함수는 [`supabase/life_sim_account_delete.sql`](../supabase/life_sim_account_delete.sql) — 프로젝트에 한 번 실행.
+  서버 함수는 [`supabase/life_sim_account_delete.sql`](../supabase/life_sim_account_delete.sql) — 2026-11-21 프로젝트에 실행 완료
+  (`public.life_sim_delete_my_account`, authenticated 만 실행). 같은 계정을 쓰는 릴스핀 기록이 있으면 계정은 남깁니다.
 - **1.2 사용자 콘텐츠(제안·제보 게시판)**: 개인정보를 적지 말라는 안내와 신고·차단은 운영자 메일로 처리합니다.
 - **개인정보처리방침 · 이용약관**: `/privacy.html` · `/terms.html` (앱 안 시작 화면 링크).
 - **Sign in with Apple**: `assets/config.js` 의 `SHOW_APPLE_SIGNIN` — Apple Developer 콘솔과 Supabase

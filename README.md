@@ -433,8 +433,8 @@
 | **iOS 래핑** | `capacitor.config.json`(`com.odol.lifeturn` · `인생 한 턴` · `webDir: www`) · `docs/ios-capacitor.md` · `tools/pack-www.sh` |
 
 - **회원탈퇴가 지우는 것**: `life_sim_leaderboard` · `life_sim_user_state` 의 본인 행, 이 기기의 `lifeTurnSim.*` 기록(이어하기·전당·칭호·세션).
-  서버 함수 `public.life_sim_delete_my_account()`(`supabase/life_sim_account_delete.sql`)가 있으면 **다른 앱(릴스핀)에 같은 계정의 기록이 없을 때만** `auth.users` 행까지 지웁니다 — 릴스핀 데이터에 손대지 않기 위한 가드입니다.
-  SQL 을 아직 돌리지 않아 함수가 없으면 앱이 아는 길(랭킹 clear RPC + 본인 상태행 DELETE(RLS))로 **기록만** 지우고 그 사실을 화면에 알립니다. 실패하면 이 기기 기록은 건드리지 않습니다.
+  서버 함수 `public.life_sim_delete_my_account()`(`supabase/life_sim_account_delete.sql`, 2026-11-21 프로젝트에 실행 완료)가 **다른 앱(릴스핀)에 같은 계정의 기록이 없을 때만** `auth.users` 행까지 지웁니다 — 릴스핀 데이터에 손대지 않기 위한 가드입니다(릴스핀 `pins`·`reelpin_shared_collections` 를 훑습니다).
+  함수가 없는 환경(SQL 미적용)에서는 앱이 아는 길(랭킹 clear RPC + 본인 상태행 DELETE(RLS))로 **기록만** 지우고 그 사실을 화면에 알립니다. 실패하면 이 기기 기록은 건드리지 않습니다.
 - **개인정보처리방침** 3·6항에 앱 안 삭제 절차를 적었습니다(`privacy.html`).
 - iOS 빌드는 맥 + Xcode 에서: `docs/ios-capacitor.md` 참고.
 
