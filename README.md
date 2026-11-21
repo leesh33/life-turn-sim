@@ -281,13 +281,17 @@
   - 칭호: `id` 기준 합집합, 같은 칭호는 **먼저 딴 기록**을 남김
   - 진행 중 인생: 마지막으로 저장한 쪽(`updatedAt`). 단 **지금 이 화면에서 플레이 중이면 이 기기의 인생**이 이깁니다(플레이 도중 남의 기록으로 갈아치우지 않게).
   - 다른 기기에서 `새로 시작`을 누르면 그 사실(`saveAt`)도 올라가 저장본이 되살아나지 않습니다.
-- **로그인 방식**: Supabase GoTrue OAuth(**PKCE S256**) — 외부 스크립트 없이 `fetch`로만. `code_verifier`는 `localStorage`(`lifeTurnSim.auth.pkce.v1`)에 두고 돌아온 `?code=`를 토큰으로 바꿉니다. 토큰 만료 60초 전에 자동 갱신, 401이면 한 번 갱신 후 재시도.
+- **로그인 방식**: Supabase GoTrue OAuth(**PKCE S256**) — 외부 스크립트 없이 `fetch`로만. `code_verifier`는 `localStorage`(`lifeTurnSim.auth.pkce.v1`)에 두고 돌아온 `?code=`를 토큰으로 바꿉니다. 토큰 만료 60초 전에 자동 갱신하고, 401이면 한 번 갱신해 재시도합니다.
+  - **갱신은 한 번만**(`refreshInflight`) — 시작 화면·전당·화면 복귀가 같은 순간에 만료된 토큰을 갱신하려 해도 리프레시 요청은 하나입니다. GoTrue 는 리프레시 토큰을 회전시키므로 두 번째 요청이 400(`Already Used`)으로 거절당하기 때문입니다. 그 사이 다른 탭이 새 세션을 저장했다면 그 토큰으로 이어 갑니다.
+  - **만료 정리**: GoTrue 는 무효한 리프레시 토큰에 401 이 아니라 **400**(`validation_failed`)으로 답합니다. 400/401 로 거절되면 이 기기의 로그인 세션만 지우고(`expireSession`) 칩을 `G Google로 로그인` + `로그인이 만료됐어요 · 다시 로그인해 주세요`로 되돌립니다. 게임 기록(진행·전당·칭호)은 지우지 않으며, 이후 다시 시도해도 죽은 토큰으로 요청하지 않습니다.
+  - 앱이 백그라운드로 내려가는 순간(`visibilitychange` hidden)에는 토큰 갱신을 **시작하지 않습니다** — iOS 가 페이지를 재우면 회전된 토큰을 받지 못해 세션이 죽습니다.
 - **저장**: Supabase `public.life_sim_user_state`(사람 1명당 1행, 사용자당 2MB 제한) — 스키마·RLS·RPC는 `supabase/life_sim_cloud_sync.sql`(다시 실행해도 안전).
   - RLS: `auth.uid() = user_id` 인 본인 행만 `select`/`insert`/`update`/`delete`, **anon 은 권한 없음**
   - 저장은 `life_sim_put_state(p_data jsonb, p_revised_at bigint)` **security definer** RPC 하나로. 들어온 `revised_at` 이 저장된 것보다 과거면 덮어쓰지 않고 지금 상태를 돌려주고, 앱은 돌려받은 값이 다르면 한 번 더 합쳐 올립니다(여러 기기가 동시에 저장해도 최신이 남게).
   - Supabase Auth 의 Google 제공자와 리다이렉트 주소(`https://life-turn-sim.vercel.app/**`)는 대시보드에서 설정되어 있습니다(릴스핀과 같은 프로젝트 공용).
     로컬(`python3 -m http.server`)에서 진짜 구글 로그인까지 보려면 Authentication → URL Configuration 의 Redirect URLs 에 `http://localhost:포트/**` 를 한 줄 추가해야 합니다.
-- **실패해도 로컬은 그대로**: 네트워크가 끊기면 칩이 `동기화 실패 · 다시 시도`로 바뀌고 저장본은 건드리지 않습니다. 탭을 숨기거나 다시 열 때도 한 번 맞춥니다.
+- **실패해도 로컬은 그대로**: 네트워크가 끊기면 칩이 `동기화 실패 · 다시 시도`로 바뀌고 저장본은 건드리지 않습니다. 아이폰에서는 `title` 툴팁이 보이지 않으므로 **칩 아래에 실제 사유를 42자로 줄여 글자로** 남깁니다(`.sync-why`). 탭을 숨기거나 다시 열 때도 한 번 맞춥니다.
+- **저장은 한 번에**: 서버는 `jsonb` 라 키 순서를 바꿔 돌려주므로, 돌려받은 값이 같은지 볼 때 키를 정렬해 비교합니다(순서만 달라 두 번 올리던 것을 막음).
 - **전체 랭킹은 따로**: 동기화되는 전당 전체가 아니라, 랭킹에 올린 기록만 별도 테이블(`public.life_sim_leaderboard`)에 공개됩니다
   (스키마·RPC: `supabase/life_sim_leaderboard.sql`). 무엇이 공개되는지는 위 「전체 유저 익명 랭킹」과 개인정보처리방침 1·5항에 적었습니다.
 
@@ -492,8 +496,12 @@ python3 test/leaderboard_ui.py --serve .
 python3 test/leaderboard_ui.py --url https://life-turn-sim.vercel.app/ --tag live
 
 # ☁️ 화면 검증(390×664·390×844) — 칩·약관 링크·한 화면·로그인 요청(PKCE)·동기화됨·로그아웃·약관 페이지
+#   + 죽은 세션(리프레시 400) → 다시 로그인 안내 · 실패 사유가 글자로 보이는지
 python3 test/sync_ui.py --serve .
 python3 test/sync_ui.py --url https://life-turn-sim.vercel.app/ --tag live
+
+# ☁️ 실서버 확인 — 진짜 Supabase 에 죽은 리프레시 토큰을 들고 가서 400 을 받아 본다(가짜 응답 없음)
+python3 test/sync_live_dead.py
 
 # 🔤 글꼴(390×844·390×664) — document.fonts 로드 · 시작/플레이/결과/전당(내·전체)/엔딩/결과 카드/시작 화면(664) 2줄 밀림·잘림·겹침·가로 넘침 0
 python3 test/font_ui.py --serve .
