@@ -21,6 +21,7 @@
 - **앱 기록** — [`assets/visits.js`](assets/visits.js) 가 첫 화면을 열 때 **한 번** `app_visit_track('life-turn', …)` 을 부릅니다. 방문자 id 는 이 기기에서 처음 만든 **임의의 UUID**(`lifeTurnSim.visit.id.v1`, localStorage)로, 이메일·위치·기기 정보는 보내지 않습니다. 실패(오프라인·설정 없음)하면 조용히 넘어가 게임에는 영향이 없습니다.
 - **화면** — [`admin.html`](admin.html) · [`assets/admin.js`](assets/admin.js) · [`assets/admin.css`](assets/admin.css). 앱과 같은 Gmarket Sans·따뜻한 라이트 톤이고, `assets/sync.js` 의 **로그인 세션·토큰 갱신**을 그대로 씁니다(앱에서 로그인했으면 그대로 열립니다). 로그인 전에는 `Google로 로그인`, 비관리자에게는 `이 계정에는 어드민 권한이 없어요`, SQL 미적용이면 실행 안내를 보여 줍니다. 추이는 외부 차트 라이브러리 없이 div 막대로 그립니다.
 - **들어가는 곳** — 앱의 **명예의 전당** 머리 오른쪽 `📊 어드민` (관리자 이메일로 로그인했을 때만 보이고, 비관리자에게는 DOM 에서도 숨김), 또는 주소로 `/admin.html`.
+- **검증** — `node test/` **15개 스위트 전체 통과**(신규 `visits` **47항목**: 방문자 id·실행당 1회·life-turn 구분·막대 계산·관리자 이메일 게이트·SQL·패키징) · **390×844 라이브 25/25**(2026-11-22, 두 앱 합산): `/admin.html` 오늘/전체 접속자·**14일 막대 14개·30일 막대 30개**(라벨 `10.24`~`11.22`)·명예의 전당 `📊 어드민` 버튼이 **관리자에게만 보이고 비로그인·비관리자에게는 `hidden`**·가로 넘침 **390/390**·콘솔·페이지 오류 **0**. 스크린샷 `downloads/visitor-stats-verify/`(`lifeturn-admin-14d-390x844.png` · `lifeturn-admin-30d-390x844.png` · `lifeturn-hall-admin-link-390x844.png` · `lifeturn-admin-signedout-390x844.png`), 배포 커밋 `397f0cd` → `1f3bb66`. 검증용 방문 행은 정리해 현재 `app_visits` **0행**입니다.
 
 ## 플레이 방식
 
