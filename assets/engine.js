@@ -197,7 +197,11 @@
     var sign = n < 0 ? '-' : '';
     var abs = Math.abs(n);
     if (abs >= 10000) return sign + (abs / 10000).toFixed(abs >= 100000 ? 0 : 1) + '억';
-    if (abs >= 1000) return sign + (abs / 1000).toFixed(1) + '천만';
+    if (abs >= 1000) {
+      // 9,950만 이상은 반올림하면 10.0천만 — 그건 1억으로 읽는다
+      if (abs >= 9950) return sign + '1억';
+      return sign + (abs / 1000).toFixed(1) + '천만';
+    }
     return sign + abs.toLocaleString('ko-KR') + '만';
   }
 
