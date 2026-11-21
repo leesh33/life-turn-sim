@@ -438,6 +438,19 @@
 - **개인정보처리방침** 3·6항에 앱 안 삭제 절차를 적었습니다(`privacy.html`).
 - iOS 빌드는 맥 + Xcode 에서: `docs/ios-capacitor.md` 참고.
 
+## 🛡️ VibeAiClub 소유 인증 (2026-11-21)
+
+사이트 소유 확인은 두 방법을 **모두** 열어 둡니다(코드 `vac-ZkTI-AJpfPj2fSEqTYUzmIZD`).
+
+| 방법 | 위치 | 내용 |
+| --- | --- |
+| 1 · 첫 화면 meta | `index.html` `<head>` | `<meta name="vibeaiclub-verify" content="vac-ZkTI-AJpfPj2fSEqTYUzmIZD" />` |
+| 2 · 정적 파일 | `.well-known/vibeaiclub-verify.txt` | 본문 `vac-ZkTI-AJpfPj2fSEqTYUzmIZD` (28바이트 · 개행 없음) |
+
+- Vercel 은 저장소 루트의 `.well-known/` 을 그대로 정적 서빙합니다(`vercel.json` 없음 · rewrite 없음).
+- `tools/pack-www.sh` 가 `.well-known/` 도 `www/` 로 함께 넣어 iOS 번들도 같은 상태입니다.
+- `node test/verify.js` 가 meta 1개·content 일치·정적 파일 본문 일치·개행 없음을 검사합니다.
+
 ## 로컬 실행
 
 ```bash
@@ -449,7 +462,7 @@ python3 -m http.server 8811
 ## 테스트
 
 ```bash
-# 전체 자동 검사 (sim · routes · branches · stats · fun · infancy · avatar · cameo · phase1 · sync · leaderboard · missions · appstore)
+# 전체 자동 검사 (sim · routes · branches · stats · fun · infancy · avatar · cameo · phase1 · sync · leaderboard · missions · appstore · verify)
 node test/
 
 # 이벤트 정적 검사 + 7개 시작 나이 × 3회 완주 + 폴백 0회 + 나이 고증 + 스탯 밸런스
@@ -466,6 +479,9 @@ node test/leaderboard.js
 
 # 🚀 App Store 정비 — 광고 스위치·회원탈퇴(서버 함수 있음/없음/실패)·Apple 로그인 스위치·Capacitor 설정 47항목
 node test/appstore.js
+
+# 🛡️ VibeAiClub 소유 인증 — meta 1개·content 일치·.well-known 본문 일치·개행 없음 7항목
+node test/verify.js
 
 # 🚀 App Store 화면(390×844) — 광고 지면 0 · 보상 버튼 바로 동작 · 0명 안내 · 계정 삭제 2단계 모달·실행·완료 안내
 python3 test/appstore_ui.py --serve .
