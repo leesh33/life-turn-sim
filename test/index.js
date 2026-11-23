@@ -1,5 +1,5 @@
 // `node test/` 로 전체 자동 검사를 한 번에 돌린다.
-//   node test/            → sim · routes · branches · stats · fun · infancy · avatar · missions · cameo · phase1 · sync · leaderboard · visits · appstore · verify
+//   node test/            → sim · routes · branches · stats · fun · infancy · avatar · missions · cameo · phase1 · naming · sync · leaderboard · visits · appstore · verify
 //   node test/index.js    → 같은 것
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -15,6 +15,7 @@ const SUITE = [
   ['missions', 'test/missions.js'],
   ['cameo', 'test/cameo.js'],
   ['phase1', 'test/phase1.js'],
+  ['naming', 'test/naming.js'],
   ['sync', 'test/sync.js'],
   ['leaderboard', 'test/leaderboard.js'],
   ['visits', 'test/visits.js'],

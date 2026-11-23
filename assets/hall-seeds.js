@@ -9,7 +9,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 57.2,
   "grade": "S",
   "top": 4,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 유치원생",
   "name": "김도윤",
   "stats": {
    "hp": 87,
@@ -32,7 +32,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 56.4,
   "grade": "A",
   "top": 11,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 유치원생",
   "name": "이서연",
   "stats": {
    "hp": 82,
@@ -55,7 +55,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 55,
   "grade": "B",
   "top": 22,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 유치원생",
   "name": "박준호",
   "stats": {
    "hp": 83,
@@ -78,7 +78,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 51,
   "grade": "B",
   "top": 38,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 유치원생",
   "name": "최지우",
   "stats": {
    "hp": 82,
@@ -101,7 +101,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 48.3,
   "grade": "C",
   "top": 58,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 유치원생",
   "name": "정하윤",
   "stats": {
    "hp": 74,
@@ -124,7 +124,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 56,
   "grade": "S",
   "top": 4,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 초등학생",
   "name": "강민재",
   "stats": {
    "hp": 88,
@@ -147,7 +147,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 52.8,
   "grade": "A",
   "top": 11,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 초등학생",
   "name": "윤서진",
   "stats": {
    "hp": 85,
@@ -170,7 +170,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 48,
   "grade": "B",
   "top": 22,
-  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 K-청년",
+  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 초등학생",
   "name": "임채원",
   "stats": {
    "hp": 80,
@@ -193,7 +193,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 42.8,
   "grade": "B",
   "top": 38,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 초등학생",
   "name": "한지호",
   "stats": {
    "hp": 87,
@@ -216,7 +216,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 40.6,
   "grade": "C",
   "top": 58,
-  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 K-청년",
+  "title": "책가방을 처음 멘 날부터 인맥 하나로 먹고사는 초등학생",
   "name": "오예린",
   "stats": {
    "hp": 80,
@@ -239,7 +239,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 57,
   "grade": "S",
   "top": 4,
-  "title": "교복을 입던 날부터 인맥 하나로 먹고사는 K-청년",
+  "title": "교복을 입던 날부터 인맥 하나로 먹고사는 중학생",
   "name": "서준혁",
   "stats": {
    "hp": 52,
@@ -262,7 +262,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 53.1,
   "grade": "A",
   "top": 11,
-  "title": "교복을 입던 날부터 멘탈이 강철인 K-청년",
+  "title": "교복을 입던 날부터 멘탈이 강철인 중학생",
   "name": "신유나",
   "stats": {
    "hp": 61,
@@ -308,7 +308,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 42.4,
   "grade": "B",
   "top": 38,
-  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 K-청년",
+  "title": "조용한 아기로 태어나 인맥 하나로 먹고사는 중학생",
   "name": "황보라",
   "stats": {
    "hp": 81,
@@ -331,7 +331,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 41.1,
   "grade": "C",
   "top": 58,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 중학생",
   "name": "문가온",
   "stats": {
    "hp": 75,
@@ -354,7 +354,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 58.7,
   "grade": "S",
   "top": 4,
-  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 K-청년",
+  "title": "우렁찬 울음으로 시작해 인맥 하나로 먹고사는 고등학생",
   "name": "백서준",
   "stats": {
    "hp": 77,
@@ -377,7 +377,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 55.1,
   "grade": "A",
   "top": 11,
-  "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 K-청년",
+  "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 고등학생",
   "name": "유하린",
   "stats": {
    "hp": 60,
@@ -400,7 +400,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 52.1,
   "grade": "B",
   "top": 22,
-  "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 K-청년",
+  "title": "교복을 입던 날부터 밤샘을 밥 먹듯 한 고등학생",
   "name": "남지완",
   "stats": {
    "hp": 61,
@@ -446,7 +446,7 @@ window.LIFE_HALL_SEEDS = [
   "score": 42.1,
   "grade": "C",
   "top": 58,
-  "title": "우렁찬 울음으로 시작해 밤샘을 밥 먹듯 한 K-청년",
+  "title": "우렁찬 울음으로 시작해 밤샘을 밥 먹듯 한 고등학생",
   "name": "노건우",
   "stats": {
    "hp": 66,

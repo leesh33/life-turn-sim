@@ -176,8 +176,10 @@
     n = Math.abs(n);
     var str;
     if (n >= 10000) {
+      // '1억만원' 처럼 '억' 뒤에 '만원'이 겹치지 않게 — 만 아래 자리가 없으면 '억 원'만.
+      //   10000 → '1억 원' · 12000 → '1억 2,000만 원' · 52851 → '5억 2,851만 원'
       var eok = Math.floor(n / 10000), man = n % 10000;
-      str = eok + '억' + (man ? ' ' + man.toLocaleString('ko-KR') : '') + '만원';
+      str = eok + '억' + (man ? ' ' + man.toLocaleString('ko-KR') + '만' : '') + ' 원';
     } else {
       str = n.toLocaleString('ko-KR') + '만원';
     }
@@ -1216,10 +1218,32 @@
     return '평범하게 살아낸';
   }
 
+  /* 나이대 기본 호칭 — 직업이 없을 때 전부 'K-청년' 으로 뭉개지 않게 나이·상태로 나눈다.
+     (1세 인생 요약이 '평범하게 살아낸 K-청년' 으로 찍히던 문제) */
+  function ageNoun(age, f) {
+    f = f || {};
+    if (!isFinite(age)) return 'K-청년';
+    if (age <= 4) return '아기';
+    if (age <= 7) return '유치원생';
+    if (age <= 13) return '초등학생';
+    if (age <= 16) return '중학생';
+    if (age <= 19) return '고등학생';
+    if (age <= 24) {
+      if (f.대학원_진학) return '대학원생';
+      // 수능·전문대 진학 흔적이 있으면 재학 중으로 본다
+      if (f.수능_명문 || f.수능_지방 || f.전문대) return '대학생';
+      return '청년';
+    }
+    if (age <= 34) return 'K-청년';
+    if (age <= 49) return '중년';
+    if (age <= 64) return '장년';
+    return '시니어';
+  }
+
   function careerPhrase(s) {
     var job = s.flags.직업;
-    if (!job) return 'K-청년';
-    return CAREER_NOUN[job] || job;
+    if (job) return CAREER_NOUN[job] || job;
+    return ageNoun(s.age, s.flags);
   }
 
   function buildTitle(s) {
@@ -1493,20 +1517,36 @@
   function hallWrite(d) {
     try { global.localStorage.setItem(HALL_KEY, JSON.stringify(d)); } catch (e) {}
   }
+  // 시드(가상 인물) 규칙이 바뀌면 올린다 — 이미 시드된 기기의 가상 인물 기록만 새 제목으로 맞춘다.
+  //   2: 나이대 호칭 세분화(유치원생·초등학생·… )로 예전 'K-청년' 제목이 남아 있던 것을 정리
+  var HALL_SEED_REV = 2;
   function hallSeed(d) {
-    if (d.seeded) return d;
     var seeds = global.LIFE_HALL_SEEDS || [];
-    for (var i = 0; i < seeds.length; i++) {
-      var sd = seeds[i], dup = false;
-      for (var j = 0; j < d.records.length; j++) { if (d.records[j].id === sd.id) { dup = true; break; } }
-      if (!dup) d.records.push(Object.assign({}, sd));
+    if (!d.seeded) {
+      for (var i = 0; i < seeds.length; i++) {
+        var sd = seeds[i], dup = false;
+        for (var j = 0; j < d.records.length; j++) { if (d.records[j].id === sd.id) { dup = true; break; } }
+        if (!dup) d.records.push(Object.assign({}, sd));
+      }
+      d.seeded = true;
+      d.seedRev = HALL_SEED_REV;
+      return d;
     }
-    d.seeded = true;
+    // 이미 시드된 기기 — 내 기록·순위는 그대로 두고 가상 인물(seed:true)의 제목만 갱신한다
+    if (d.seedRev !== HALL_SEED_REV) {
+      var byId = {};
+      for (var k = 0; k < seeds.length; k++) byId[seeds[k].id] = seeds[k];
+      for (var m = 0; m < d.records.length; m++) {
+        var r = d.records[m], sd2 = r && r.seed ? byId[r.id] : null;
+        if (sd2 && r.title !== sd2.title) r.title = sd2.title;
+      }
+      d.seedRev = HALL_SEED_REV;
+    }
     return d;
   }
   function hallRecords() {
     var d = hallState();
-    if (!d.seeded) { hallSeed(d); hallWrite(d); }
+    if (!d.seeded || d.seedRev !== HALL_SEED_REV) { hallSeed(d); hallWrite(d); }
     return d.records;
   }
   function hallSorted(list) {
@@ -2120,6 +2160,8 @@
     flagMatch: flagMatch,
     passes: function (ev, s) { return passes(ev, s); },
     formatAsset: formatAsset,
+    careerPhrase: careerPhrase,
+    ageNoun: ageNoun,
     compactAsset: compactAsset,
     displayStat: displayStat,
     statPct: statPct,
