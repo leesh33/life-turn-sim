@@ -74,6 +74,11 @@ MEASURE = """(required) => {
   const panelRect = scroll.getBoundingClientRect();
   const form = q('.start-form');
   const formRect = form.getBoundingClientRect();
+  const row = q('.scenario-row');
+  const rowChips = row ? Array.from(row.querySelectorAll('.scenario-chip')) : [];
+  const rowRect = row ? row.getBoundingClientRect() : null;
+  const rowOver = row ? row.scrollWidth - row.clientWidth : null;
+  const lastChipRight = rowChips.length ? rowChips[rowChips.length - 1].getBoundingClientRect().right : null;
   return {
     viewport: { w: vw, h: vh },
     docScroll: document.documentElement.scrollHeight,
@@ -81,6 +86,14 @@ MEASURE = """(required) => {
     panelScroll: scroll.scrollHeight,
     panelClient: scroll.clientHeight,
     panelOverflow: scroll.scrollHeight - scroll.clientHeight,
+    panelHOver: scroll.scrollWidth - scroll.clientWidth,
+    docHOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    rowOver: rowOver,
+    rowWidth: rowRect ? Math.round(rowRect.width) : null,
+    rowScrollWidth: row ? row.scrollWidth : null,
+    rowChips: rowChips.length,
+    rowChipWidths: rowChips.map(c => Math.round(c.getBoundingClientRect().width * 10) / 10),
+    rowSlack: rowRect && lastChipRight != null ? Math.round(rowRect.right - lastChipRight) : null,
     bottomGap: Math.round(vh - btnRect.bottom),
     btnBottom: Math.round(btnRect.bottom),
     cardsCount: cards.length,
@@ -159,7 +172,9 @@ def run(url, outdir, prefix, sizes, serve_dir=None, port=8821, resume=False,
             print(f"[SUMMARY] {w}x{h} inset {insets[0]}/{insets[1]}: panel {m['panelScroll']}/{m['panelClient']} "
                   f"(overflow {m['panelOverflow']}), btnBottom {m['btnBottom']} / vh {h}, "
                   f"slack {m['panelClient'] - m['panelScroll']}px, bottomSlack {m['slack']}px, "
-                  f"wellCut {m['requiredClipped'] or 'none'}, clipped {m['cardsClipped'] or 'none'}")
+                  f"wellCut {m['requiredClipped'] or 'none'}, clipped {m['cardsClipped'] or 'none'}, "
+                  f"rowOver {m['rowOver']}px (row {m['rowScrollWidth']}/{m['rowWidth']}, {m['rowChips']}chips, "
+                  f"slack {m['rowSlack']}px), panelHOver {m['panelHOver']}px, docHOver {m['docHOver']}px")
             page.close()
         browser.close()
     if httpd:
