@@ -6,15 +6,21 @@
      AdMob(또는 애드센스·앱인토스) 연동이 끝나면 이 값을 true 로 바꾸고
      assets/ads.js 의 showRewardedAd 본문만 실제 SDK 호출로 바꾸면 된다.
    · SHOW_APPLE_SIGNIN : 「Apple로 로그인」 버튼을 켠다.
-     Apple Developer 콘솔(Service ID · Key · Return URL)과 Supabase Auth 의 Apple provider 가
-     준비되기 전에는 false — 켜 두면 누를 때 오류가 난다.
-   두 값 모두 index.html 이 가장 먼저 읽는다(다른 스크립트보다 앞).
+     iOS 앱(`com.odol.lifeturn`) 안에서는 **네이티브 Sign in with Apple**(id_token → Supabase
+     `grant_type=id_token`)로 동작한다. App ID capability·Key·Supabase Apple Client IDs
+     (`com.odol.lifeturn`)까지 등록돼 있다.
+   · APPLE_SIGNIN_WEB : 웹(life-turn-sim.vercel.app)에서도 Apple 로그인 버튼을 내보낼지.
+     공용 Supabase 프로젝트의 Apple provider 는 OAuth secret 이 **서비스 ID 한 개**에만 대응하고
+     그 앞자리가 릴스핀(`com.odol.reelpin.signin`)이라, 웹에서 켜면 릴스핀 이름으로 동의창이 뜨고
+     릴스핀 로그인까지 깨질 수 있다. 그래서 웹은 끔(false) — 앱 안에서만 Apple 로그인이 보인다.
+   세 값 모두 index.html 이 가장 먼저 읽는다(다른 스크립트보다 앞).
    ───────────────────────────────────────────── */
 (function (global) {
   'use strict';
 
   global.LifeFlags = {
     SHOW_ADS_PROTOTYPE: false,
-    SHOW_APPLE_SIGNIN: false
+    SHOW_APPLE_SIGNIN: true,
+    APPLE_SIGNIN_WEB: false
   };
 })(typeof window !== 'undefined' ? window : globalThis);

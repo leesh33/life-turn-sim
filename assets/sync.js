@@ -284,12 +284,41 @@
   }
 
   /* ── 로그인 / 로그아웃 ── */
-  // 기본은 Google. Apple 은 assets/config.js 의 SHOW_APPLE_SIGNIN 이 켜졌을 때만 내보낸다
-  // (Apple Developer 콘솔·Supabase Apple provider 준비 전에 누르면 오류가 난다).
+  // 기본은 Google. Apple 은 assets/config.js 의 SHOW_APPLE_SIGNIN 이 켜졌을 때만 내보낸다.
   var PROVIDER_LABEL = { google: 'Google', apple: 'Apple' };
 
+  /* ── iOS 앱(Expo WebView 래퍼) 다리 ─────────────────────────────
+     앱은 페이지 스크립트보다 먼저 아래를 심는다.
+       window.__LIFETURN_NATIVE__ = { shell: 'ios', appleAuth: true, appVersion: '1.0.0' }
+     앱 안에서는 페이지가 외부 주소로 이동하지 않는다(로그인 창은 앱이 띄운다).
+       · Apple  : 앱의 네이티브 Sign in with Apple → id_token → Supabase id_token grant
+       · Google : 앱이 ASWebAuthenticationSession 으로 열고 `lifeturn://auth-callback` 로 돌아옴
+     돌아온 주소는 앱이 window.LifeNative.oauthCallback(url) 로 넘겨 준다(PKCE verifier 는 이 페이지에 있음).
+     웹에서는 지금처럼 페이지 이동(OAuth 리다이렉트) 방식 그대로. */
+  var NATIVE_REDIRECT = 'lifeturn://auth-callback';
+
+  function nativeInfo() {
+    var n = global.__LIFETURN_NATIVE__;
+    return (n && typeof n === 'object') ? n : null;
+  }
+  function nativeApp() { return !!(nativeInfo() && nativeInfo().shell); }
+  function nativePost(msg) {
+    try {
+      if (global.ReactNativeWebView && typeof global.ReactNativeWebView.postMessage === 'function') {
+        global.ReactNativeWebView.postMessage(JSON.stringify(msg));
+        return true;
+      }
+    } catch (e) { /* 다리가 없으면 웹 방식으로 */ }
+    return false;
+  }
+
   function providerOn(name) {
-    if (name === 'apple') return !!(global.LifeFlags && global.LifeFlags.SHOW_APPLE_SIGNIN);
+    if (name === 'apple') {
+      if (!(global.LifeFlags && global.LifeFlags.SHOW_APPLE_SIGNIN)) return false;
+      // 앱 = 네이티브 Apple 로그인 · 웹 = 이 서비스 전용 Services ID 를 켰을 때만(지금은 꺼 둠)
+      return !!(nativeInfo() && nativeInfo().appleAuth) ||
+        !!(global.LifeFlags && global.LifeFlags.APPLE_SIGNIN_WEB);
+    }
     return true;
   }
 
@@ -298,15 +327,96 @@
     if (!providerOn(provider)) {
       return Promise.reject(new Error(PROVIDER_LABEL[provider] + ' 로그인은 아직 준비 중입니다'));
     }
-    var base = global.location ? global.location.origin + global.location.pathname : '';
+    var native = nativeApp() ? nativeInfo() : null;
+
+    // 앱 · Apple — 네이티브 창을 띄우고 id_token 을 돌려받는다(PKCE 불필요)
+    if (native && provider === 'apple') {
+      setStatus('syncing');
+      if (nativePost({ type: 'apple-signin' })) return Promise.resolve('lifeturn:apple-native');
+      setStatus('off');
+      return Promise.reject(new Error('Apple 로그인 창을 열지 못했습니다'));
+    }
+
     var verifier = randomString(56);
     writeJson(PKCE_KEY, { verifier: verifier, at: now() });
     return challengeFor(verifier).then(function (challenge) {
+      // 앱은 페이지 이동 대신 커스텀 스킴으로 돌아온다(앱이 브라우저 창을 닫고 주소를 넘겨 줌)
+      var base = native ? NATIVE_REDIRECT
+        : (global.location ? global.location.origin + global.location.pathname : '');
       var url = SUPABASE_URL + '/auth/v1/authorize?provider=' + provider +
         '&redirect_to=' + encodeURIComponent(base) +
         (challenge ? '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=s256' : '');
+      if (native) {
+        setStatus('syncing');
+        if (nativePost({ type: 'oauth', url: url })) return url;
+        setStatus('off');
+        throw new Error('로그인 창을 열지 못했습니다');
+      }
       if (global.location) global.location.assign(url);
       return url;
+    });
+  }
+
+  /* ── 앱에서 돌아온 로그인 응답 마무리 ── */
+  // Google 등 OAuth: lifeturn://auth-callback?code=… → PKCE verifier 로 세션 교환
+  function completeOAuthCallback(url) {
+    var raw = String(url || '');
+    var hash = '';
+    var hashAt = raw.indexOf('#');
+    if (hashAt >= 0) { hash = raw.slice(hashAt); raw = raw.slice(0, hashAt); }
+    var qAt = raw.indexOf('?');
+    var q = parseQuery(qAt >= 0 ? raw.slice(qAt) : '');
+    var h = parseQuery(hash);
+    var errText = [q.error, h.error, q.error_description, h.error_description]
+      .filter(Boolean).join(' ');
+    if (errText) {
+      var reason = /access_denied|cancel/i.test(errText) ? '로그인을 취소했습니다' : errText;
+      setStatus('error', reason);
+      return Promise.reject(new Error(reason));
+    }
+    var done;
+    if (q.code) {
+      var pkce = readJson(PKCE_KEY, null) || {};
+      done = api('/auth/v1/token?grant_type=pkce', {
+        method: 'POST',
+        body: { auth_code: q.code, code_verifier: pkce.verifier || '' }
+      }).then(function (tok) { return sessionSave(tok); });
+    } else if (h.access_token) {
+      done = Promise.resolve(sessionSave({
+        access_token: h.access_token,
+        refresh_token: h.refresh_token,
+        expires_in: num(h.expires_in) || 3600
+      }));
+    } else {
+      return Promise.reject(new Error('로그인 응답에 코드가 없습니다'));
+    }
+    return done.then(function () {
+      removeRaw(PKCE_KEY);
+      setStatus('syncing');
+      notifySignedIn();
+      return syncNow().then(function () { return true; }, function () { return true; });
+    }).catch(function (e) {
+      setStatus('error', friendlyError(e));
+      throw new Error(friendlyError(e));
+    });
+  }
+
+  // Apple 네이티브 로그인: identity token 을 Supabase 세션으로 바꾼다
+  //   (Supabase Apple provider Client IDs 에 앱 번들 ID com.odol.lifeturn 이 들어 있어야 통과)
+  function completeAppleSignIn(idToken, nonce) {
+    var token = String(idToken || '');
+    if (!token) return Promise.reject(new Error('Apple 로그인 응답이 비어 있습니다'));
+    setStatus('syncing');
+    return api('/auth/v1/token?grant_type=id_token', {
+      method: 'POST',
+      body: { provider: 'apple', id_token: token, nonce: nonce ? String(nonce) : '' }
+    }).then(function (tok) { return sessionSave(tok); }).then(function () {
+      setStatus('syncing');
+      notifySignedIn();
+      return syncNow().then(function () { return true; }, function () { return true; });
+    }).catch(function (e) {
+      setStatus('error', friendlyError(e));
+      throw new Error(friendlyError(e));
     });
   }
 
@@ -878,6 +988,25 @@
     });
   }
 
+  /* 앱(네이티브 래퍼)이 injectJavaScript 로 부르는 다리.
+     예) window.LifeNative.oauthCallback('lifeturn://auth-callback?code=...')
+         window.LifeNative.appleSignIn('<identityToken>', '<raw nonce>') */
+  global.LifeNative = {
+    oauthCallback: function (url) {
+      completeOAuthCallback(url).then(function () {}, function () {});
+      return 'ok';
+    },
+    appleSignIn: function (idToken, nonce) {
+      completeAppleSignIn(idToken, nonce).then(function () {}, function () {});
+      return 'ok';
+    },
+    native: nativeApp,
+    appleReady: function () { return !!(nativeInfo() && nativeInfo().appleAuth); },
+    signedIn: function () { return !!session(); },
+    status: function () { return { state: status.state, error: status.error, at: status.at }; },
+    redirect: NATIVE_REDIRECT
+  };
+
   global.CloudSync = {
     start: start,
     mount: mount,
@@ -901,6 +1030,9 @@
       progressOf: progressOf,
       parseQuery: parseQuery,
       completeRedirect: completeRedirect,
+      completeOAuthCallback: completeOAuthCallback,
+      completeAppleSignIn: completeAppleSignIn,
+      nativeApp: nativeApp,
       signIn: signIn,
       providerOn: providerOn,
       deleteAccount: deleteAccount,
