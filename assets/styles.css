@@ -414,7 +414,60 @@ body {
    아이폰 사파리는 주소창·하단바 때문에 390×844 기기에서도 실제 뷰포트가
    약 660~700px 이다. 그 높이에서도 시작 화면 전체(타이틀·나이 카드 7개·
    이름/성별·시작 버튼)가 스크롤 없이 한 화면에 들어오도록 여백을 단계적으로 줄인다.
-   760px 이하: 살짝 압축 / 660px 이하: 한 화면에 맞추는 압축 / 580px 이하: 최소 높이 기기 */
+   900px 이하: 앱(WebView) 한 화면 맞춤 / 760px 이하: 살짝 압축 /
+   660px 이하: 한 화면에 맞추는 압축 / 580px 이하: 최소 높이 기기 */
+
+/* ── 앱(Expo WebView)처럼 **화면을 꽉 채우는** 경우 ────────────────
+   iOS 앱은 상태바·홈 인디케이터 밑까지 WebView 가 덮으므로 뷰포트 높이가 844·852 로
+   '긴 화면'으로 보이지만, 안전영역(위 47~62 · 아래 34)을 빼면 실제로 쓸 수 있는 높이는
+   760px 남짓이다. 높이만 보는 미디어쿼리로는 이 손실이 보이지 않아, 844 에서는 압축 단계가
+   걸리지 않고 이름·성별 입력줄이 하단 고정 버튼에 반쯤 가렸다(2026-11-23 제보).
+   그래서 안전영역까지 감안한 '앱 한 화면' 단계를 900px 부터 미리 건다.
+   (이후 760·660·580 단계는 그보다 더 좁은 화면용이라 값이 더 작다 — 겹쳐도 손해가 없다) */
+@media (max-height: 900px) {
+  .start-scroll { padding: calc(8px + var(--safe-t)) 20px 10px; }
+  .brand { padding: 2px 4px 10px; }
+  .brand-mark {
+    width: 46px; height: 46px;
+    font-size: 23px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+  .brand h1 { font-size: 31px; line-height: 1.12; letter-spacing: -1.3px; }
+  .brand-sub { margin-top: 10px; font-size: 13.5px; line-height: 1.5; }
+
+  .section-label { margin: 2px 0 8px; font-size: 12px; }
+  .age-grid { gap: 7px; }
+  .age-card {
+    min-height: 52px;
+    padding: 8px 11px;
+    gap: 9px;
+    border-radius: 15px;
+  }
+  .age-card .ac-emoji { font-size: 16px; width: 21px; }
+  .age-card .ac-age { font-size: 15.5px; }
+  .age-card .ac-label { font-size: 10px; }
+  .age-card.selected::after { top: 6px; right: 7px; }
+
+  .scenario-block { margin-top: 8px; }
+  .scenario-head { margin-bottom: 4px; }
+  .scenario-chip { min-height: 34px; padding: 8px 8px; }
+
+  .name-row { margin-top: 12px; gap: 9px; }
+  .field { gap: 5px; }
+  .field-label { font-size: 11px; }
+  .field input { padding: 12px 12px; border-radius: 12px; }
+  .chip { padding: 13px 11px; font-size: 13px; min-width: 42px; border-radius: 11px; }
+
+  .legal-links { margin-top: 6px; }
+
+  .start-foot { margin-top: 2px; padding: 8px 20px calc(11px + var(--safe-b)); }
+  .start-foot .btn.primary.big { padding: 15px 18px; font-size: 16.5px; border-radius: 17px; }
+  /* 로그인 줄은 시작 화면만 — 전당 화면의 같은 줄(#hallSyncRow)은 자기 규칙을 그대로 쓴다 */
+  #screen-start .sync-row { margin-top: 6px; min-height: 0; gap: 4px 6px; }
+  #screen-start .sync-pill { padding: 5px 10px; font-size: 11px; }
+  #screen-start .sync-note { font-size: 10px; }
+}
 
 @media (max-height: 760px) {
   .start-scroll { padding: calc(14px + var(--safe-t)) 20px 10px; }
@@ -3443,6 +3496,25 @@ body {
 }
 #screen-start.has-legacy .brand h1 { font-size: 29px; }
 #screen-start.has-legacy .scenario-block { margin-top: 10px; }
+
+/* 앱(WebView)의 '긴 화면 + 큰 안전영역' 에서는 가문 줄까지 떠도 한 화면에 들어오게 한 단계 더 압축 */
+@media (max-height: 900px) {
+  #screen-start.has-legacy .brand { padding-bottom: 8px; }
+  #screen-start.has-legacy .brand-mark {
+    width: 38px; height: 38px;
+    font-size: 19px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+  }
+  #screen-start.has-legacy .brand h1 { font-size: 27px; }
+  #screen-start.has-legacy .age-grid { gap: 6px; }
+  #screen-start.has-legacy .age-card { min-height: 48px; padding: 8px 10px; }
+  #screen-start.has-legacy .scenario-block { margin-top: 6px; }
+  #screen-start.has-legacy .legacy-row { padding: 7px 10px; margin-top: 6px; }
+  #screen-start.has-legacy .name-row { margin-top: 9px; }
+  #screen-start.has-legacy .legal-links { margin-top: 4px; }
+  #screen-start.has-legacy .start-scroll { padding-bottom: 6px; }
+}
 
 @media (max-height: 760px) {
   #screen-start.has-legacy .brand-mark {
