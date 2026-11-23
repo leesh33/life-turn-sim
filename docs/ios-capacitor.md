@@ -1,3 +1,6 @@
+> ⚠️ **이 문서는 예전 계획(맥+Xcode + Capacitor)입니다.** 실제 출시는 Expo WebView 래퍼로 진행됐고 절차·연동 규약은
+> [`docs/ios-app.md`](ios-app.md) 를 보세요. 아래 `capacitor.config.json`·`tools/pack-www.sh` 는 웹 자산을 모으는 데 계속 쓴다.
+
 # 인생 한 턴 — iOS 앱으로 감싸기 (Capacitor)
 
 웹앱(`index.html` + `assets/`)은 빌드 도구 없이 도는 정적 사이트입니다. 그대로 Capacitor 의
