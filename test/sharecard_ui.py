@@ -101,7 +101,7 @@ def _share_flow(browser, url, save, args):
     pg.wait_for_timeout(700)
     check("공유 시트가 되는 기기면 공유 버튼이 보인다", pg.is_visible("#smShare"))
     note = pg.inner_text("#smNote")
-    check("공유 안내 문구", "공유하기" in note, note)
+    check("공유 안내 문구", "카카오톡" in note, note)
     pg.screenshot(path=os.path.join(args.out, f"sharecard-{args.tag}-03-share.png"))
     pg.click("#smShare")
     pg.wait_for_timeout(900)
