@@ -474,18 +474,6 @@
     }
     if (fresh.length) return weightedPick(s, fresh);
     if (relaxedFresh.length) return weightedPick(s, relaxedFresh);
-    // 4-c) 그래도 비면 이미 겪은 '같은 본문'이라도 다시 쓴다(빈달 대신) — 단, 반복 사건은 그대로
-    if (!fresh.length && !relaxedFresh.length) {
-      var again = [];
-      for (i = 0; i < list.length; i++) {
-        ev = list[i];
-        if (!ev || ev.at || ev.stage === 'any' || ev.stage !== stage) continue;
-        if (!used(s, ev.id) || ev.repeatable) continue;
-        if (!passes(ev, s)) continue;
-        again.push(ev);
-      }
-      if (again.length) return weightedPick(s, again);
-    }
     if (repeatables.length) return weightedPick(s, repeatables);
     return genericEvent(s);
   }
