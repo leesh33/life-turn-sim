@@ -74,24 +74,26 @@ def main():
         check("25세 시작 — 인생 화면 진입", page.is_visible("#stage"), page.inner_text("#ageLabel"))
         page.screenshot(path=f"/workspace/verify-shots/audit-{args.tag}-02-25.png")
 
-        # 12개월 진행 — 선택(첫 번째) 후 '다음 1개월'
+        # 26세가 될 때까지 진행 — 선택(첫 번째) 후 '다음 1개월' (네트워크가 느려도 기다린다)
         ledger_toast = ""
-        for i in range(12):
+        for _ in range(24):
+            label = page.inner_text("#ageLabel").strip()
+            if label.startswith("26"):
+                break
             try:
-                btn = page.query_selector(".choice >> nth=0")
-                if btn and btn.is_enabled():
-                    btn.click()
-                    page.wait_for_timeout(260)
+                page.wait_for_selector("#choices .choice:not([disabled])", timeout=4000)
+                page.click("#choices .choice:not([disabled])", timeout=4000)
             except Exception:
                 pass
-            adv = page.query_selector("#advanceBtn")
-            if adv and adv.is_enabled():
-                adv.click()
-                page.wait_for_timeout(320)
+            try:
+                page.wait_for_function("() => { const b = document.getElementById('advanceBtn'); return b && !b.disabled; }", timeout=6000)
+                page.click("#advanceBtn", timeout=4000)
+            except Exception:
+                pass
+            page.wait_for_timeout(260)
             txt = page.inner_text("#toast") if page.query_selector("#toast") else ""
             if "연 수지" in (txt or ""):
                 ledger_toast = txt
-            page.wait_for_timeout(120)
 
         age_label = page.inner_text("#ageLabel")
         mission = page.inner_text("#avMission") if page.query_selector("#avMission") else ""
