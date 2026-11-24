@@ -52,6 +52,10 @@ check('건강 사건 3종(신호·위독·쓰러짐)이 있다', health.length >
   health.map((e) => e.id + '≤' + e.crisisHp).join(', '));
 check('건강 사건은 체력 조건(when)을 스스로 갖는다',
   health.every((e) => typeof e.when === 'function' && e.repeatable === true));
+check('건강 사건 문턱이 엔진 기준과 같다(28/18/10)',
+  health.map((e) => e.crisisHp).sort((a, b) => b - a).join('/') ===
+    [Life.HEALTH.warnHp, Life.HEALTH.dangerHp, Life.HEALTH.criticalHp].join('/'),
+  health.map((e) => e.id + '≤' + e.crisisHp).join(', ') + ' · 엔진 ' + JSON.stringify(Life.HEALTH));
 check('건강 사건은 어느 나이에나 열린다(any · 1~80세)',
   health.every((e) => e.stage === 'any' && e.minAge === 1 && e.maxAge === 80));
 
@@ -83,6 +87,7 @@ check('건강 사건이 매달 먼저 내밀어진다', cr.steps.filter((x) => x
   cr.steps.map((x) => x.id + (x.health ? '🩺' : '')).join(' → '));
 
 // 마일스톤이 아닌 달에는 건강 사건이 가장 먼저 온다
+// (기준 2026-11-24 밤 상향: 신호 28 · 위독 18 · 쓰러짐 10 — engine.HEALTH 와 같다)
 (function priority() {
   const s = Life.newGame({ name: '우선', gender: '남', startAge: 40 });
   s.month = 5; s.stats.hp = 3;
@@ -90,7 +95,12 @@ check('건강 사건이 매달 먼저 내밀어진다', cr.steps.filter((x) => x
   check('체력이 낮으면 급한 건강 사건부터(쓰러짐)', !!h && h.id === 'hl_collapse', h && h.id);
   s.stats.hp = 15;
   const h2 = Life.healthEventFor(s);
-  check('조금 덜하면 신호 사건부터', !!h2 && h2.id === 'hl_warn', h2 && h2.id);
+  check('위독 구간(18 이하)에서는 위독 사건부터', !!h2 && h2.id === 'hl_danger', h2 && h2.id);
+  s.stats.hp = 24;
+  const h3 = Life.healthEventFor(s);
+  check('조금 덜하면 신호 사건부터(28 이하)', !!h3 && h3.id === 'hl_warn', h3 && h3.id);
+  s.stats.hp = 29;
+  check('29 이상이면 건강 사건이 열리지 않는다', Life.healthEventFor(s) === null);
 })();
 
 const crChild = crisisRun(1);

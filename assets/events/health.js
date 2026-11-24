@@ -1,12 +1,13 @@
 /* ─────────────────────────────────────────────
    events/health.js — 몸이 보내는 신호 · 건강 위기 (2026-11-24)
 
-   체력이 위험 구간(22 이하)에 있으면 엔진이 이 사건들을 먼저 내민다
+   체력이 위험 구간(28 이하)에 있으면 엔진이 이 사건들을 먼저 내민다
    (engine.pickEvent 1-b · healthEventFor). 그래서 '억울한 즉사'가 아니라
    '경고 → 휴식·병원 선택 → 그래도 무리하면 조기 엔딩' 순서가 된다.
 
    · health: true   — 건강 사건 표시(엔진이 위험할 때 우선 선택)
-   · crisisHp: 22/12/5 — 체력이 이 값 이하일 때 열린다(급할수록 강한 사건)
+   · crisisHp: 28/18/10 — 체력이 이 값 이하일 때 열린다(급할수록 강한 사건)
+     (2026-11-24 밤 한 단계 상향: 22/12/5 → 28/18/10 — engine.HEALTH 와 같은 값)
    · repeatable: true — 회복하지 않으면 다시 뜬다(엔진이 두 달 연속은 피한다)
 
    결과 문구는 나이를 말하지 않는다 — 1세부터 80세까지 같은 사건이 열리기 때문이다.
@@ -17,21 +18,21 @@ X('any', 'hl_warn', [1, 80], '집', '몸이 보내는 신호',
     ['병원에 간다', '검사를 받고 약을 받았습니다. 하루를 비웠지만 마음이 놓였습니다.', { hp: 12, asset: -40, mental: 2 }, { 건강_관리: true }],
     ['며칠 푹 쉰다', '아무 약속도 잡지 않고 누워 지냈습니다. 나흘째, 몸이 조금 가벼워졌습니다.', { hp: 10, social: -1, mental: 3 }],
     ['일단 버틴다', '진통제로 버텼습니다. 몸은 조용히 불만을 쌓아 둡니다.', { hp: -2, mental: 1 }, { 건강_무시: true }]
-  ], { health: true, bigEffects: true, crisisHp: 22, repeatable: true,
-    when: function (s) { return s.stats.hp <= 22; } });
+  ], { health: true, bigEffects: true, crisisHp: 28, repeatable: true,
+    when: function (s) { return s.stats.hp <= 28; } });
 
 X('any', 'hl_danger', [1, 80], '병원', '몸이 버티지 못합니다',
   '계단 세 칸에 숨이 차고, 앉았다 일어서면 눈앞이 깜깜해집니다. 이번엔 신호가 아닙니다.', [
     ['응급실로 간다', '링거를 맞고 하루를 병원에서 보냈습니다. 집에 오는 길이 멀게 느껴졌습니다.', { hp: 20, asset: -120, mental: 1 }],
     ['아무것도 하지 않고 눕는다', '일주일을 누워 지냈습니다. 미뤄 둔 일들은 생각보다 잘 돌아갔습니다.', { hp: 16, asset: -30, social: -1, mental: 2 }],
     ['버티고 또 나간다', '한 번 더 버텼습니다. 몸은 이제 소리치지 않고 조용히 무너집니다.', { hp: -3, mental: 1 }, { 건강_위태: true }]
-  ], { health: true, bigEffects: true, crisisHp: 12, repeatable: true,
-    when: function (s) { return s.stats.hp <= 12; } });
+  ], { health: true, bigEffects: true, crisisHp: 18, repeatable: true,
+    when: function (s) { return s.stats.hp <= 18; } });
 
 X('any', 'hl_collapse', [1, 80], '응급실', '쓰러졌습니다',
   '눈앞이 하얘지고 바닥이 차갑습니다. 누군가 이름을 부르는 소리가 멀리 들립니다.', [
     ['큰 병원에서 치료를 받는다', '며칠을 입원했습니다. 의사는 당분간 무리하지 말라고만 말했습니다.', { hp: 24, asset: -300, mental: 2 }],
     ['오래 쉰다', '한 달을 아무것도 하지 않았습니다. 몸이 돌아오는 속도는 느렸습니다.', { hp: 18, asset: -80, social: -2, mental: 3 }],
     ['겨우 일어난다', '다음 날 다시 일어났습니다. 무언가가 조금씩 부서지는 소리가 납니다.', { hp: 2, mental: -1 }, { 건강_위태: true }]
-  ], { health: true, bigEffects: true, crisisHp: 5, repeatable: true,
-    when: function (s) { return s.stats.hp <= 5; } });
+  ], { health: true, bigEffects: true, crisisHp: 10, repeatable: true,
+    when: function (s) { return s.stats.hp <= 10; } });
