@@ -115,6 +115,33 @@ const interview = playMini('mg_final_interview', 0, true);
 check('미니 승리 → 취업 플래그', !!interview.s.flags['취업_성공']);
 check('미니 결과 길이', interview.res.result.length > 10);
 
+// 이미 일하는 인생에는 '최종 면접'(세 번의 면접…)이 열리지 않는다 — 구직 중일 때만 (#29906)
+const finalInterview = byId('mg_final_interview');
+check('최종 면접: when 조건 있음', !!(finalInterview && typeof finalInterview.when === 'function'));
+const jobScenario = Life.newGame({ name: '재직', gender: '남', startAge: 25 });
+jobScenario.age = 27;
+check('최종 면접: 사회생활 시나리오(직업)엔 안 뜸', !Life.passes(finalInterview, jobScenario), String(jobScenario.flags['직업']));
+const hired = Life.newGame({ name: '합격', gender: '여', startAge: 8 });
+hired.age = 27; hired.flags['취업_성공'] = true;
+check('최종 면접: 합격 플래그가 있으면 안 뜸', !Life.passes(finalInterview, hired));
+const jobless = Life.newGame({ name: '구직', gender: '남', startAge: 8 });
+jobless.age = 27;
+check('최종 면접: 구직 중이면 뜸', Life.passes(finalInterview, jobless));
+const early = Life.newGame({ name: '어린', gender: '남', startAge: 8 });
+early.age = 24;
+check('최종 면접: 나이 창(25~30) 밖은 안 뜸', !Life.passes(finalInterview, early));
+// 재직 상태로 24개월을 실제로 돌려도 한 번도 안 나오는지
+const employedRun = Life.newGame({ name: '재직', gender: '남', startAge: 25 });
+let interviewHits = 0;
+for (let i = 0; i < 48 && employedRun.age <= 27 && !employedRun.ended; i++) {
+  const ev = Life.currentEvent(employedRun);
+  if (!ev) break;
+  if (ev.id === 'mg_final_interview') interviewHits++;
+  Life.choose(employedRun, 0);
+  Life.advance(employedRun);
+}
+check('재직 24개월 동안 최종 면접 0회', interviewHits === 0, interviewHits + '회');
+
 /* ═════════ ③ 재테크 · 가족 카드 ═════════ */
 const moneyEvents = EVENTS.filter((e) => /^mn_/.test(e.id));
 check('재테크·가족 이벤트 수', moneyEvents.length >= 18, moneyEvents.length + '개');
