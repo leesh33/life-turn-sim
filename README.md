@@ -612,6 +612,10 @@ node test/balance.js
 # 📊 다회차 시뮬레이션(정책 4종 × 시작 나이 × 시나리오) — 재산·빚·바닥·미션·미니 승부 분포
 node tools/balance-sim.js --runs 8 --starts 1,25,35
 
+# 🔍 전수조사 화면(390×844) — 26세 미션 이름('20대 후반') · 생일 토스트 연 수지 · 가로 넘침 0 · 콘솔 오류 0
+python3 test/audit_ui.py --serve . 
+python3 test/audit_ui.py --url https://life-turn-sim.vercel.app/ --tag live
+
 # 🏷️ 나이대 호칭·재산 표기 — 호칭 경계값·직업 우선·시드 제목·시드 갱신·금액 17종·`억만원` 0건 62항목
 node test/naming.js
 
