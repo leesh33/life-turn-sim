@@ -1429,22 +1429,26 @@
   }
 
   /* ── 인생 점수 ──
-     능력치 평균(0~100) 에 0.40, 재산 점수(0~45) 에 0.9, 마일스톤 하나에 0.3 을 준다.
+     능력치 평균(0~100) 에 0.25, 재산 점수(0~65) 에 1, 마일스톤 하나에 0.3 을 준다.
      · 살림 장부(2026-11-24) 전에는 재산이 늘 마이너스라 재산 점수가 0이었고,
        그래서 능력치만 좋으면 S 가 나왔다(전수조사: 312회 중 294회가 S).
      · 이제 재산이 살아 있는 값이므로 비중을 올리고 등급선을 다시 잡았다.
-       실측 기준: 평범하게 사는 인생 73~79점(A) · 돈을 크게 모은 인생 80점 이상(S) ·
-       빚을 안고 마친 인생 50점대 이하(D). */
+       실측 기준(80세 최종 재산): 5천만 안팎 B · 1~3억 A · 5억 이상 S · 빚으로 마치면 D.
+       (능력치는 88~92에 몰려 변별력이 없어 비중을 낮추고, 재산 눈금을 넓게 잡았다) */
   function gradeOf(s) {
     var st = s.stats;
     var gauge = gaugeAvg(st);
-    var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
-    var score = gauge * 0.40 + assetScore * 0.9 + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
+    // 재산 점수는 20억에서 만점 — 4억에서 만점이던 때는 절반이 상한에 붙어 등급이 갈리지 않았다
+    // 재산 점수는 20억에서 만점이되, 곡선을 아래로 볼록하게(제곱) 둔다 —
+    // 로그만 쓰면 1억도 만점의 75%를 받아 등급이 위로 몰렸다.
+    var assetNorm = st.asset > 0 ? Math.log10(st.asset + 1) / 5.3 : 0;
+    var assetScore = clamp(assetNorm * assetNorm * 65, 0, 65);
+    var score = gauge * 0.25 + assetScore + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
     score = clamp(score, 0, 100);
-    if (score >= 80) return { grade: 'S', label: '전설의 인생', score: score };
-    if (score >= 73) return { grade: 'A', label: '성공한 인생', score: score };
-    if (score >= 64) return { grade: 'B', label: '탄탄한 인생', score: score };
-    if (score >= 54) return { grade: 'C', label: '평범한 인생', score: score };
+    if (score >= 78) return { grade: 'S', label: '전설의 인생', score: score };
+    if (score >= 70) return { grade: 'A', label: '성공한 인생', score: score };
+    if (score >= 63) return { grade: 'B', label: '탄탄한 인생', score: score };
+    if (score >= 52) return { grade: 'C', label: '평범한 인생', score: score };
     return { grade: 'D', label: '파란만장한 인생', score: score };
   }
 
