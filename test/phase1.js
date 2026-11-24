@@ -265,6 +265,66 @@ check('카드: draw 에 이름·제목·브랜드', joined.indexOf('유 솔') !=
   joined.indexOf('life-turn-sim.vercel.app') !== -1, ctx.texts.length + '개 글자');
 check('카드: draw 에 재산·칭호', joined.indexOf('4,200만원') !== -1 && joined.indexOf('2대') !== -1);
 
+// 이력 하이라이트 — 요약이 고른 가장 굵은 사건이 카드에도 실린다
+const hlState = Object.assign({}, cardState, {
+  history: [
+    { turn: 1, age: 30, month: 4, eventId: 'parent_illness', title: '부모님 병원', place: '병원',
+      choice: '내가 간병을 맡는다', result: '한 달간 매일 병원에 갔습니다.', deltas: { mental: -2, asset: -800 }, milestone: true },
+    { turn: 2, age: 19, month: 3, eventId: 'csat_d100', title: '수능 D-100', place: '교실',
+      choice: '올인한다', result: '하루 14시간 공부.', deltas: { intel: 4 }, milestone: true },
+    { turn: 3, age: 55, month: 9, eventId: 'x', title: '창업', place: '사무실',
+      choice: '작게 시작한다', result: '가게 문을 열었습니다.', deltas: { asset: 300 } }
+  ]
+});
+const hlModel = ShareCard.model(hlState);
+check('카드: 이력 하이라이트', hlModel.highlights.length === 3 &&
+  hlModel.highlights[0].age === 30 && hlModel.highlights[0].title === '부모님 병원' &&
+  hlModel.highlights[0].choice === '내가 간병을 맡는다',
+  hlModel.highlights.map((x) => x.age + '세 ' + x.title).join(' / '));
+
+// 가장 빽빽한 카드(긴 제목·칭호 3개·가문 줄·하이라이트)도 바닥 워터마크를 덮지 않는다
+function posCtx() {
+  const drawn = [];
+  const grad = { addColorStop() {} };
+  return {
+    drawn,
+    canvas: { width: 1080, height: 1350 },
+    fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: 'left', textBaseline: 'top', globalAlpha: 1,
+    fillRect() {}, strokeRect() {}, beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, arcTo() {},
+    fill() {}, stroke() {}, save() {}, restore() {}, translate() {}, scale() {}, clearRect() {},
+    createLinearGradient() { return grad; },
+    createRadialGradient() { return grad; },
+    measureText(t) { const s = String(t); let w = 0; for (const ch of s) w += /[\u3131-\uD79D]/.test(ch) ? 30 : 16; return { width: w }; },
+    fillText(t, x, y) { drawn.push({ t: String(t), x, y }); }
+  };
+}
+const dense = posCtx();
+let denseErr = null;
+try { ShareCard.draw(dense, Object.assign({}, hlModel, {
+  title: '울고 웃고 또 울고 끝내 웃은, 세상에서 가장 길고 긴 마지막까지 무대에 선 연주자',
+  highlights: hlModel.highlights,
+  note: '상훈 가문 · 이전 회차의 인연 — 희연 · 배우자'
+})); } catch (e) { denseErr = e && e.message; }
+const footerTop = ShareCard.H - 150;
+const intruders = dense.drawn.filter((d) => d.y > footerTop - 6 && d.y < ShareCard.H - 100);
+check('카드: 가장 빽빽해도 바닥 워터마크와 겹치지 않음', !denseErr && intruders.length === 0,
+  denseErr || (intruders.length ? intruders.map((d) => d.t + '@' + Math.round(d.y)).join(',') : 'OK'));
+const denseText = dense.drawn.map((d) => d.t).join(' | ');
+check('카드: 하이라이트·가문 줄이 실제로 그려진다', denseText.indexOf('30세 · 부모님 병원') !== -1 &&
+  denseText.indexOf('가문') !== -1, denseText.slice(0, 60));
+
+// 건강 악화 조기 엔딩 — 나이와 까닭이 카드에 남는다
+const healthState = Object.assign({}, cardState, { age: 47, ended: true, endingKind: 'health' });
+const hm = ShareCard.model(healthState);
+check('건강 조기 엔딩 카드: 나이·까닭', hm.finalAge === 47 && hm.kicker === '건강 악화 · 47세', hm.kicker);
+
+// 공유 시트에 실리는 글
+check('카드: 공유 글에 나이·등급·재산·주소',
+  ShareCard.shareText(cardState).indexOf('80세') !== -1 &&
+  ShareCard.shareText(cardState).indexOf('4,200만원') !== -1 &&
+  ShareCard.shareText(cardState).indexOf('life-turn-sim.vercel.app') !== -1,
+  ShareCard.shareText(cardState).replace(/\n/g, ' / '));
+
 // 졸업 엔딩 카드
 const gradCard = Life.newGame({ name: '유솔', gender: '여', startAge: 8, scenario: 'imf' });
 gradCard.age = 19; gradCard.month = 12; gradCard.ended = true; gradCard.endingKind = 'graduation';

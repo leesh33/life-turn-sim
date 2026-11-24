@@ -1632,7 +1632,14 @@
       $('smImg').src = canvas.toDataURL('image/png');
     } catch (e) { toast('카드를 그리지 못했습니다'); return; }
     $('smSub').textContent = '1080×1350 · PNG · ' + window.ShareCard.filename(state);
-    $('smShare').hidden = !window.ShareCard.canShareFiles();
+    var canShare = window.ShareCard.canShareFiles();
+    $('smShare').hidden = !canShare;
+    /* 앱(WebView)처럼 저장·공유가 막히는 곳에서도 방법이 있게 — 길게 눌러 사진에 저장 */
+    if ($('smNote')) {
+      $('smNote').textContent = canShare
+        ? '공유하기를 누르면 카카오톡·인스타로 바로 보낼 수 있어요 · 길게 눌러 저장도 돼요'
+        : '이미지를 길게 눌러 사진 앨범에 저장할 수도 있어요';
+    }
     $('shareModal').hidden = false;
     $('shareModal').setAttribute('aria-hidden', 'false');
     /* 카드도 앱과 같은 Gmarket Sans 로 — 첫 진입에서 웹폰트가 아직 도착 전이면

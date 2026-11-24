@@ -75,6 +75,16 @@
     var generation = state.generation || 1;
     var scenario = Life && Life.scenarioBrief ? Life.scenarioBrief(state.scenario) : null;
 
+    /* 이력 하이라이트 — 요약이 고른 가장 굵은 사건 2~3개 (카드에는 들어가는 만큼만) */
+    var highlights = (sum && sum.highlights ? sum.highlights : []).slice(0, 3).map(function (hl) {
+      return {
+        age: hl.age,
+        place: hl.place || '',
+        title: h(hl.title),
+        choice: h(hl.choice)
+      };
+    });
+
     return {
       name: h(state.name || '이름 없음'),
       generation: generation,
@@ -90,6 +100,7 @@
       turns: sum ? sum.turns : (state.history ? state.history.length : 0),
       stats: rows,
       asset: assetRow,
+      highlights: highlights,
       titles: runTitles(state).slice(0, 3),
       tags: (sum && sum.tags ? sum.tags : []).slice(0, 4),
       note: familyNote(state),
@@ -130,6 +141,16 @@
       bits.push('이전 회차의 인연 — ' + cameo.name + ' · ' + (cameo.relLabel || ''));
     }
     return bits.length ? bits.join('   ·   ') : '';
+  }
+
+  /* 공유 시트에 함께 실리는 글 — 카드와 같은 숫자로 */
+  function shareText(state) {
+    var m = model(state);
+    if (!m) return '「' + BRAND + '」 — ' + URL_TEXT;
+    var bits = [m.finalAge + '세'];
+    if (m.grade) bits.push(m.grade + (m.gradeLabel ? ' ' + m.gradeLabel : ''));
+    if (m.asset && m.asset.text) bits.push(m.asset.text);
+    return '「' + BRAND + '」에서 산 내 인생 — ' + bits.join(' · ') + '\n' + URL_TEXT;
   }
 
   function filename(state) {
@@ -254,7 +275,8 @@
 
     /* 3) 시나리오 · 나이 */
     var subBits = [];
-    if (m.scenario) subBits.push(m.scenario.emoji + ' ' + m.scenario.name);
+    // 국기 이모지는 기기에 따라 'KR' 글자로 깨져 보여서 이름만 적는다
+    if (m.scenario) subBits.push(m.scenario.name);
     subBits.push(m.finalAge + '세');
     if (m.turns) subBits.push('선택 ' + m.turns + '개');
     ctx.font = font(30, 600);
@@ -286,84 +308,134 @@
     });
     y += titleLines.length * 58 + 26;
 
-    /* 5) 능력치 — 2열 3행 막대 */
+    /* 5~8) 아래 섹션 — 먼저 자리를 재고, 들어가는 것만 그린다.
+       (긴 칭호·하이라이트·가문 줄이 겹쳐 바닥 워터마크를 덮지 않게) */
+    var rowH = 104;
+    var statsH = Math.ceil(m.stats.length / 2) * rowH + 6;
+    var assetH = m.asset ? 96 + 20 : 0;
+    var bottom = H - 150 - 18;            // 바닥 구분선(H-150) 위 18px 여백
+    var space = bottom - y - statsH - assetH;
+
+    var hl = m.highlights || [];
+    var hlRows = 0;
+    if (hl.length && space >= 34 + 58) {
+      hlRows = Math.min(2, hl.length, 1 + Math.floor((space - 34 - 58) / 58));
+    }
+    var hlH = hlRows ? 34 + hlRows * 58 : 0;
+    var noteH = (m.note && space - hlH >= 44) ? 44 : 0;
+    var badgeH = (space - hlH - noteH >= 46) ? 46 : 0;
+
+    /* 내용이 적은 카드(사건이 거의 없는 인생)는 남는 자리만큼 능력치 줄을 넓혀
+       위는 빽빽하고 아래는 휑한 인상이 남지 않게 한다 */
+    for (var pass = 0; pass < 2; pass++) {
+      var free = bottom - y - (statsH + assetH + hlH + noteH + badgeH);
+      var grow = Math.min(22, Math.floor(free / 3));
+      if (grow < 8) break;
+      rowH += grow;
+      statsH = Math.ceil(m.stats.length / 2) * rowH + 6;
+    }
+
+    // 능력치 — 2열 3행 막대
     var colW = (W - PAD * 2 - 40) / 2;
-    var rowH = 130;
     m.stats.forEach(function (row, i) {
       var cx = PAD + (i % 2) * (colW + 40);
       var cy = y + Math.floor(i / 2) * rowH;
-      ctx.font = font(27, 600);
+      ctx.font = font(26, 600);
       ctx.fillStyle = C.ink3;
-      ctx.fillText(row.label, cx, cy + 24);
-      ctx.font = font(40, 800);
+      ctx.fillText(row.label, cx, cy + 22);
+      ctx.font = font(38, 800);
       ctx.fillStyle = C.ink;
       ctx.textAlign = 'right';
-      ctx.fillText(row.text, cx + colW, cy + 28);
+      ctx.fillText(row.text, cx + colW, cy + 26);
       ctx.textAlign = 'left';
-      // 막대
-      rr(ctx, cx, cy + 48, colW, 13, 7);
+      rr(ctx, cx, cy + 44, colW, 12, 6);
       ctx.fillStyle = 'rgba(0,0,0,0.07)';
       ctx.fill();
       var pct = Math.max(2, Math.min(100, row.pct || 0));
-      rr(ctx, cx, cy + 48, colW * (pct / 100), 13, 7);
+      rr(ctx, cx, cy + 44, colW * (pct / 100), 12, 6);
       ctx.fillStyle = C.accent;
       ctx.fill();
     });
-    y += Math.ceil(m.stats.length / 2) * rowH + 4;
+    y += statsH;
 
-    /* 6) 재산 — 한 줄 강조 */
+    // 재산 — 한 줄 강조
     if (m.asset) {
-      rr(ctx, PAD, y, W - PAD * 2, 106, 24);
+      rr(ctx, PAD, y, W - PAD * 2, 96, 24);
       ctx.fillStyle = '#FFFFFF';
       ctx.globalAlpha = 0.72;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.font = font(27, 600);
+      ctx.font = font(26, 600);
       ctx.fillStyle = C.ink3;
-      ctx.fillText('남은 재산', PAD + 32, y + 42);
-      ctx.font = font(52, 800);
+      ctx.fillText('남은 재산', PAD + 32, y + 40);
+      ctx.font = font(50, 800);
       ctx.fillStyle = m.asset.text.indexOf('-') === 0 ? '#B4432F' : C.ink;
       ctx.textAlign = 'right';
-      ctx.fillText(m.asset.text, W - PAD - 32, y + 60);
+      ctx.fillText(m.asset.text, W - PAD - 32, y + 58);
       ctx.textAlign = 'left';
-      y += 106 + 30;
+      y += assetH;
     }
 
-    /* 7) 칭호 (최대 3개) — 칭호가 없는 인생은 남긴 것들로 그 자리를 채운다 */
-    if (!m.titles.length && m.tags && m.tags.length) {
-      ctx.font = font(27, 600);
+    // 이력 하이라이트 — 가장 굵었던 사건과 그때의 선택
+    if (hlRows) {
+      ctx.font = font(24, 700);
       ctx.fillStyle = C.ink3;
-      var tagLine = wrap(ctx, '남긴 것들 — ' + m.tags.join(' · '), W - PAD * 2, 1)[0] || '';
-      ctx.fillText(tagLine, PAD, y + 6);
-      y += 44;
-    }
-    if (m.titles.length) {
-      ctx.font = font(26, 700);
-      var tx = PAD;
-      var ty = y;
-      m.titles.forEach(function (t) {
-        var label = t.emoji + ' ' + t.name;
-        var tw = ctx.measureText(label).width + 40;
-        if (tx + tw > W - PAD && tx > PAD) { tx = PAD; ty += 56; }
-        rr(ctx, tx, ty, tw, 46, 23);
+      ctx.fillText('인생 하이라이트', PAD, y + 22);
+      y += 34;
+      for (var hi = 0; hi < hlRows; hi++) {
+        var item = hl[hi];
+        ctx.font = font(30, 800);
         ctx.fillStyle = C.ink;
-        ctx.globalAlpha = 0.9;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#FFF9F2';
-        ctx.fillText(label, tx + 20, ty + 32);
-        tx += tw + 12;
-      });
-      y = ty + 74;
+        var head = item.age + '세 · ' + item.title;
+        while (head.length > 2 && ctx.measureText(head).width > W - PAD * 2) head = head.slice(0, -1);
+        var headW = ctx.measureText(head).width;
+        ctx.fillText(head, PAD, y + 34);
+        if (item.choice) {
+          var rest = '  ·  ' + item.choice;
+          ctx.font = font(26, 600);
+          if (ctx.measureText(rest).width <= W - PAD * 2 - headW - 8) {
+            ctx.fillStyle = C.ink3;
+            ctx.fillText(rest, PAD + headW, y + 34);
+          }
+        }
+        y += 58;
+      }
     }
 
-    /* 8) 가문·인연 한 줄 */
-    if (m.note) {
-      ctx.font = font(27, 600);
+    // 가문·인연 한 줄
+    if (noteH) {
+      ctx.font = font(26, 600);
       ctx.fillStyle = C.ink2;
       var noteLine = wrap(ctx, m.note, W - PAD * 2, 1)[0] || '';
-      ctx.fillText(noteLine, PAD, y + 16);
-      y += 52;
+      ctx.fillText(noteLine, PAD, y + 20);
+      y += noteH;
+    }
+
+    // 칭호 (한 줄에 들어가는 만큼) — 칭호가 없는 인생은 남긴 것들로 그 자리를 채운다
+    if (badgeH) {
+      if (m.titles.length) {
+        ctx.font = font(25, 700);
+        var tx = PAD;
+        m.titles.forEach(function (t) {
+          var label = t.emoji + ' ' + t.name;
+          var tw = ctx.measureText(label).width + 38;
+          if (tx + tw > W - PAD) return;
+          rr(ctx, tx, y, tw, 44, 22);
+          ctx.fillStyle = C.ink;
+          ctx.globalAlpha = 0.9;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#FFF9F2';
+          ctx.fillText(label, tx + 19, y + 30);
+          tx += tw + 10;
+        });
+      } else if (m.tags && m.tags.length) {
+        ctx.font = font(26, 600);
+        ctx.fillStyle = C.ink3;
+        var tagLine = wrap(ctx, '남긴 것들 — ' + m.tags.join(' · '), W - PAD * 2, 1)[0] || '';
+        ctx.fillText(tagLine, PAD, y + 26);
+      }
+      y += badgeH;
     }
 
     /* 9) 바닥 — 브랜드 */
@@ -473,7 +545,7 @@
           return global.navigator.share({
             files: [file],
             title: '인생 한 턴 — ' + h(state && state.name),
-            text: '「인생 한 턴」에서 산 인생 한 번. ' + URL_TEXT
+            text: shareText(state)
           }).then(function () {
             return { ok: true, mode: 'share' };
           }).catch(function (err) {
@@ -495,6 +567,7 @@
     runTitles: runTitles,
     familyNote: familyNote,
     filename: filename,
+    shareText: shareText,
     draw: draw,
     render: render,
     toBlob: toBlob,
