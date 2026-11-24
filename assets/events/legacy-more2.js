@@ -703,7 +703,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   {
     id: 'any_diet_home', stage: 'any', minAge: 20, maxAge: 80, when: function (s) { return s.age >= 20; }, place: '집',
     title: '자세 교정',
-    text: '거울을 보니 어깨가 말려 있습니다. 목도 뻣뻣합니다. 사무실 생활 10년의 결과입니다.',
+    text: '거울을 보니 어깨가 말려 있습니다. 목도 뻣뻣합니다. 책상 앞에 오래 앉아 있던 결과입니다.',
     choices: [
       { label: '스트레칭을 매일 한다', result: '한 달 하니 목이 덜 아픕니다. 10분이 아깝지 않습니다.', effects: { hp: 2, charm: 1, mental: 1 } },
       { label: '그냥 둔다', result: '어깨는 여전히 말려 있습니다. 사진 찍을 때만 펴게 됩니다.', effects: { charm: -1, mental: 1 } }

@@ -466,7 +466,9 @@
     var foot = $('miniFoot');
     foot.innerHTML = '<button type="button" class="btn primary mini-action" id="miniStop">멈추기</button>';
 
-    var pos = 0, dir = 1, speed = 0.028, last = null;
+    // 60fps 기준 한 프레임에 1.4%p — 왼끝에서 오른끝까지 약 1.15초, 10초 동안 4번 왕복.
+    // (예전 0.028 은 초당 1.7%p 라 100%까지 60초가 걸려 초록 구간(38~62%)에 닿지 못했다)
+    var pos = 0, dir = 1, speed = 1.4, last = null;
     function loop(ts) {
       if (!state || state.ended) return;
       if (last === null) last = ts;
