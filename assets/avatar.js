@@ -29,25 +29,25 @@
   var BANDS = [
     { id: 'baby', from: 1, to: 7, name: '유아기', emoji: '🍼', tint: '#FFF0E3', tint2: '#FFDFC4',
       hair: '#43312A', hair2: '#5A4338', cloth: '#F8C3AC', cloth2: '#FFF9F2', accent: '#E79C80',
-      mission: { id: 'm_baby', label: '유아 미션', key: 'social', gain: 19, ceil: 95, verb: '달성', bonus: { social: 3, charm: 2 } } },
+      mission: { id: 'm_baby', label: '유아 미션', key: 'social', gain: 45, ceil: 95, verb: '달성', bonus: { social: 3, charm: 2 } } },
     { id: 'child', from: 8, to: 13, name: '초등학교', emoji: '🎒', tint: '#E9F1FF', tint2: '#D2E3FB',
       hair: '#2E251F', hair2: '#463930', cloth: '#3D5A99', cloth2: '#FFFFFF', accent: '#E0603C',
-      mission: { id: 'm_child', label: '초등 미션', key: 'intel', gain: 6, ceil: 90, verb: '돌파', bonus: { intel: 3 } } },
+      mission: { id: 'm_child', label: '초등 미션', key: 'intel', gain: 8, ceil: 88, verb: '돌파', bonus: { intel: 3 } } },
     { id: 'teen', from: 14, to: 19, name: '중고등학교', emoji: '📚', tint: '#EFEAFC', tint2: '#DCD1F8',
       hair: '#2A211C', hair2: '#3F3028', cloth: '#7C5CD6', cloth2: '#F5F0FF', accent: '#5B3FB8',
-      mission: { id: 'm_teen', label: '10대 미션', key: 'intel', gain: 8, ceil: 90, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
+      mission: { id: 'm_teen', label: '10대 미션', key: 'intel', gain: 10, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
     { id: 'youth', from: 20, to: 25, name: '대학·청년', emoji: '🎓', tint: '#FFF3E1', tint2: '#FBDFB4',
       hair: '#33261D', hair2: '#4C3828', cloth: '#2C8C7A', cloth2: '#FFFFFF', accent: '#C9871F',
       mission: { id: 'm_youth', label: '20대 미션', key: 'charm', gain: 8, ceil: 89, verb: '달성', bonus: { charm: 3, social: 2 } } },
     { id: 'adult', from: 26, to: 49, name: '직장인·성인', emoji: '💼', tint: '#E8EEF9', tint2: '#D2DFF1',
       hair: '#2C241E', hair2: '#41352B', cloth: '#2E3A55', cloth2: '#FFFFFF', accent: '#E0653C',
-      mission: { id: 'm_adult', label: '30·40대 미션', key: 'intel', gain: 8, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
+      mission: { id: 'm_adult', label: '30·40대 미션', key: 'intel', gain: 9, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
     { id: 'midlife', from: 50, to: 64, name: '중년', emoji: '🌗', tint: '#EDF1F1', tint2: '#D9E3E2',
       hair: '#4A423B', hair2: '#C6BFB6', cloth: '#5B6B7C', cloth2: '#F1EAE0', accent: '#8C6B3F',
-      mission: { id: 'm_midlife', label: '50대 미션', key: 'hp', gain: 12, ceil: 90, verb: '달성', bonus: { hp: 3, mental: 2 } } },
+      mission: { id: 'm_midlife', label: '50대 미션', key: 'hp', gain: 16, ceil: 88, verb: '달성', bonus: { hp: 3, mental: 2 } } },
     { id: 'senior', from: 65, to: 200, name: '노년', emoji: '🍂', tint: '#F7F0E4', tint2: '#E8DCC7',
       hair: '#D3CDC5', hair2: '#B7AFA6', cloth: '#8A7355', cloth2: '#F6F0E6', accent: '#6E5A42',
-      mission: { id: 'm_senior', label: '노년 미션', key: 'hp', gain: 9, ceil: 90, verb: '달성', bonus: { hp: 3, mental: 2 } } }
+      mission: { id: 'm_senior', label: '노년 미션', key: 'hp', gain: 9, ceil: 88, verb: '달성', bonus: { hp: 3, mental: 2 } } }
   ];
 
   function bandOf(age) {
@@ -55,6 +55,20 @@
       if (age >= BANDS[i].from && age <= BANDS[i].to) return BANDS[i];
     }
     return age < 1 ? BANDS[0] : BANDS[BANDS.length - 1];
+  }
+
+  /* ── 미션 이름은 '지금 나이'에 맞춘다 ──
+     26~49세·50~64세는 한 나이대가 두 개의 10년을 걸치므로, 나이대 이름을 그대로 쓰면
+     26세에게 '30·40대 미션', 60세에게 '50대 미션'이 뜬다(제보 2026-11-24: 26~27세에 30·40대).
+     미션 id·목표는 나이대 그대로 두고, 화면에 보이는 이름만 나이에 맞게 계산한다. */
+  function missionLabelOf(band, age) {
+    if (band.id === 'adult') {
+      if (age < 30) return '20대 후반 미션';
+      if (age < 40) return '30대 미션';
+      return '40대 미션';
+    }
+    if (band.id === 'midlife') return age < 60 ? '50대 미션' : '60대 미션';
+    return band.mission.label;
   }
   function bandById(id) {
     for (var i = 0; i < BANDS.length; i++) if (BANDS[i].id === id) return BANDS[i];
@@ -662,7 +676,7 @@
     return {
       id: def.id,
       bandId: band.id,
-      label: def.label,
+      label: missionLabelOf(band, state.age),
       goal: goal,
       inDebt: inDebt,
       key: def.key,

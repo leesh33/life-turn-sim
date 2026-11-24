@@ -115,26 +115,32 @@ check('1세 시작 호감도 45~50', babyStart.stats.social >= 45 && babyStart.s
 check('신생아 체력은 긴급 회복 조건(30 이하)에 걸리지 않음', Life.rewardState(babyStart).canHeal === false,
   `체력 ${babyStart.stats.hp}`);
 const bm = Avatar.mission(babyStart);
-check('유아 미션 목표는 호감도 65', bm.key === 'social' && bm.target === 65 && /호감도 65/.test(bm.goal), bm.goal);
+// 목표는 나이대 정의(gain·ceil)에서 계산한다 — gain 을 조정해도 검사가 따라간다
+const babyDef = Avatar.BANDS[0].mission;
+const expTarget = Math.min(babyStart.stats.social + babyDef.gain, babyDef.ceil);
+check('유아 미션 목표 = 출발선 + 성장폭(천장 안)', bm.key === 'social' && bm.target === expTarget,
+  `${bm.goal} (기대 ${expTarget})`);
 check('유아 미션은 체력으로 재지 않음', bm.key !== 'hp', bm.key);
 check('시작하자마자 98%가 아니라 30~40%대', bm.pct >= 30 && bm.pct <= 40, bm.pct + '%');
-check('유아 미션 출발선 = 시작 호감도 (base 36)', bm.anchor === babyStart.stats.social && bm.base === 36,
-  `출발선 ${bm.anchor} · base ${bm.base}`);
+const expBase = Math.round(babyStart.stats.social - (0.35 / 0.65) * (expTarget - babyStart.stats.social));
+check('유아 미션 출발선 = 시작 호감도', bm.anchor === babyStart.stats.social && Math.abs(bm.base - expBase) <= 1,
+  `출발선 ${bm.anchor} · base ${bm.base} (기대 ${expBase})`);
 check('출발선은 상태에 적힌다', babyStart.missionBase && babyStart.missionBase.baby === 46,
   JSON.stringify(babyStart.missionBase));
 
-// 진행률은 출발선(호감도 46 → base 36)에서 목표(65)까지 — 호감도 50.5 이면 50%
-const baby = S(3, { social: 50.5, hp: 38, mental: 60 }, { missionBase: { baby: 46 } });
-check('호감도 50.5 → 50%', Avatar.mission(baby).pct === 50, Avatar.mission(baby).pct + '%');
+// 진행률은 출발선에서 목표까지 — 목표의 40% 지점이면 40% 근처
+const p40 = Math.round(bm.base + (bm.target - bm.base) * 0.4);
+const baby = S(3, { social: p40, hp: 38, mental: 60 }, { missionBase: { baby: 46 } });
+check('진행률은 출발선에서 목표까지 선형', Math.abs(Avatar.mission(baby).pct - 40) <= 2, Avatar.mission(baby).pct + '% (호감도 ' + p40 + ')');
 check('미달이면 달성 아님', Avatar.checkMission(baby) === null);
 check('미달이면 기록도 없음', !baby.missions || Object.keys(baby.missions).length === 0);
 
-baby.stats.social = 65;
+baby.stats.social = expTarget;
 const got = Avatar.checkMission(baby);
-check('호감도 65 이면 미션 달성', !!got, got ? got.label : '없음');
+check('목표에 닿으면 미션 달성', !!got, got ? got.label : '없음');
 check('달성 보너스 = 호감도+3·매력+2', got && got.deltas.social === 3 && got.deltas.charm === 2,
   got ? JSON.stringify(got.deltas) : '-');
-check('보너스가 실제 능력치에 반영', baby.stats.social === 68 && baby.stats.charm === 57,
+check('보너스가 실제 능력치에 반영', baby.stats.social === Math.min(100, expTarget + 3) && baby.stats.charm === 57,
   `호감도 ${baby.stats.social} · 매력 ${baby.stats.charm}`);
 check('달성 기록이 저장본에 남음', !!baby.missions.m_baby, JSON.stringify(baby.missions));
 check('같은 미션은 두 번 주지 않음', Avatar.checkMission(baby) === null);
@@ -152,7 +158,8 @@ check('ensureBase 는 이미 적힌 출발선을 덮지 않음', drift.missionBa
 
 // 이미 그 나이대 목표선(천장)을 넘어선 능력치는 더 올릴 곳이 없으니 달성으로 본다
 const top = S(16, { intel: 95 }, { missionBase: { teen: 94 } });
-check('천장을 이미 넘은 능력치는 목표=천장 · 달성', Avatar.mission(top).target === 90 && Avatar.mission(top).pct === 100,
+const teenCeil = Avatar.BANDS.filter((b) => b.id === 'teen')[0].mission.ceil;
+check('천장을 이미 넘은 능력치는 목표=천장 · 달성', Avatar.mission(top).target === teenCeil && Avatar.mission(top).pct === 100,
   `${Avatar.mission(top).target} · ${Avatar.mission(top).pct}%`);
 
 // 능력치 상한 100 을 넘지 않는다 — 천장 근처에서 목표를 잡아도 보너스는 100에서 멈춤
@@ -276,7 +283,8 @@ while (hallRun.age < 8 && !hallRun.ended && hg++ < 400) {
   Life.advance(hallRun);
 }
 Life.graduate(hallRun, true);
-const mine = Life.hallMine()[0];
+// hallMine() 은 점수 순이라 [0] 이 방금 기록이라고 보장되지 않는다 — 이름으로 찾는다
+const mine = Life.hallMine().filter((r) => r.name === '전당여성')[0];
 check('전당 기록에 성별이 남음', !!mine && mine.gender === '여', mine ? mine.gender + ' · ' + mine.name : '기록 없음');
 
 /* ═════════ 출력 ═════════ */

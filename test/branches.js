@@ -32,7 +32,8 @@ function pickIndex(ev, s, goal) {
   for (let i = 0; i < ev.choices.length; i++) {
     const set = ev.choices[i].set;
     if (!set) continue;
-    if (Object.keys(set).some((k) => want.includes(k) || (set[k] === true && want.includes(k)))) return i;
+    // trackSet() 은 모든 갈래 키를 담고 하나만 true 다 — '켜는' 선택지만 그 루트로 친다
+    if (Object.keys(set).some((k) => want.includes(k) && set[k] === true)) return i;
   }
   return Math.floor(Math.random() * ev.choices.length);
 }

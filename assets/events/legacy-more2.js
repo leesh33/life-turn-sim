@@ -383,7 +383,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '프랜차이즈 제안',
     text: '지인이 카페 프랜차이즈를 권합니다. 보증금과 시설비를 합쳐 1억 5천. 월 매출 예상은 "잘 되면"이라는 전제입니다.',
     choices: [
-      { label: '계약한다', result: '오픈 첫 달은 사람이 많았습니다. 두 달째부터 계산이 달라졌습니다.', effects: { asset: -15000, mental: -2, hp: -3, social: 2 }, set: { 창업: true, 직업: '자영업자' }, queue: ['franchise_reality'] },
+      { label: '계약한다', result: '보증금과 시설비를 대출로 메웠습니다. 오픈 첫 달은 사람이 많았고, 두 달째부터 계산이 달라졌습니다.', effects: { asset: -6000, mental: -2, hp: -3, social: 2 }, set: { 창업: true, 직업: '자영업자', 대출: true }, queue: ['franchise_reality'] },
       { label: '작은 카페를 직접 한다', result: '동네 골목에 작은 가게를 냈습니다. 임대료가 낮아 버틸 수 있습니다.', effects: { asset: -4000, mental: 2, hp: -2, social: 2 }, set: { 창업: true, 직업: '자영업자' } },
       { label: '권하지 않는 쪽을 택한다', result: '계산기를 두드려보고 접었습니다. 지인은 조금 서운해했습니다.', effects: { mental: 2, social: -1, asset: 100 } }
     ]
@@ -394,7 +394,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     text: '6개월째입니다. 인건비와 임대료를 빼면 남는 것이 거의 없습니다. 본사는 "프로모션을 하라"고 합니다.',
     choices: [
       { label: '메뉴를 바꾸고 버틴다', result: '단골이 조금씩 늘었습니다. 아직 적자지만 손익분기점이 보입니다.', effects: { asset: -300, hp: -3, mental: 1, social: 2 } },
-      { label: '권리금을 받고 넘긴다', result: '정리하고 나오는 길에 생각보다 후련했습니다. 손실은 컸습니다.', effects: { asset: -8000, mental: 2, hp: 1 }, set: { 창업_실패: true } },
+      { label: '권리금을 받고 넘긴다', result: '정리하고 나오는 길에 생각보다 후련했습니다. 손실은 컸습니다.', effects: { asset: -3000, mental: 2, hp: 1 }, set: { 창업_실패: true } },
       { label: '배달을 시작한다', result: '주문이 늘었습니다. 대신 하루가 14시간이 됐습니다.', effects: { asset: 100, hp: -4, mental: -1 } }
     ]
   },
@@ -472,7 +472,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     text: '20년 된 집입니다. 주방과 욕실을 고치면 3천만 원. 배우자는 "지금이 마지막 기회"라고 합니다.',
     choices: [
       { label: '주방과 욕실만 고친다', result: '두 달 공사 끝에 집이 새집 같아졌습니다. 매일 아침이 기분 좋습니다.', effects: { asset: -3000, mental: 3, hp: 1, social: 1 } },
-      { label: '전체를 고친다', result: '반년을 공사하며 살았습니다. 결과는 만족스럽지만 통장이 비었습니다.', effects: { asset: -7000, mental: 1, charm: 1 } },
+      { label: '전체를 고친다', result: '반년을 공사하며 살았습니다. 결과는 만족스럽지만 통장이 비었습니다.', effects: { asset: -4500, mental: 1, charm: 1 } },
       { label: '그대로 산다', result: '익숙한 집이 편합니다. 수전은 계속 물이 샙니다.', effects: { asset: 100, mental: -1 } }
     ]
   },

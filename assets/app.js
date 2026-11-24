@@ -1015,7 +1015,15 @@
       renderRewards();
       $('advanceBtn').disabled = true;
       $('stage').scrollTop = 0;
-      if (res.birthday && !mission) toast('🎂 ' + state.age + '세가 되었습니다');
+      if (res.birthday) {
+        // 생일에는 그해 살림 장부(연 수지)를 같이 알려 준다 — 재산이 왜 늘고 줄었는지 보이게
+        var msg = '🎂 ' + state.age + '세가 되었습니다';
+        if (res.ledger && res.ledger.net) {
+          var net = res.ledger.net;
+          msg += ' · 연 수지 ' + (net > 0 ? '+' : '') + net.toLocaleString('ko-KR') + '만원';
+        }
+        toast(msg);
+      }
     }, 250);
   }
 

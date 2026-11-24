@@ -215,8 +215,16 @@
   }
 
   /* ── 이벤트 접근 ── */
+  var _all = null, _allLen = -1;
   function allEvents() {
-    return (global.LIFE_EVENTS || []).filter(function (e) { return e && e.id; });
+    var src = global.LIFE_EVENTS || [];
+    // 이벤트 배열은 페이지에서 한 번 만들어지고 바뀌지 않는다 — 매번 filter 하지 않는다
+    // (턴마다 부르는 pickEvent 안에서 쓰이므로 여기서 거르면 2,200개 × 수백 번이 된다)
+    if (!_all || _allLen !== src.length) {
+      _all = src.filter(function (e) { return e && e.id; });
+      _allLen = src.length;
+    }
+    return _all;
   }
   var _index = null, _indexLen = -1;
   function byId(id) {
@@ -303,6 +311,16 @@
       if (v > bounds[k]) return false;
     }
     return true;
+  }
+
+  // 나이 조건만 빼고 나머지 조건(플래그·스탯·when)을 본다 — 마지막 후보 단계가 쓴다
+  function passesBeyondAge(ev, s) {
+    if (ev.requireFlags && !flagMatch(ev.requireFlags, s.flags)) return false;
+    if (ev.excludeFlags && flagAny(ev.excludeFlags, s.flags)) return false;
+    if (ev.minStat && !minStatOk(ev.minStat, s.stats)) return false;
+    if (ev.maxStat && !maxStatOk(ev.maxStat, s.stats)) return false;
+    if (!ev.when) return true;
+    try { return !!ev.when(s); } catch (err) { return false; }
   }
 
   function passes(ev, s) {
@@ -420,7 +438,8 @@
     while (s.queue && s.queue.length) {
       var qid = s.queue.shift();
       ev = byId(qid);
-      if (ev && passes(ev, s)) return ev;
+      // 같은 후속 사건이 두 번 예약돼도 한 번만 (이미 겪은 사건은 다시 내밀지 않는다)
+      if (ev && !used(s, ev.id) && passes(ev, s)) return ev;
     }
 
     // 3) 돌발 이벤트 (가끔)
@@ -433,22 +452,83 @@
 
     // 4) 해당 생애 단계의 아직 안 쓴 이벤트
     var stage = stageOf(s.age).id;
-    var fresh = [], repeatables = [], all = [];
+    var blocked = blockedInStage(s, stage);
+    var fresh = [], relaxedFresh = [], repeatables = [], all = [];
     for (i = 0; i < list.length; i++) {
       ev = list[i];
       if (ev.at || ev.stage === 'any') continue;
       if (ev.stage !== stage) continue;
       if (!passes(ev, s)) continue;
       all.push(ev);
-      if (!used(s, ev.id)) fresh.push(ev);
-      else if (ev.repeatable) {
+      if (!used(s, ev.id)) {
+        // 본문까지 같은 사건은 두 번 겪지 않는다
+        if (blocked.exact[contentKeyOf(ev, s)]) continue;
+        // 같은 제목은 3년 안에 다시 쓰지 않되, 그 나이대 풀이 마르면(노년) 느슨하게 푼다
+        // 마일스톤·갈림길은 그 나이에 꼭 필요한 사건이라 제목이 겹쳐도 내민다
+        if (!ev.milestone && blocked.recent[titleOfEvent(ev, s)]) { relaxedFresh.push(ev); continue; }
+        fresh.push(ev);
+      } else if (ev.repeatable) {
         var last = s.lastSeen[ev.id];
         if (last === undefined || s.turn - last >= 5) repeatables.push(ev);
       }
     }
     if (fresh.length) return weightedPick(s, fresh);
+    if (relaxedFresh.length) return weightedPick(s, relaxedFresh);
+    // 4-c) 그래도 비면 이미 겪은 '같은 본문'이라도 다시 쓴다(빈달 대신) — 단, 반복 사건은 그대로
+    if (!fresh.length && !relaxedFresh.length) {
+      var again = [];
+      for (i = 0; i < list.length; i++) {
+        ev = list[i];
+        if (!ev || ev.at || ev.stage === 'any' || ev.stage !== stage) continue;
+        if (!used(s, ev.id) || ev.repeatable) continue;
+        if (!passes(ev, s)) continue;
+        again.push(ev);
+      }
+      if (again.length) return weightedPick(s, again);
+    }
     if (repeatables.length) return weightedPick(s, repeatables);
     return genericEvent(s);
+  }
+
+  /* ── 같은 사건의 중복 노출 막기 ──
+     레거시 세트(legacy-*·campus·career…)와 연쇄 세트(chain-*)에는 본문까지 같은 사건이
+     두 벌 들어 있다(예: '후배의 승진' car34g·wk_w132, '첫 강의' col20a·cp_u01).
+     두 벌이 같은 나이대 풀에 같이 들어가면 한 인생에서 같은 사건을 두 번 겪는다.
+       · 본문까지 같으면 다시 쓰지 않는다(완전 중복).
+       · 제목이 같으면 3년(36개월) 안에는 다시 쓰지 않는다(같은 시기 같은 제목의 다른 사건 방지).
+     나이대별 풀이 좁은 노년(한 나이에 17~18개)을 굶기지 않도록 기간을 두는 것이다.
+     반복 이벤트 `repeatable` 은 일부러 여러 번 나오는 사건이라 예외다. */
+  var TITLE_COOLDOWN = 36;
+
+  function titleOfEvent(ev, s) {
+    if (!ev) return '';
+    var t = typeof ev.title === 'function' ? ev.title(s) : ev.title;
+    return typeof t === 'string' ? t.trim() : '';
+  }
+
+  function contentKeyOf(ev, s) {
+    if (!ev) return '';
+    var t = typeof ev.text === 'function' ? ev.text(s) : ev.text;
+    return titleOfEvent(ev, s) + '||' + (typeof t === 'string' ? t.trim() : '');
+  }
+
+  // 이미 겪은 '완전 중복 본문'(인생 전체)과 '최근 3년 제목'(같은 단계)
+  function blockedInStage(s, stage) {
+    var exact = {}, recent = {};
+    for (var i = 0; i < s.used.length; i++) {
+      var id = s.used[i];
+      var e = byId(id);
+      if (!e) continue;
+      var t = titleOfEvent(e, s);
+      if (!t) continue;
+      // 본문까지 같으면 단계가 달라도 다시 쓰지 않는다(레거시·연쇄 세트의 같은 사건)
+      exact[contentKeyOf(e, s)] = 1;
+      if (e.stage === stage) {
+        var last = s.lastSeen[id];
+        if (last === undefined || s.turn - last < TITLE_COOLDOWN) recent[t] = 1;
+      }
+    }
+    return { exact: exact, recent: recent };
   }
 
   /* ── 보상형 광고(프로토타입) ──
@@ -732,8 +812,13 @@
       if (Array.isArray(v)) v = randInt(s, v[0], v[1]);
       if (typeof v !== 'number' || !v) return;
       if (k === 'asset') {
-        s.stats.asset = Math.round(s.stats.asset + v);
-        deltas.asset = (deltas.asset || 0) + v;
+        var beforeAsset = s.stats.asset;
+        var nextAsset = Math.round(beforeAsset + v);
+        // 미성년자는 빚을 질 수 없다 — 어릴 적 문방구·간식 값이 통장을 마이너스로 만들지 않게.
+        // (시나리오가 일부러 빚에서 시작한 경우(흙수저 −150)는 그 빚을 그대로 둔다)
+        if (s.age < 20 && beforeAsset >= 0 && nextAsset < 0) nextAsset = 0;
+        s.stats.asset = nextAsset;
+        if (nextAsset !== beforeAsset) deltas.asset = (deltas.asset || 0) + (nextAsset - beforeAsset);
       } else if (s.stats[k] !== undefined) {
         var before = s.stats[k];
         var add = v > 0 ? v * gainFactor(before) : v;
@@ -880,6 +965,95 @@
        이게 없으면 10년쯤 지나 네 스탯이 모두 100에 붙어 버려 선택이 의미를 잃는다.
      - 45세부터는 생일에만 아주 조금씩 자연 노화가 더해진다. */
 
+  /* ── 살림 장부(연간 수지) ──
+     지금까지 재산은 '이벤트가 준 만큼'만 움직였다. 그런데 사건은 대개 돈이 나가는 쪽이고
+     (−62만원/사건) 들어오는 쪽은 드물어서, 80세까지 가면 재산이 −3억을 넘었다(전수조사 실측).
+     그래서 매년 생일에 한 번, 그해의 수입과 지출을 정산한다(연봉 정산).
+       · 수입: 직업별 연 수입 × 경력 곡선(30대 1.2 · 40대 1.35 · 50대 1.25)
+       · 지출: 본인 생활비 + 배우자 + 자녀 수 + 집(대출 이자) + 차
+       · 60세 이후(또는 은퇴·명퇴)는 연금으로 바뀌고, 자녀가 독립했으면 자녀 지출이 빠진다
+     값은 만원 단위다. 무직·준비생은 수입 0에 생활비만 나가고, 학창 시절(25세 미만)은 부모가
+     부양하던 시기라 장부를 쓰지 않는다(어릴 때 통장이 빚으로 시작하지 않게).
+     ─────────────────────────────────────────────────────────── */
+  var LEDGER = {
+    // 직업별 연 수입(만원) — 25세 기준값. 경력 곡선을 곱한다.
+    // 값은 '생활비를 빼기 전' 연 수입(만원)이다. 25세 대기업 기준 2,600 − 생활비 780 = 연 +1,820만원이라
+    // 25세 시작(850만)이 35세에 약 1억 근처가 되고, 가정을 꾸리면 지출이 늘어 수지가 0 근처로 내려간다.
+    // (수십 회 시뮬레이션으로 80세 잔액 중앙값이 1억 안팎이 되게 맞췄다 — tools/tune-ledger.js)
+    income: {
+      '대기업 기획자': 2600, '스타트업 개발자': 2300, '공무원': 2100, '중소기업 사원': 1800,
+      '자영업자': 1900, '프리랜서': 1650, '교사': 2200, '의사': 4200, '연구원': 2300,
+      '예술가': 1100, '작가': 1000, '요리사': 1750, '프로게이머': 1500, '체육인': 1600,
+      '스타트업 창업자': 1950, '대학원생': 900, '군인': 1750, '무직': 0
+    },
+    incomeDefault: 1750,       // 위 목록에 없는 직업
+    curve: [                   // 나이대별 경력 곡선(연봉 인상·정체)
+      { from: 25, to: 29, mul: 1.0 },
+      { from: 30, to: 39, mul: 1.2 },
+      { from: 40, to: 49, mul: 1.35 },
+      { from: 50, to: 59, mul: 1.25 },
+      { from: 60, to: 200, mul: 1.0 }
+    ],
+    pension: 1450,             // 60세 이후 연금(국민연금 + 퇴직연금 연평균)
+    living: 780,               // 본인 생활비
+    spouse: 340,               // 배우자와 함께 사는 집의 생활비
+    child: 380,                // 자녀 1명당(최대 2명까지 센다)
+    home: 380,                 // 집이 있으면 드는 대출 이자·관리비
+    car: 170                  // 차가 있으면 드는 유지비
+  };
+  var LEDGER_FROM = 25;        // 이 나이의 생일부터 장부를 쓴다
+  var PENSION_FROM = 60;       // 이 나이부터는 연금 생활
+
+  function jobIncomeOf(job) {
+    if (!job) return 0;
+    if (LEDGER.income[job] !== undefined) return LEDGER.income[job];
+    return LEDGER.incomeDefault;
+  }
+
+  function ledgerCurve(age) {
+    for (var i = 0; i < LEDGER.curve.length; i++) {
+      if (age >= LEDGER.curve[i].from && age <= LEDGER.curve[i].to) return LEDGER.curve[i].mul;
+    }
+    return 1;
+  }
+
+  // 그해의 수입·지출·수지 (만원). 25세 미만이면 null.
+  function ledgerOf(s) {
+    if (!s || !s.stats || s.age < LEDGER_FROM) return null;
+    var f = s.flags || {};
+    var retired = !!(f.은퇴 || f.명퇴) || s.age >= PENSION_FROM;
+    var job = f.직업 || null;
+    var income;
+    if (retired) income = LEDGER.pension;
+    else if (f.창업 && !job) income = Math.round(jobIncomeOf('자영업자') * ledgerCurve(s.age));
+    else if (job) income = Math.round(jobIncomeOf(job) * ledgerCurve(s.age));
+    else income = 0;                       // 무직·준비생
+    var kids = Math.min(2, Math.max(0, Number(f.자녀수) || 0));
+    // 자녀가 독립했으면(자녀_독립) 자녀 지출을 더하지 않는다
+    if (f.자녀_독립) kids = 0;
+    var cost = LEDGER.living;
+    if (f.결혼) cost += LEDGER.spouse;
+    if (!retired) {
+      // 일하는 동안: 자녀 교육·생활비와 집 대출·차 유지비가 그대로 나간다
+      cost += LEDGER.child * kids;
+      if (f.집있음) cost += LEDGER.home;
+      if (f.차있음 || f.전기차) cost += LEDGER.car;
+    } else {
+      // 은퇴 뒤: 자녀는 이미 독립했고(60세 전 명퇴라도 성인 자녀), 집 대출은 줄고 차는 팔거나 줄인다
+      cost += Math.round(LEDGER.home * 0.5 * (f.집있음 ? 1 : 0));
+      cost += Math.round(LEDGER.living * 0.05);     // 병원·약값이 생활비에 조금 더 붙는다
+    }
+    return { income: income, cost: cost, net: income - cost, retired: retired, job: retired ? '연금' : (job || (f.창업 ? '자영업자' : '무직')) };
+  }
+
+  // 생일마다 장부를 반영한다. 앱은 돌려받은 값을 '연 수지' 안내에 쓴다.
+  function applyLedger(s) {
+    var info = ledgerOf(s);
+    if (!info) return null;
+    if (info.net) s.stats.asset = Math.round(s.stats.asset + info.net);
+    return info;
+  }
+
   var AGING = [
     { from: 45, hp: 1, mental: 0, charm: 0 },
     { from: 62, hp: 1, mental: 0, charm: 1 },
@@ -942,13 +1116,15 @@
     // 보통 범위의 스탯은 건드리지 않는다 — 선택의 결과만 남긴다
     applyUpkeep(s);
     if (birthday) { applyAging(s); applyLuckDrift(s); }
+    // 연 수지 정산(직장 생활 이후) — 생일에 한 번
+    var ledger = birthday ? applyLedger(s) : null;
 
     if (s.age > END_AGE) {
       s.ended = true;
       s.endingKind = 'life';
       s.current = null;
       registerLife(s);
-      return { ok: true, ended: true, birthday: birthday, graduation: null };
+      return { ok: true, ended: true, birthday: birthday, graduation: null, ledger: ledger };
     }
 
     // 졸업 결산: 7·13·16·19·24세의 12개월차를 마치고 다음 나이로 넘어간 순간
@@ -961,7 +1137,7 @@
     s.current = { eventId: ev.id, chosen: null, event: ev.__generic ? ev : null };
     s.used.push(ev.id);
     s.lastSeen[ev.id] = s.turn;
-    return { ok: true, ended: false, birthday: birthday, event: ev, graduation: gradDef ? gradDef.key : null };
+    return { ok: true, ended: false, birthday: birthday, event: ev, graduation: gradDef ? gradDef.key : null, ledger: ledger };
   }
 
   /* ── 저장 ── */
@@ -1252,16 +1428,23 @@
     return originPhrase(s) + ' ' + modifierPhrase(s) + ' ' + careerPhrase(s);
   }
 
+  /* ── 인생 점수 ──
+     능력치 평균(0~100) 에 0.40, 재산 점수(0~45) 에 0.9, 마일스톤 하나에 0.3 을 준다.
+     · 살림 장부(2026-11-24) 전에는 재산이 늘 마이너스라 재산 점수가 0이었고,
+       그래서 능력치만 좋으면 S 가 나왔다(전수조사: 312회 중 294회가 S).
+     · 이제 재산이 살아 있는 값이므로 비중을 올리고 등급선을 다시 잡았다.
+       실측 기준: 평범하게 사는 인생 73~79점(A) · 돈을 크게 모은 인생 80점 이상(S) ·
+       빚을 안고 마친 인생 50점대 이하(D). */
   function gradeOf(s) {
     var st = s.stats;
     var gauge = gaugeAvg(st);
     var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
-    var score = gauge * 0.55 + assetScore + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
+    var score = gauge * 0.40 + assetScore * 0.9 + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
     score = clamp(score, 0, 100);
-    if (score >= 78) return { grade: 'S', label: '전설의 인생', score: score };
-    if (score >= 66) return { grade: 'A', label: '성공한 인생', score: score };
-    if (score >= 54) return { grade: 'B', label: '탄탄한 인생', score: score };
-    if (score >= 42) return { grade: 'C', label: '평범한 인생', score: score };
+    if (score >= 80) return { grade: 'S', label: '전설의 인생', score: score };
+    if (score >= 73) return { grade: 'A', label: '성공한 인생', score: score };
+    if (score >= 64) return { grade: 'B', label: '탄탄한 인생', score: score };
+    if (score >= 54) return { grade: 'C', label: '평범한 인생', score: score };
     return { grade: 'D', label: '파란만장한 인생', score: score };
   }
 
@@ -2113,6 +2296,8 @@
 
   /* ── 공개 API ── */
   global.Life = {
+    ledgerOf: ledgerOf,
+    LEDGER: LEDGER,
     STAGES: STAGES,
     SCENARIOS: SCENARIOS,
     scenarioOf: scenarioOf,
