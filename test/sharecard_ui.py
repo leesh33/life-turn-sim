@@ -60,6 +60,61 @@ def to_ending(pg):
     pg.wait_for_timeout(1800)
 
 
+SHARE_MOCK = """(() => {
+  try {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: (d) => !!(d && d.files && d.files.length) });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: (d) => {
+      window.__shared = { title: d.title, text: d.text,
+        files: Array.from(d.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size })) };
+      return Promise.resolve();
+    } });
+  } catch (e) {}
+})();"""
+
+
+def share_path(url, save, args):
+    """모바일 사파리처럼 navigator.share 가 있는 화면 — 공유 버튼이 뜨고 파일이 실린다"""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROME if os.path.exists(CHROME) else None,
+                                    args=["--no-sandbox"])
+        _share_flow(browser, url, save, args)
+        browser.close()
+
+
+def _share_flow(browser, url, save, args):
+    ctx = browser.new_context(viewport={"width": W, "height": H}, device_scale_factor=2,
+                              is_mobile=True, has_touch=True)
+    pg = ctx.new_page()
+    pg.add_init_script(SHARE_MOCK)
+    pg.add_init_script("""
+        try { localStorage.setItem('lifeTurnSim.save.v1', %s); } catch (e) {}
+    """ % json.dumps(json.dumps(save, ensure_ascii=False)))
+    pg.goto(url, wait_until="load")
+    pg.wait_for_timeout(900)
+    pg.click("#resumeCard")
+    pg.wait_for_timeout(800)
+    pg.click("#choices .choice:not([disabled])")
+    pg.wait_for_timeout(350)
+    pg.click("#advanceBtn")
+    pg.wait_for_timeout(1800)
+    pg.click("#endShare")
+    pg.wait_for_timeout(700)
+    check("공유 시트가 되는 기기면 공유 버튼이 보인다", pg.is_visible("#smShare"))
+    note = pg.inner_text("#smNote")
+    check("공유 안내 문구", "공유하기" in note, note)
+    pg.screenshot(path=os.path.join(args.out, f"sharecard-{args.tag}-03-share.png"))
+    pg.click("#smShare")
+    pg.wait_for_timeout(900)
+    shared = pg.evaluate("() => window.__shared || null")
+    files = (shared or {}).get("files") or []
+    check("navigator.share({files}) 우선 사용", bool(files) and files[0]["name"].endswith(".png") and
+          files[0]["type"] == "image/png" and files[0]["size"] > 20000,
+          files[0] if files else shared)
+    check("공유 글에 카드 숫자", bool(shared) and "80세" in shared["text"] and "life-turn-sim" in shared["text"],
+          (shared or {}).get("text", "").replace("\n", " / "))
+    ctx.close()
+
+
 def summary_card(pg):
     """플레이 화면의 '요약'으로도 같은 결과 카드가 열린다"""
     pg.click("#summaryBtn")
@@ -198,6 +253,8 @@ def main():
 
         check("콘솔 오류 0건", len(errors) == 0, " / ".join(errors[:3]))
         b.close()
+
+    share_path(url, save, args)
 
     if httpd:
         httpd.shutdown()
