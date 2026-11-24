@@ -453,10 +453,14 @@
     box.innerHTML = Life.STATS.map(function (st) {
       var v = state.stats[st.key];
       var pct = Life.statPct(st.key, v);
-      return '<div class="stat" data-key="' + st.key + '">' +
-        '<div class="stat-label">' + st.label + '</div>' +
+      // 체력이 위험 구간이면 눈에 보이게 붉게 — 경고 토스트를 놓쳐도 알아보게
+      var danger = st.key === 'hp' && v <= Life.HEALTH.dangerHp;
+      var barColor = (st.key === 'asset' && v < 0) ? ';background:#c2413a'
+        : (danger ? ';background:#c2413a' : '');
+      return '<div class="stat' + (danger ? ' danger' : '') + '" data-key="' + st.key + '">' +
+        '<div class="stat-label">' + (danger ? '⚠️ ' : '') + st.label + '</div>' +
         '<div class="stat-val">' + esc(Life.displayStat(st.key, v)) + '</div>' +
-        '<div class="stat-bar"><i style="width:' + pct.toFixed(1) + '%' + (st.key === 'asset' && v < 0 ? ';background:#c2413a' : '') + '"></i></div>' +
+        '<div class="stat-bar"><i style="width:' + pct.toFixed(1) + '%' + barColor + '"></i></div>' +
         '</div>';
     }).join('');
   }
@@ -990,7 +994,10 @@
     var mission = res.ended ? null : checkMissionNow();
     Life.save(state);
 
-    if (res.ended) { renderEnding(true); return; }
+    if (res.ended) {
+      if (res.health && res.health.ended) toast('💔 건강이 무너져 ' + state.age + '세에 인생이 끝났습니다');
+      renderEnding(true); return;
+    }
 
     $('ageLabel').textContent = state.age + '세';
     $('dayLabel').textContent = state.month + '개월차';
@@ -1023,6 +1030,17 @@
           msg += ' · 연 수지 ' + (net > 0 ? '+' : '') + net.toLocaleString('ko-KR') + '만원';
         }
         toast(msg);
+      }
+      // 몸의 경고 — 생일 안내보다 위험하다. 위험 구간이면 이쪽을 보여 준다
+      var hh = res.health;
+      if (hh && !res.ended) {
+        if (hh.level === 'critical') {
+          toast('💔 체력 ' + hh.hp + ' · 다음 한 달이 위험합니다 — 긴급 회복이나 휴식으로 살리세요');
+        } else if (hh.level === 'danger') {
+          toast('🚨 체력 ' + hh.hp + ' · 이대로면 인생이 여기서 끝납니다 (' + hh.burden + '/' + hh.limit + ')');
+        } else if (hh.level === 'warn' && hh.changed) {
+          toast('⚠️ 몸이 신호를 보냅니다 · 회복을 미루면 인생이 일찍 끝납니다');
+        }
       }
     }, 250);
   }
@@ -1184,12 +1202,12 @@
   }
 
   /* ═════════════ 명예의 전당 ═════════════ */
-  var HALL_TAB_LABEL = { kindergarten: '유치원', elementary: '초등', middle: '중학', high: '고교', college: '대학', life80: '완주' };
+  var HALL_TAB_LABEL = { kindergarten: '유치원', elementary: '초등', middle: '중학', high: '고교', college: '대학', life80: '완주', life_health: '조기' };
   var HALL_TABS = [{ key: 'all', label: '전체' }]
     .concat(Life.GRADUATIONS.map(function (g) {
       return { key: g.key, label: HALL_TAB_LABEL[g.key] || g.short };
     }))
-    .concat([{ key: 'life80', label: '완주' }]);
+    .concat([{ key: 'life80', label: '완주' }, { key: 'life_health', label: '조기' }]);
 
   function openHall(from) {
     autoClear();
@@ -1524,6 +1542,7 @@
     if (!state) return;
     if (state.grad && state.grad.registered) { renderGradEnding(); return; }
     var sum = Life.summary(state);
+    var healthEnd = state.endingKind === 'health';
     var gradeClass = sum.grade.toLowerCase();
 
     var highlights = sum.highlights.map(function (hl) {
@@ -1536,7 +1555,7 @@
 
     var tags = sum.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
 
-    var lifeRank = Life.hallRank('life80', Life.scoreOfStats(state.stats));
+    var lifeRank = Life.hallRank(healthEnd ? 'life_health' : 'life80', Life.scoreOfStats(state.stats));
 
     var html =
       '<div class="grade-row">' +
@@ -1547,7 +1566,8 @@
       '<div class="ending-card">' +
         (window.LifeAvatar ? '<div class="end-avatar">' + window.LifeAvatar.svg(state) +
           '<span>' + (state.gender === '여' ? '여성' : '남성') + ' · ' + state.age + '세의 모습</span></div>' : '') +
-        '<div class="end-kicker">' + (isFinal ? '당신의 인생은' : '지금까지의 인생은') + '</div>' +
+        '<div class="end-kicker">' + (healthEnd ? '몸이 먼저 인생을 접었습니다' : (isFinal ? '당신의 인생은' : '지금까지의 인생은')) + '</div>' +
+        (healthEnd ? '<div class="end-health" style="margin:10px 0;padding:9px 10px;border-radius:12px;background:#fdecec;color:#a12b25;font-weight:700;text-align:center;line-height:1.45">💔 건강 악화로 ' + sum.finalAge + '세에 인생이 끝났습니다</div>' : '') +
         (sum.archetype ? '<div class="end-arch">' + sum.archetype.emoji + ' ' + esc(sum.archetype.label) + '</div>' : '') +
         '<h2 class="end-title">' + esc(sum.title) + '</h2>' +
         '<p class="end-summary">' + esc(sum.oneLiner) + '</p>' +
@@ -1562,11 +1582,14 @@
         '<div class="end-brand">🎲 인생 한 턴</div>' +
       '</div>' +
       cameoEndHtml(sum.cameo) +
-      (isFinal ? recallCard(Life.recall(state, 'life'), '여든 살의 나에게', '80세 · 인생 회고') : '') +
+      (isFinal ? recallCard(Life.recall(state, healthEnd ? 'health' : 'life'),
+        healthEnd ? '몸이 남긴 마지막 기록' : '여든 살의 나에게',
+        healthEnd ? (sum.finalAge + '세 · 인생 회고') : '80세 · 인생 회고') : '') +
       (highlights ? '<div class="end-section-title">인생 하이라이트</div><div class="highlights">' + highlights + '</div>' : '') +
       (tags ? '<div class="end-section-title">남은 것들</div><div class="tag-cloud">' + tags + '</div>' : '') +
       (isFinal && lifeRank.count
-        ? '<div class="end-hall">🏆 명예의 전당 · 80세 완주 <b>' + lifeRank.count + '명 중 ' + lifeRank.rank + '위</b></div>'
+        ? '<div class="end-hall">🏆 명예의 전당 · ' + (healthEnd ? '건강 조기 엔딩' : '80세 완주') +
+          ' <b>' + lifeRank.count + '명 중 ' + lifeRank.rank + '위</b></div>'
         : '') +
       '<div class="end-actions">' +
         (isFinal

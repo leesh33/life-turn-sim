@@ -434,6 +434,13 @@
       return weightedPick(s, forks.length ? forks : milestones);
     }
 
+    // 1-b) 몸이 위험하면 건강 사건을 먼저 내민다 — 휴식·병원으로 대처할 기회를 준다
+    //      (마일스톤은 그 나이에 꼭 필요한 사건이라 먼저 두고, 그 다음 순서다)
+    if (s.stats && s.stats.hp <= HEALTH.warnHp) {
+      var healthEv = healthEventFor(s);
+      if (healthEv) return healthEv;
+    }
+
     // 2) 예약된 후속 이벤트 (앞선 선택의 결과)
     while (s.queue && s.queue.length) {
       var qid = s.queue.shift();
@@ -537,6 +544,7 @@
       age: s.age, month: s.month, turn: s.turn, ended: s.ended,
       stats: Object.assign({}, s.stats),
       flags: Object.assign({}, s.flags),
+      health: JSON.parse(JSON.stringify(s.health || { burden: 0, strain: 0, months: 0, level: 'ok' })),
       cameos: JSON.parse(JSON.stringify(s.cameos || [])),
       used: s.used.slice(),
       lastSeen: Object.assign({}, s.lastSeen),
@@ -557,6 +565,7 @@
     s.endingKind = null;
     s.stats = Object.assign({}, snap.stats);
     s.flags = Object.assign({}, snap.flags);
+    if (snap.health) s.health = JSON.parse(JSON.stringify(snap.health));
     if (Array.isArray(snap.cameos)) s.cameos = JSON.parse(JSON.stringify(snap.cameos));
     s.used = snap.used.slice();
     s.lastSeen = Object.assign({}, snap.lastSeen);
@@ -761,6 +770,7 @@
       hallId: null,
       undo: null,
       rewards: { heal: 0, reroll: 0, undo: 0 },
+      health: { burden: 0, strain: 0, months: 0, level: 'ok' },
       scenario: 'kr',
       generation: 1,
       legacy: null,
@@ -883,6 +893,8 @@
     }
     var deltas = resolveEffects(s, choice.effects);
     if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects));
+    // 위험한 몸으로 무리했는가 (체력이 위험 구간인데 −3 이상 깎은 선택)
+    noteStrain(s, s.undo ? s.undo.stats.hp : s.stats.hp);
     if (choice.queue) {
       var q = Array.isArray(choice.queue) ? choice.queue : [choice.queue];
       q.forEach(function (id) { s.queue.push(id); });
@@ -990,7 +1002,7 @@
     car: 170                  // 차가 있으면 드는 유지비
   };
   var LEDGER_FROM = 25;        // 이 나이의 생일부터 장부를 쓴다
-  var PENSION_FROM = 60;       // 이 나이부터는 연금 생활
+  var PENSION_FROM = 60;       // 이 나이부터는 연금 생활(국민연금 개시 — 54~59세는 '2막')
 
   function jobIncomeOf(job) {
     if (!job) return 0;
@@ -1006,32 +1018,74 @@
   }
 
   // 그해의 수입·지출·수지 (만원). 25세 미만이면 null.
+  /* ── 54~59세의 '인생 2막' ──
+     명퇴·은퇴를 고르면 예전에는 곧바로 연금 수입으로 바뀌어 26년이 고정됐다.
+     국민연금은 60세부터이므로, 그 전 6년은 2막의 수입으로 산다.
+       · 재취업   : 새 일터의 연봉(경력 곡선 × 0.85 — 예전만큼은 아니다)
+       · 프리랜서 : 프리랜서 연 수입 × 경력 곡선
+       · 창업     : 자영업 연 수입 × 경력 곡선
+       · 안식·구직: 수입 0 — 퇴직금과 모아 둔 돈으로 버틴다
+     60세부터는 연금. 단 가게를 굴리는 사람은 그 수입이 연금보다 크면 그대로 간다. */
   function ledgerOf(s) {
     if (!s || !s.stats || s.age < LEDGER_FROM) return null;
     var f = s.flags || {};
-    var retired = !!(f.은퇴 || f.명퇴) || s.age >= PENSION_FROM;
+    var pensionAge = s.age >= PENSION_FROM;
+    var leftCompany = !!(f.은퇴 || f.명퇴);      // 회사를 나온 사람
+    var second = leftCompany && !pensionAge;     // 54~59세: 퇴직금과 2막으로 사는 6년
     var job = f.직업 || null;
-    var income;
-    if (retired) income = LEDGER.pension;
-    else if (f.창업 && !job) income = Math.round(jobIncomeOf('자영업자') * ledgerCurve(s.age));
-    else if (job) income = Math.round(jobIncomeOf(job) * ledgerCurve(s.age));
-    else income = 0;                       // 무직·준비생
+    var income = 0, label = '무직';
+
+    if (pensionAge) {
+      // 가게를 계속 굴리면 그 수입이 연금보다 크다 — 다만 나이가 들면 매출도 줄어든다
+      if (f.창업 && !f.사업정리) { income = Math.round(jobIncomeOf('자영업자') * 0.8); label = '자영업'; }
+      else { income = LEDGER.pension; label = '연금'; }
+    } else if (second) {
+      if (f.재취업) {
+        income = Math.round(jobIncomeOf(job || '중소기업 사원') * ledgerCurve(s.age) * 0.85);
+        label = '재취업';
+      } else if (f.프리랜서_2막) {
+        income = Math.round(jobIncomeOf('프리랜서') * ledgerCurve(s.age));
+        label = '프리랜서';
+      } else if (f.창업) {
+        income = Math.round(jobIncomeOf('자영업자') * ledgerCurve(s.age));
+        label = '자영업';
+      } else {
+        income = 0;                             // 안식·구직 — 퇴직금으로 버틴다
+        label = '2막 준비';
+      }
+    } else if (f.창업 && !job) {
+      income = Math.round(jobIncomeOf('자영업자') * ledgerCurve(s.age));
+      label = '자영업';
+    } else if (job) {
+      income = Math.round(jobIncomeOf(job) * ledgerCurve(s.age));
+      label = job;
+    }
+
     var kids = Math.min(2, Math.max(0, Number(f.자녀수) || 0));
     // 자녀가 독립했으면(자녀_독립) 자녀 지출을 더하지 않는다
     if (f.자녀_독립) kids = 0;
     var cost = LEDGER.living;
     if (f.결혼) cost += LEDGER.spouse;
-    if (!retired) {
+    if (pensionAge) {
+      // 연금 생활: 자녀는 이미 독립했고, 집 대출은 줄고 차는 팔거나 줄인다
+      cost += Math.round(LEDGER.home * 0.5 * (f.집있음 ? 1 : 0));
+      cost += Math.round(LEDGER.living * 0.05);     // 병원·약값이 생활비에 조금 더 붙는다
+    } else if (second) {
+      // 2막에도 아이 교육·집·차는 그대로다. 다만 대출과 차량 부담은 조금 줄어든다
+      cost += LEDGER.child * kids;
+      if (f.집있음) cost += Math.round(LEDGER.home * 0.7);
+      if (f.차있음 || f.전기차) cost += Math.round(LEDGER.car * 0.6);
+      cost += Math.round(LEDGER.living * 0.03);
+    } else {
       // 일하는 동안: 자녀 교육·생활비와 집 대출·차 유지비가 그대로 나간다
       cost += LEDGER.child * kids;
       if (f.집있음) cost += LEDGER.home;
       if (f.차있음 || f.전기차) cost += LEDGER.car;
-    } else {
-      // 은퇴 뒤: 자녀는 이미 독립했고(60세 전 명퇴라도 성인 자녀), 집 대출은 줄고 차는 팔거나 줄인다
-      cost += Math.round(LEDGER.home * 0.5 * (f.집있음 ? 1 : 0));
-      cost += Math.round(LEDGER.living * 0.05);     // 병원·약값이 생활비에 조금 더 붙는다
     }
-    return { income: income, cost: cost, net: income - cost, retired: retired, job: retired ? '연금' : (job || (f.창업 ? '자영업자' : '무직')) };
+    return {
+      income: income, cost: cost, net: income - cost,
+      retired: pensionAge || leftCompany, pension: pensionAge, second: second, job: label
+    };
   }
 
   // 생일마다 장부를 반영한다. 앱은 돌려받은 값을 '연 수지' 안내에 쓴다.
@@ -1082,6 +1136,138 @@
     });
   }
 
+  /* ═════════════ 건강 위기 · 조기 엔딩 ═════════════
+     예전에는 체력이 0이 되어도 80세까지 갔다. 이제는 위험한 몸이 이어지면
+     '건강 악화' 조기 엔딩으로 이어진다 — 단, 억울한 즉사가 아니라
+     경고를 여러 번 주고, 대처할 선택지(휴식·병원·긴급 회복)를 먼저 내민다.
+       · warnHp 22 이하 : '몸이 보내는 신호' 사건이 매달 먼저 뜬다(회복 선택지)
+       · dangerHp 12 이하: 위험한 달 1점 · criticalHp 5 이하 2점 · 체력 0은 3점
+       · 무리(체력 30 이하에서 체력을 3 이상 깎는 선택) 1회 = 1점
+       · 누적 8점이면 인생이 여기서 끝난다(체력 0으로 3개월, 5 이하로 4개월 꼴)
+       · 몸을 회복하면(22 초과) 매달 2점씩 풀린다 — 쉬면 살아난다
+     '사람처럼' 플레이하면 거의 완주하고, 회복을 외면하고 계속 무리하면 일찍 끝난다. */
+  var HEALTH = {
+    warnHp: 22,
+    dangerHp: 12,
+    criticalHp: 5,
+    zeroHp: 0,
+    strainHp: 30,        // 이 이하로 지친 몸에 무리(−3 이상)를 또 얹으면 부담이 쌓인다
+    burdenLimit: 8,
+    recover: 2
+  };
+
+  function healthInit(s) {
+    if (!s.health || typeof s.health !== 'object') {
+      s.health = { burden: 0, strain: 0, months: 0, level: 'ok' };
+    }
+    var h = s.health;
+    if (typeof h.burden !== 'number' || isNaN(h.burden)) h.burden = 0;
+    if (typeof h.strain !== 'number' || isNaN(h.strain)) h.strain = 0;
+    if (typeof h.months !== 'number' || isNaN(h.months)) h.months = 0;
+    if (typeof h.level !== 'string') h.level = 'ok';
+    return h;
+  }
+
+  // 이번 달 체력이 몸에 남기는 부담
+  function healthRiskOf(hp) {
+    if (hp <= HEALTH.zeroHp) return 3;
+    if (hp <= HEALTH.criticalHp) return 2;
+    if (hp <= HEALTH.dangerHp) return 1;
+    return 0;
+  }
+
+  function healthLevelOf(hp) {
+    if (hp <= HEALTH.criticalHp) return 'critical';
+    if (hp <= HEALTH.dangerHp) return 'danger';
+    if (hp <= HEALTH.warnHp) return 'warn';
+    return 'ok';
+  }
+
+  // 상태를 읽기만 한다(앱·검사가 쓴다)
+  function healthOf(s) {
+    if (!s) return null;
+    var h = healthInit(s);
+    var hp = s.stats ? s.stats.hp : 100;
+    return {
+      level: healthLevelOf(hp),
+      hp: Math.round(hp),
+      burden: h.burden,
+      strain: h.strain,
+      months: h.months,
+      limit: HEALTH.burdenLimit,
+      left: Math.max(0, HEALTH.burdenLimit - h.burden)
+    };
+  }
+
+  /* 위험 구간에서 무리한 선택(체력 −3 이상)을 하면 부담이 하나 더 쌓인다.
+     '회복 없이 무리할 때' 일찍 끝나는 이유가 이것이다. */
+  function noteStrain(s, hpBefore) {
+    if (!s || s.ended || !s.stats) return;
+    if (hpBefore > HEALTH.strainHp) return;
+    var lost = hpBefore - s.stats.hp;
+    if (lost < 3) return;
+    var h = healthInit(s);
+    h.strain += 1;
+    h.burden = Math.min(HEALTH.burdenLimit + 3, h.burden + 1);
+  }
+
+  // 한 달이 시작될 때 몸의 누적 부담을 갱신하고, 한계를 넘으면 조기 엔딩
+  function applyHealth(s) {
+    if (!s || !s.stats) return null;
+    var h = healthInit(s);
+    var prevLevel = h.level;
+    var hp = s.stats.hp;
+    var risk = healthRiskOf(hp);
+    if (risk) {
+      h.burden = Math.min(HEALTH.burdenLimit + 3, h.burden + risk);
+      h.months += 1;
+    } else {
+      // 몸을 쉬면 부담이 풀린다 — 위험 구간을 벗어나면 빨리, 아직 지친 상태면 천천히
+      h.burden = Math.max(0, h.burden - (hp > HEALTH.warnHp ? HEALTH.recover : 1));
+      h.months = 0;
+      if (hp > HEALTH.strainHp) h.strain = 0;
+    }
+    var level = healthLevelOf(hp);
+    h.level = level;
+    var info = {
+      level: level,
+      changed: level !== prevLevel,
+      previous: prevLevel,
+      hp: Math.round(hp),
+      burden: h.burden,
+      strain: h.strain,
+      months: h.months,
+      limit: HEALTH.burdenLimit,
+      left: Math.max(0, HEALTH.burdenLimit - h.burden),
+      ended: false
+    };
+    if (h.burden >= HEALTH.burdenLimit && s.age <= END_AGE && !s.ended) {
+      s.ended = true;
+      s.endingKind = 'health';
+      s.current = null;
+      info.ended = true;
+      registerLife(s, 'health');
+    }
+    return info;
+  }
+
+  /* ── 건강 사건(휴식·병원) 고르기 ──
+     `health: true` 로 표시한 사건 중 지금 체력에서 열리는 것 하나.
+     급할수록 강한 사건(응급실)을 먼저 내밀고, 같은 사건은 두 달 연속 내밀지 않는다. */
+  function healthEventFor(s) {
+    var list = allEvents(), best = null, i;
+    for (i = 0; i < list.length; i++) {
+      var ev = list[i];
+      if (!ev.health || !passes(ev, s)) continue;
+      if (!ev.repeatable && used(s, ev.id)) continue;
+      var last = s.lastSeen[ev.id];
+      if (ev.repeatable && last !== undefined && s.turn - last < 2) continue;
+      // crisisHp 가 작을수록 급한 사건이다 — 지금 체력에서 열리는 것 중 가장 급한 것을 고른다
+      if (!best || (ev.crisisHp || 0) < (best.crisisHp || 0)) best = ev;
+    }
+    return best;
+  }
+
   /* ── 행운의 몫 ──
      미니 승부(동전·가위바위보·주사위·카드)에서 행운 50을 기준으로
      승률을 -0.25 ~ +0.25 만큼 밀어 준다. 행운 100 이면 승률 75%, 0 이면 25%.
@@ -1106,6 +1292,12 @@
     if (birthday) { applyAging(s); applyLuckDrift(s); }
     // 연 수지 정산(직장 생활 이후) — 생일에 한 번
     var ledger = birthday ? applyLedger(s) : null;
+    // 몸의 누적 부담 — 위험한 달이 이어지면 여기서 인생이 끝난다
+    var health = s.age <= END_AGE ? applyHealth(s) : null;
+
+    if (s.ended) {
+      return { ok: true, ended: true, birthday: birthday, graduation: null, ledger: ledger, health: health };
+    }
 
     if (s.age > END_AGE) {
       s.ended = true;
@@ -1125,7 +1317,7 @@
     s.current = { eventId: ev.id, chosen: null, event: ev.__generic ? ev : null };
     s.used.push(ev.id);
     s.lastSeen[ev.id] = s.turn;
-    return { ok: true, ended: false, birthday: birthday, event: ev, graduation: gradDef ? gradDef.key : null, ledger: ledger };
+    return { ok: true, ended: false, birthday: birthday, event: ev, graduation: gradDef ? gradDef.key : null, ledger: ledger, health: health };
   }
 
   /* ── 저장 ── */
@@ -1169,6 +1361,9 @@
     backfillStats(s.stats);
     if (s.undo) backfillStats(s.undo.stats);
     if (s.grad && s.grad.stats) backfillStats(s.grad.stats);
+    // 건강 위기(2026-11-24) — 예전 저장본은 0에서 시작한다
+    healthInit(s);
+    if (s.undo) healthInit(s.undo);
     // v5: 이전 회차 인물 — 예전 저장본은 불러올 때 전당에서 데려온다
     if (!Array.isArray(s.cameos)) s.cameos = pastCameos(s.name);
     // 2026-11-20: 출발 시나리오·가문 유산 (예전 저장본은 기본값으로 이어 간다)
@@ -1359,6 +1554,9 @@
   function modifierPhrase(s) {
     var f = s.flags, st = s.stats;
     if (f.은퇴 && st.asset >= 40000) return '조기 은퇴한';
+    if (f.안식) return '명퇴 뒤 쉼을 택한';
+    if (f.재취업) return '두 번 일한';
+    if (f.프리랜서_2막) return '프리랜서로 이어간';
     if (f.집있음 && f.청약당첨) return '청약 한 방으로 집주인이 된';
     if (f.창업_실패) return '창업의 쓴맛을 본';
     if (f.창업) return '창업의 쓴맛을 본';
@@ -1460,6 +1658,8 @@
     '유학_경험': '유학', '인턴_경험': '인턴', '학회_논문': '학회 논문',
     '사업체': '가게 운영', '임원': '임원', '부모_간병': '부모 간병',
     '자녀_독립': '자녀 독립', '손주': '손주', '연금': '연금 생활',
+    '2막': '인생 2막', '재취업': '재취업', '프리랜서_2막': '프리랜서 2막', '안식': '안식',
+    '퇴직금_정산': '퇴직금 정산', '정년_선택': '정년까지 재직',
     '낚시광': '낚시광', '정원사': '정원사', '여행가': '여행가', '회고록': '회고록',
     '기부': '기부', '봉사_길': '봉사', '귀촌': '귀촌', '텃밭': '텃밭',
     '투자_경험': '투자', '건강_관리': '건강 관리', '건강_경고': '건강 경고',
@@ -1502,6 +1702,9 @@
       highlights: highlights,
       cameo: cameoSummary(s),
       career: s.flags.직업 || null,
+      ending: s.endingKind || null,
+      healthEnd: s.endingKind === 'health',
+      health: healthOf(s),
       scenario: scenarioBrief(s.scenario),
       generation: s.generation || 1,
       legacy: legacyBrief(s.legacy)
@@ -1976,14 +2179,16 @@
   }
 
   // 80세를 넘기면 80세 완주 기록을 자동으로 남긴다
-  function registerLife(s) {
+  // kind='health' 면 '건강 악화' 조기 엔딩으로, 마지막 나이와 함께 전당에 남긴다
+  function registerLife(s, kind) {
     if (!s || s.hallId) return null;
     var sum = summary(s);
+    var healthEnd = kind === 'health';
     var rec = hallAdd({
       kind: 'life',
-      key: 'life80',
-      stageLabel: '80세 완주',
-      age: END_AGE,
+      key: healthEnd ? 'life_health' : 'life80',
+      stageLabel: healthEnd ? ('건강 악화 · ' + Math.min(s.age, END_AGE) + '세') : '80세 완주',
+      age: healthEnd ? Math.min(s.age, END_AGE) : END_AGE,
       score: round1(scoreOfStats(s.stats)),
       grade: sum.grade,
       top: null,
@@ -1995,6 +2200,7 @@
       generation: s.generation || 1,
       scenario: s.scenario || 'kr',
       legacyFrom: s.legacy ? s.legacy.recId : null,
+      ending: healthEnd ? 'health' : 'life80',
       stats: statSnapshot(s.stats)
     });
     s.hallId = rec.id;
@@ -2043,6 +2249,10 @@
       '여든 번의 봄을 지나, 이제 창가에 앉아 지나온 길을 셉니다.',
       '손등의 주름 사이로, 그 시절의 햇빛이 아직 남아 있습니다.',
       '긴 하루를 살아낸 사람의 저녁처럼, 방 안이 조용합니다.'
+    ],
+    life_health: [
+      '몸이 먼저 멈추겠다고 했습니다. 그날 아침, 창밖은 평소와 같았습니다.',
+      '마지막으로 병원 복도에 앉아, 세상이 이렇게 조용한 줄 처음 알았습니다.'
     ]
   };
 
@@ -2070,6 +2280,10 @@
     life80: [
       '긴 인생이었습니다. 잘 살았는지는 아직 모르겠지만, 살아냈습니다.',
       '이제 남은 것은 기억뿐입니다. 그것으로 충분합니다.'
+    ],
+    life_health: [
+      '인생은 여기서 접힙니다. 접힌 자리에 남은 것들이 아직 따뜻합니다.',
+      '남은 시간이 아니라, 지나온 시간이 나를 덮었습니다.'
     ]
   };
 
@@ -2167,16 +2381,19 @@
 
   // 실제 스탯·플래그·선택 기록으로 만드는 8~10줄 회고
   function recallLines(s, mode, info) {
-    var key = mode === 'life' ? 'life80' : (info ? info.key : 'kindergarten');
-    var age = mode === 'life' ? Math.min(s.age, END_AGE) : (info ? info.age : s.age);
-    var st = mode === 'life' ? s.stats : (info ? info.stats : s.stats);
+    var wholeLife = mode === 'life' || mode === 'health';
+    var key = mode === 'life' ? 'life80' : mode === 'health' ? 'life_health' : (info ? info.key : 'kindergarten');
+    var age = wholeLife ? Math.min(s.age, END_AGE) : (info ? info.age : s.age);
+    var st = !wholeLife && info ? info.stats : s.stats;
     var rnd = recallRand([s.name, s.createdAt, mode, key, Math.round(st.hp), Math.round(st.mental)].join('|'));
     var lines = [];
 
     lines.push(recallPick(rnd, RECALL_OPEN[key] || RECALL_OPEN.kindergarten));
 
-    if (mode === 'life') {
-      lines.push('그 사이 세상은 몇 번이나 모습을 바꿨습니다. 나도 그렇게 바뀌었습니다.');
+    if (wholeLife) {
+      lines.push(mode === 'health'
+        ? '몸이 먼저 멈추겠다고 했습니다. 그 말을 듣기까지 ' + age + '년이 걸렸습니다.'
+        : '그 사이 세상은 몇 번이나 모습을 바꿨습니다. 나도 그렇게 바뀌었습니다.');
     } else {
       var stageName = info && info.stage ? info.stage.name : '학교';
       lines.push('그때 나는 ' + age + '세, ' + stageName + '의 마지막 달을 보내고 있었습니다.');
@@ -2184,7 +2401,7 @@
 
     // 3~4줄: 실제로 겪은 사건에서 기억 한두 개
     var pool = (s.history || []).filter(function (h) { return h.age <= age; });
-    if (mode !== 'life' && info) {
+    if (!wholeLife && info) {
       var scoped = pool.filter(function (h) { return h.age >= info.stage.from && h.age <= info.stage.to; });
       if (scoped.length) pool = scoped.concat(pool.filter(function (h) { return h.age < info.stage.from; }));
     }
@@ -2239,7 +2456,7 @@
     }
 
     // 8줄: 이 인생의 갈래 — 실제로 걸어온 길이 있으면 그 길의 문장을 쓴다
-    var arch = mode === 'life' ? archetypeOf(s) : null;
+    var arch = wholeLife ? archetypeOf(s) : null;
     var branchPushed = false;
     if (arch) {
       var branchPool = BRANCH_LINES[arch.key];
@@ -2259,13 +2476,13 @@
       if (traitKey) {
         var traitName = FLAG_LABEL[traitKey] || (s.flags[traitKey] === true ? traitKey : String(s.flags[traitKey]));
         lines.push('그 시절을 설명하는 이름표가 하나 있었습니다 — ‘' + traitName + '’.');
-      } else if (s.flags.직업 && mode === 'life') {
+      } else if (s.flags.직업 && wholeLife) {
         lines.push('한때는 ‘' + s.flags.직업 + '’이라는 이름으로 불렸습니다. 그 이름도 이제는 추억입니다.');
       }
     }
 
     // 9줄: 남은 돈에 대한 한 줄
-    if (mode === 'life') {
+    if (wholeLife) {
       if (st.asset >= 30000) lines.push('남긴 것은 ' + formatAsset(st.asset) + '. 숫자보다, 그 숫자를 만든 날들이 길었습니다.');
       else if (st.asset < 0) lines.push('빚도 남겼습니다. 부끄럽지만, 그것도 내가 살아온 흔적입니다.');
       else lines.push('남은 재산은 ' + formatAsset(st.asset) + '. 많지 않아도, 아쉽지 않습니다.');
@@ -2311,6 +2528,7 @@
     gradInfo: gradInfo,
     graduate: graduate,
     recall: function (s, mode) {
+      if (mode === 'health') return recallLines(s, 'health', null);
       var info = mode === 'life' ? null : gradInfo(s);
       return recallLines(s, mode === 'life' ? 'life' : 'grad', info);
     },
@@ -2364,6 +2582,11 @@
     canReroll: canReroll,
     reroll: reroll,
     canHeal: canHeal,
-    heal: heal
+    heal: heal,
+    HEALTH: HEALTH,
+    healthOf: healthOf,
+    applyHealth: applyHealth,
+    noteStrain: noteStrain,
+    healthEventFor: healthEventFor
   };
 })(typeof window !== 'undefined' ? window : globalThis);

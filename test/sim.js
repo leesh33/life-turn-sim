@@ -48,7 +48,9 @@ for (const ev of EVENTS) {
         const v = eff[k];
         if (!KNOWN_KEYS.has(k)) problems.push(`알 수 없는 효과 키: ${ev.id}[${i}].${k}`);
         if (typeof v !== 'number' && !Array.isArray(v)) problems.push(`효과 값 이상: ${ev.id}[${i}].${k}=${JSON.stringify(v)}`);
-        if (typeof v === 'number' && k !== 'asset' && Math.abs(v) > 5) problems.push(`효과 과다: ${ev.id}[${i}].${k}=${v}`);
+        // 건강 사건(bigEffects)은 회복 폭이 커야 위험 구간을 벗어난다 — 체력 0에서
+        // +2로는 다음 달에 또 무너진다. 그래서 이 사건들만 큰 회복을 허용한다.
+        if (typeof v === 'number' && k !== 'asset' && Math.abs(v) > 5 && !ev.bigEffects) problems.push(`효과 과다: ${ev.id}[${i}].${k}=${v}`);
       }
     }
     if (c.queue) {

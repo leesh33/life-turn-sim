@@ -49,7 +49,10 @@
     var archetype = sum && sum.archetype ? { emoji: sum.archetype.emoji, label: sum.archetype.label } : null;
     // 제목이 이미 그 얼굴을 말하고 있으면(예: '… 아이들 키우다 내 이름을 잊은 사람') 한 번만 적는다
     if (archetype && title.indexOf(archetype.label) !== -1) archetype = null;
-    var kicker = grad ? (grad.def ? grad.def.short : '졸업') : (state.ended ? '80세 완주' : '여기까지의 인생');
+    var healthEnd = !!(state.ended && state.endingKind === 'health');
+    var kicker = grad ? (grad.def ? grad.def.short : '졸업')
+      : healthEnd ? ('건강 악화 · ' + Math.min(state.age, 80) + '세')
+      : (state.ended ? '80세 완주' : '여기까지의 인생');
     var grade = grad ? grad.grade : (sum ? sum.grade : 'B');
     var gradeLabel = grad ? grad.gradeLabel : (sum ? sum.gradeLabel : '');
     var score = grad ? Math.round(grad.score) : (sum ? sum.score : 0);

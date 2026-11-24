@@ -347,7 +347,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '구조조정',
     text: '희망퇴직 신청을 받는다는 공지가 떴습니다. 20년 다닌 회사입니다. 조건은 24개월치 급여.',
     choices: [
-      { label: '신청한다', result: '마지막 출근일, 사무실을 한 바퀴 돌았습니다. 새로운 시간이 시작됐습니다.', effects: { asset: 4000, mental: -2, social: -2 }, set: { 명퇴: true, 직업: null } },
+      { label: '신청한다', result: '마지막 출근일, 사무실을 한 바퀴 돌았습니다. 새로운 시간이 시작됐습니다.', effects: { asset: 4000, mental: -2, social: -2 }, set: { 명퇴: true, 직업: null }, queue: ['sa_54a'] },
       { label: '버틴다', result: '남았습니다. 남은 사람의 일이 더 많아졌습니다.', effects: { mental: -2, hp: -2, social: 1 } },
       { label: '다른 회사를 찾는다', result: '이력서를 다시 쓰기 시작했습니다. 50대의 이직은 느리지만 가능합니다.', effects: { mental: 1, social: 2 }, set: { 이직결심: true } }
     ]
