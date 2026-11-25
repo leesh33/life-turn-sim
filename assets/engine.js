@@ -181,7 +181,8 @@
       var eok = Math.floor(n / 10000), man = n % 10000;
       str = eok + '억' + (man ? ' ' + man.toLocaleString('ko-KR') + '만' : '') + ' 원';
     } else {
-      str = n.toLocaleString('ko-KR') + '만원';
+      // 억 아래도 같은 규칙으로 띄어 쓴다 — '500만 원' · '9,950만 원'
+      str = n.toLocaleString('ko-KR') + '만 원';
     }
     return (neg ? '-' : '') + str;
   }
@@ -439,7 +440,7 @@
 
     // 1-b) 몸이 위험하면 건강 사건을 먼저 내민다 — 휴식·병원으로 대처할 기회를 준다
     //      (마일스톤은 그 나이에 꼭 필요한 사건이라 먼저 두고, 그 다음 순서다)
-    if (s.stats && s.stats.hp <= HEALTH.warnHp) {
+    if (s.stats && s.stats.hp <= healthThresholdOf(s.age).warnHp) {
       var healthEv = healthEventFor(s);
       if (healthEv) return healthEv;
     }
@@ -655,14 +656,14 @@
 
   /* ═════════════ 가문 · 유산 이어받기 ═════════════
      명예의 전당에 남긴 '내가 살았던 인생' 중 하나를 골라 그 집안의 자녀로 시작한다.
-       · 재산 : 그 인생의 순재산 중 6%만 물려받는다(최대 2,500만원).
+       · 재산 : 그 인생의 순재산 중 6%만 물려받는다(최대 2,500만 원).
                 한 번의 상속으로 판이 끝나지 않게, 그리고 '빚'은 물려받지 않게 0에서 끊는다.
        · 특성 : 그 인생의 가장 높은 능력치 하나에 +3 (가문의 재능)
        · 대수 : 부모가 1대면 나는 2대, 부모가 2대면 나는 3대 — 전당 기록에 대수를 남긴다.
        · 부모님이 이전 회차 인물과 부부였다면 '부모님: OO ♥ XX' 가문 소개가 붙고,
          두 사람은 이번 인생의 인연 후보에서 빠진다(부모와 연애할 수는 없으니까). */
   var LEGACY_RATE = 0.06;     // 순재산의 6%
-  var LEGACY_CAP = 2500;      // 최대 2,500만원 (만원 단위)
+  var LEGACY_CAP = 2500;      // 최대 2,500만 원 (만원 단위)
   var LEGACY_BONUS = 3;       // 가문의 재능 +3
   var LEGACY_TRAIT = {
     hp: '몸이 튼튼한 집안',
@@ -846,7 +847,11 @@
       } else if (s.stats[k] !== undefined) {
         var before = s.stats[k];
         var add = v > 0 ? v * gainFactor(before) : v;
-        s.stats[k] = clamp(before + add, 0, 100);
+        var next = clamp(before + add, 0, 100);
+        // 미성년자의 체력은 0까지 떨어지지 않는다 — 부모가 챙기는 시기이고,
+        // 6~7세가 체력 0으로 건강 악화 엔딩을 맞는 흐름을 막는다(20세 전에는 부담도 안 쌓인다).
+        if (k === 'hp' && s.age < HEALTH.minEndAge && next < 20) next = 20;
+        s.stats[k] = next;
         var diff = Math.round(s.stats[k] - before);
         if (diff) deltas[k] = (deltas[k] || 0) + diff;
       }
@@ -1122,10 +1127,19 @@
     return info;
   }
 
+  /* ── 자연 노화 (2026-11-25 개편) ──
+     45세부터 해가 바뀔 때 조금씩 몸이 예전 같지 않아진다.
+     예전에는 45세 이후로도 체력이 1씩만 줄어, 선택으로 쌓은 체력이 80세까지 88에 붙어 있었다.
+     이제는 나이가 들수록 줄어드는 폭이 커진다 — 그래서 같은 "체력 80"도 45세와 75세의 무게가 다르고,
+     건강을 챙기는 사람과 아닌 사람의 80세 체력이 실제로 갈린다.
+       · 45~54세 −1 · 55~64세 −2 · 65~74세 −3 · 75세부터 −4
+       · 멘탈은 60세부터 −1, 75세부터 −2 / 매력은 55세부터 −1씩
+     연 수지·사건 효과는 그대로이고, 위의 값은 생일에 한 번만 빠진다. */
   var AGING = [
     { from: 45, hp: 1, mental: 0, charm: 0 },
-    { from: 62, hp: 1, mental: 0, charm: 1 },
-    { from: 72, hp: 1, mental: 1, charm: 1 }
+    { from: 55, hp: 2, mental: 1, charm: 1 },
+    { from: 65, hp: 3, mental: 1, charm: 1 },
+    { from: 75, hp: 4, mental: 2, charm: 1 }
   ];
 
   // 생일마다 자연 노화 — 45세부터 해가 바뀔 때만 조금씩
@@ -1149,16 +1163,56 @@
     s.stats.luck = clamp(s.stats.luck + pull + randInt(s, -LUCK_DRIFT, LUCK_DRIFT), 0, 100);
   }
 
-  /* ── 최고치 유지 ──
-     88을 넘긴 스탯만 아주 천천히 88 쪽으로 내려간다.
-     (한 달에 최대 1.4 정도 · 보통 스탯에는 전혀 영향이 없다.)
-     역량·행운도 같은 규칙을 따른다 — 머리도 운도 방치하면 조금씩 식는다. */
-  var UPKEEP = { from: 88, rate: 0.12 };
+  /* ── 유지 압박 (2026-11-25 개편) ──
+     예전에는 88을 넘긴 스탯만 88 쪽으로 당겨서, 어떤 선택을 해도 80세 능력치가
+     체력 88 · 멘탈 94에 붙어 버렸다(전수조사). 이제는 유지선을 78~84로 낮추고
+     나이가 들수록 유지선과 압박을 함께 조인다 — 같은 90이라도 30세에는 잘 붙어 있고
+     75세에는 애써야 지켜진다. 보통 범위의 스탯은 예전처럼 건드리지 않는다.
+       · 유지선: 44세까지 84 · 45~59세 82 · 60~74세 79 · 75세부터 76
+       · 압박: 유지선을 넘은 만큼의 10~22%가 한 달에 빠진다(최대 1~3)
+       · 건강 관리(병원·검진·운동)를 이어 온 사람은 체력 유지선이 5 높고,
+         몸을 외면해 온 사람(건강_무시·건강_위태)은 5 낮다 — 같은 나이에도 몸의 처지가 다르다.
+       · 야근을 이어 온 사람은 멘탈 유지선이 4 낮고, 선을 그어 온 사람(워라밸러)은 4 높다. */
+  var UPKEEP = {
+    from: 76,
+    curve: [
+      { from: 0, to: 44, line: 84, rate: 0.10 },
+      { from: 45, to: 59, line: 82, rate: 0.14 },
+      { from: 60, to: 74, line: 79, rate: 0.18 },
+      { from: 75, to: 200, line: 76, rate: 0.22 }
+    ],
+    healthUp: 5,        // 건강_관리 를 남긴 사람의 체력 유지선 보정
+    healthDown: 5,      // 건강_무시·건강_위태 를 남긴 사람의 체력 유지선 보정
+    stressDown: 4,      // 야근러 의 멘탈 유지선 보정
+    stressUp: 4         // 워라밸러 의 멘탈 유지선 보정
+  };
+  function upkeepOf(age) {
+    var rule = UPKEEP.curve[0];
+    for (var i = 0; i < UPKEEP.curve.length; i++) if (age >= UPKEEP.curve[i].from) rule = UPKEEP.curve[i];
+    return rule;
+  }
+  function upkeepLine(s, key) {
+    var u = upkeepOf(s.age);
+    var line = u.line;
+    var f = s.flags || {};
+    if (key === 'hp') {
+      if (f.건강_관리) line += UPKEEP.healthUp;
+      else if (f.건강_무시 || f.건강_위태) line -= UPKEEP.healthDown;
+    } else if (key === 'mental') {
+      // 야근을 이어 온 사람은 멘탈의 유지선이 낮고, 선을 그어 온 사람은 높다
+      if (f.야근러) line -= UPKEEP.stressDown;
+      if (f.워라밸러) line += UPKEEP.stressUp;
+    }
+    return line;
+  }
   function applyUpkeep(s) {
+    var u = upkeepOf(s.age);
     GAUGE_KEYS.forEach(function (key) {
       var cur = s.stats[key];
-      if (cur === undefined || cur <= UPKEEP.from) return;
-      s.stats[key] = clamp(cur + (UPKEEP.from - cur) * UPKEEP.rate, 0, 100);
+      if (cur === undefined) return;
+      var line = upkeepLine(s, key);
+      if (cur <= line) return;
+      s.stats[key] = clamp(cur + (line - cur) * u.rate, 0, 100);
     });
   }
 
@@ -1168,12 +1222,16 @@
      경고를 여러 번 주고, 대처할 선택지(휴식·병원·긴급 회복)를 먼저 내민다.
        · warnHp 28 이하 : '몸이 보내는 신호' 사건이 매달 먼저 뜬다(회복 선택지)
        · dangerHp 18 이하: 위험한 달 1점 · criticalHp 10 이하 2점 · 체력 0은 3점
-       · 무리(체력 30 이하에서 체력을 3 이상 깎는 선택) 1회 = 1점
+       · 무리(지친 몸에서 체력을 3 이상 깎는 선택) 1회 = 1점
        · 누적 7점이면 인생이 여기서 끝난다(체력 0으로 3개월, 10 이하로 3~4개월 꼴)
-       · 몸을 회복하면(28 초과) 매달 2점씩 풀린다 — 쉬면 살아난다
+       · 몸을 회복하면(경고선 초과) 매달 2점씩 풀린다 — 쉬면 살아난다
      '사람처럼' 플레이하면 거의 완주하고, 회복을 외면하고 계속 무리하면 일찍 끝난다.
-     기준은 2026-11-24 밤에 한 단계 올렸다(22/12/5 · 8점 → 28/18/10 · 7점) —
-     건강을 조금만 소홀히 해도 경고를 마주치고, 외면하면 실제로 일찍 끝나는 선. */
+     2026-11-25 개편 — 두 가지를 더했다.
+       · 나이 배율: 같은 체력이라도 나이 들면 더 위험하다. 경고 28 · 위독 18 · 쓰러짐 10 에
+         40세 1.12 · 55세 1.3 · 70세 1.5 를 곱해 쓴다(60대의 체력 36은 실제로 경고).
+         → 중·장년에 몸을 소홀히 하면 경고를 실제로 마주친다.
+       · minEndAge 20: 20세 전에는 건강 부담이 쌓이지도, 인생이 끝나지도 않는다
+         (예전에는 6~7세가 '쓰러졌습니다'로 인생을 마쳤다). */
   var HEALTH = {
     warnHp: 28,
     dangerHp: 18,
@@ -1181,8 +1239,36 @@
     zeroHp: 0,
     strainHp: 30,        // 이 이하로 지친 몸에 무리(−3 이상)를 또 얹으면 부담이 쌓인다
     burdenLimit: 7,
-    recover: 2
+    recover: 2,
+    minEndAge: 20,       // 이 나이 전에는 건강 때문에 인생이 끝나지 않는다(부모가 돌본다)
+    // 나이가 들면 '위험한 체력'의 기준이 올라간다 — 60대의 체력 36은 20대의 36과 다르다.
+    // 반대로 20~30대는 몸이 버티므로 기준이 조금 낮다(체력 20대도 하루이틀은 견딘다).
+    // 경고 28 · 위독 18 · 쓰러짐 10 · 무리 30 에 이 배율을 곱해 쓴다.
+    ageScale: [
+      { from: 0, to: 29, scale: 0.8 },
+      { from: 30, to: 44, scale: 1.0 },
+      { from: 45, to: 59, scale: 1.2 },
+      { from: 60, to: 74, scale: 1.4 },
+      { from: 75, to: 200, scale: 1.55 }
+    ]
   };
+
+  function healthScaleOf(age) {
+    var rule = HEALTH.ageScale[0];
+    for (var i = 0; i < HEALTH.ageScale.length; i++) if (age >= HEALTH.ageScale[i].from) rule = HEALTH.ageScale[i];
+    return rule.scale;
+  }
+  // 그 나이에 '위험한 체력'의 문턱 — 사건(health.js)·엔진·앱이 같은 값을 쓴다
+  function healthThresholdOf(age) {
+    var sc = healthScaleOf(age);
+    return {
+      warnHp: Math.round(HEALTH.warnHp * sc),
+      dangerHp: Math.round(HEALTH.dangerHp * sc),
+      criticalHp: Math.round(HEALTH.criticalHp * sc),
+      strainHp: Math.round(HEALTH.strainHp * sc),
+      scale: sc
+    };
+  }
 
   function healthInit(s) {
     if (!s.health || typeof s.health !== 'object') {
@@ -1196,18 +1282,20 @@
     return h;
   }
 
-  // 이번 달 체력이 몸에 남기는 부담
-  function healthRiskOf(hp) {
+  // 이번 달 체력이 몸에 남기는 부담 — 문턱은 나이에 따라 올라간다
+  function healthRiskOf(hp, age) {
+    var t = healthThresholdOf(age);
     if (hp <= HEALTH.zeroHp) return 3;
-    if (hp <= HEALTH.criticalHp) return 2;
-    if (hp <= HEALTH.dangerHp) return 1;
+    if (hp <= t.criticalHp) return 2;
+    if (hp <= t.dangerHp) return 1;
     return 0;
   }
 
-  function healthLevelOf(hp) {
-    if (hp <= HEALTH.criticalHp) return 'critical';
-    if (hp <= HEALTH.dangerHp) return 'danger';
-    if (hp <= HEALTH.warnHp) return 'warn';
+  function healthLevelOf(hp, age) {
+    var t = healthThresholdOf(age);
+    if (hp <= t.criticalHp) return 'critical';
+    if (hp <= t.dangerHp) return 'danger';
+    if (hp <= t.warnHp) return 'warn';
     return 'ok';
   }
 
@@ -1217,13 +1305,14 @@
     var h = healthInit(s);
     var hp = s.stats ? s.stats.hp : 100;
     return {
-      level: healthLevelOf(hp),
+      level: healthLevelOf(hp, s.age),
       hp: Math.round(hp),
       burden: h.burden,
       strain: h.strain,
       months: h.months,
       limit: HEALTH.burdenLimit,
-      left: Math.max(0, HEALTH.burdenLimit - h.burden)
+      left: Math.max(0, HEALTH.burdenLimit - h.burden),
+      threshold: healthThresholdOf(s.age)
     };
   }
 
@@ -1231,7 +1320,7 @@
      '회복 없이 무리할 때' 일찍 끝나는 이유가 이것이다. */
   function noteStrain(s, hpBefore) {
     if (!s || s.ended || !s.stats) return;
-    if (hpBefore > HEALTH.strainHp) return;
+    if (hpBefore > healthThresholdOf(s.age).strainHp) return;
     var lost = hpBefore - s.stats.hp;
     if (lost < 3) return;
     var h = healthInit(s);
@@ -1245,17 +1334,20 @@
     var h = healthInit(s);
     var prevLevel = h.level;
     var hp = s.stats.hp;
-    var risk = healthRiskOf(hp);
+    var t = healthThresholdOf(s.age);
+    // 어린 나이(20세 전)에는 위험한 달이 쌓이지 않는다 — 6~7세가 건강 악화로 죽는 흐름을 막는다.
+    // (이미 쌓인 부담은 그대로 두고, 회복 규칙만 적용한다)
+    var risk = s.age >= HEALTH.minEndAge ? healthRiskOf(hp, s.age) : 0;
     if (risk) {
       h.burden = Math.min(HEALTH.burdenLimit + 3, h.burden + risk);
       h.months += 1;
     } else {
       // 몸을 쉬면 부담이 풀린다 — 위험 구간을 벗어나면 빨리, 아직 지친 상태면 천천히
-      h.burden = Math.max(0, h.burden - (hp > HEALTH.warnHp ? HEALTH.recover : 1));
+      h.burden = Math.max(0, h.burden - (hp > t.warnHp ? HEALTH.recover : 1));
       h.months = 0;
-      if (hp > HEALTH.strainHp) h.strain = 0;
+      if (hp > t.strainHp) h.strain = 0;
     }
-    var level = healthLevelOf(hp);
+    var level = healthLevelOf(hp, s.age);
     h.level = level;
     var info = {
       level: level,
@@ -1267,9 +1359,10 @@
       months: h.months,
       limit: HEALTH.burdenLimit,
       left: Math.max(0, HEALTH.burdenLimit - h.burden),
+      threshold: t,
       ended: false
     };
-    if (h.burden >= HEALTH.burdenLimit && s.age <= END_AGE && !s.ended) {
+    if (h.burden >= HEALTH.burdenLimit && s.age >= HEALTH.minEndAge && s.age <= END_AGE && !s.ended) {
       s.ended = true;
       s.endingKind = 'health';
       s.current = null;
@@ -1642,28 +1735,34 @@
     return originPhrase(s) + ' ' + modifierPhrase(s) + ' ' + careerPhrase(s);
   }
 
-  /* ── 인생 점수 ──
-     능력치 평균(0~100) 에 0.25, 재산 점수(0~65) 에 1, 마일스톤 하나에 0.3 을 준다.
-     · 살림 장부(2026-11-24) 전에는 재산이 늘 마이너스라 재산 점수가 0이었고,
-       그래서 능력치만 좋으면 S 가 나왔다(전수조사: 312회 중 294회가 S).
-     · 이제 재산이 살아 있는 값이므로 비중을 올리고 등급선을 다시 잡았다.
-       실측 기준(80세 최종 재산): 5천만 안팎 B · 1~3억 A · 5억 이상 S · 빚으로 마치면 D.
-       (능력치는 88~92에 몰려 변별력이 없어 비중을 낮추고, 재산 눈금을 넓게 잡았다) */
-  function gradeOf(s) {
-    var st = s.stats;
+  /* ── 인생 점수 (2026-11-25 통일) ──
+     앱의 엔딩 배지·전당·전체 랭킹·졸업 결산이 모두 이 함수 하나를 쓴다.
+     예전에는 엔딩 등급(gradeOf)과 전당 점수(scoreOfStats)가 서로 다른 식이라
+     같은 인생이 엔딩에서는 81점, 전당에서는 64점으로 찍혔다(전수조사 P1-4).
+       · 여섯 게이지 평균 × 0.40  (체력 28과 77이 등급에서 실제로 갈리도록)
+       · 재산 점수 0~56 — 20억에서 만점, 아래로 볼록(제곱)이라 1억·5억·10억이 실제로 갈린다
+       · 점수에 마일스톤을 더하지 않는다 — 점수는 상태(stats)만 보고 매겨야
+         엔딩·전당·랭킹·졸업이 같은 값을 낸다 */
+  var SCORE = { gauge: 0.40, asset: 56, assetLog: 5.3 };
+  function lifeScore(st) {
+    st = st || {};
     var gauge = gaugeAvg(st);
-    // 재산 점수는 20억에서 만점 — 4억에서 만점이던 때는 절반이 상한에 붙어 등급이 갈리지 않았다
-    // 재산 점수는 20억에서 만점이되, 곡선을 아래로 볼록하게(제곱) 둔다 —
-    // 로그만 쓰면 1억도 만점의 75%를 받아 등급이 위로 몰렸다.
-    var assetNorm = st.asset > 0 ? Math.log10(st.asset + 1) / 5.3 : 0;
-    var assetScore = clamp(assetNorm * assetNorm * 65, 0, 65);
-    var score = gauge * 0.25 + assetScore + (s.history.filter(function (h) { return h.milestone; }).length * 0.3);
-    score = clamp(score, 0, 100);
-    if (score >= 78) return { grade: 'S', label: '전설의 인생', score: score };
-    if (score >= 70) return { grade: 'A', label: '성공한 인생', score: score };
-    if (score >= 63) return { grade: 'B', label: '탄탄한 인생', score: score };
-    if (score >= 52) return { grade: 'C', label: '평범한 인생', score: score };
-    return { grade: 'D', label: '파란만장한 인생', score: score };
+    var assetNorm = st.asset > 0 ? Math.log10(st.asset + 1) / SCORE.assetLog : 0;
+    var assetScore = clamp(assetNorm * assetNorm * SCORE.asset, 0, SCORE.asset);
+    return clamp(gauge * SCORE.gauge + assetScore, 0, 100);
+  }
+  function scoreGrade(score) {
+    score = Number(score) || 0;
+    if (score >= 77) return { grade: 'S', label: '전설의 인생' };
+    if (score >= 71) return { grade: 'A', label: '성공한 인생' };
+    if (score >= 62) return { grade: 'B', label: '탄탄한 인생' };
+    if (score >= 49) return { grade: 'C', label: '평범한 인생' };
+    return { grade: 'D', label: '파란만장한 인생' };
+  }
+  function gradeOf(s) {
+    var score = lifeScore(s.stats);
+    var g = scoreGrade(score);
+    return { grade: g.grade, label: g.label, score: score };
   }
 
   var FLAG_LABEL = {
@@ -1757,11 +1856,9 @@
 
   /* ═════════════ 졸업 결산 · 능력치 비교 · 명예의 전당 ═════════════ */
 
-  // 종합 점수(0~100) — 여섯 게이지 평균 55점 + 재산 45점. 졸업 비교·전당 점수에 공통으로 쓴다.
+  // 종합 점수(0~100) — 엔딩·전당·랭킹·졸업 비교가 모두 쓰는 하나의 식(lifeScore).
   function scoreOfStats(st) {
-    var gauge = gaugeAvg(st);
-    var assetScore = st.asset > 0 ? clamp((Math.log10(st.asset + 1) / 4.6) * 45, 0, 45) : 0;
-    return clamp(gauge * 0.55 + assetScore, 0, 100);
+    return lifeScore(st);
   }
 
   function refTable(key, name) {
@@ -2607,6 +2704,9 @@
     hallBestMine: hallBestMine,
     hallSorted: hallSorted,
     scoreOfStats: scoreOfStats,
+    lifeScore: lifeScore,
+    scoreGrade: scoreGrade,
+    gradeOf: function (s) { return gradeOf(s); },
     ageOk: ageOk,
     migrate: migrate,
     stageOf: stageOf,
@@ -2652,6 +2752,8 @@
     canHeal: canHeal,
     heal: heal,
     HEALTH: HEALTH,
+    healthThresholdOf: healthThresholdOf,
+    healthScaleOf: healthScaleOf,
     healthOf: healthOf,
     applyHealth: applyHealth,
     noteStrain: noteStrain,

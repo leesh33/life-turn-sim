@@ -2,7 +2,7 @@
 
 확인하는 것
   a) 시작 나이(14·20·35세 등)를 골라 인생을 시작하면 미션 카드가 30~45%에서 뜨는가
-  b) 목표 문구가 능력치 + 숫자(달성/돌파)로 읽히고, 카드가 넘치지 않는가
+  b) 목표 문구가 능력치 + 숫자(달성/돌파/지키기)로 읽히고, 카드가 넘치지 않는가
   c) 선택을 몇 번 쌓으면 진행률이 움직이는가(100%로 시작하지 않는가)
   d) 콘솔·페이지 에러 0, 가로 넘침 0
 
@@ -104,7 +104,7 @@ def run_sizes(pg, sizes, url, tag, ages, turns, out):
                 continue
             pct = int(re.sub(r"[^0-9]", "", m0["pctText"]) or -1)
             check(f"{key} 미션 {pct}% (30~45%)", 30 <= pct <= 45, f"{m0['label']} · {m0['goal']}")
-            check(f"{key} 목표 문구", bool(re.match(r"^(호감도|역량|매력|체력|멘탈) \d+ (달성|돌파)$", m0["goal"].strip())), m0["goal"])
+            check(f"{key} 목표 문구", bool(re.match(r"^(호감도|역량|매력|체력|멘탈) \d+ (달성|돌파|지키기)$", m0["goal"].strip())), m0["goal"])
             check(f"{key} 70% 미만에서 출발", pct < 70, f"{pct}%")
             check(f"{key} 가로 넘침 없음", pg.evaluate(MAXW) <= w + 1, f"{pg.evaluate(MAXW)} ≤ {w}")
             check(f"{key} 목표 줄 카드 안에 들어옴", m0["box"]["right"] <= w + 0.6 and (m0["goalEl"] or {}).get("right", 0) <= w + 0.6,

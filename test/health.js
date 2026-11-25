@@ -52,12 +52,21 @@ check('건강 사건 3종(신호·위독·쓰러짐)이 있다', health.length >
   health.map((e) => e.id + '≤' + e.crisisHp).join(', '));
 check('건강 사건은 체력 조건(when)을 스스로 갖는다',
   health.every((e) => typeof e.when === 'function' && e.repeatable === true));
-check('건강 사건 문턱이 엔진 기준과 같다(28/18/10)',
+check('건강 사건 문턱이 엔진 기준과 같다(기본 28/18/10)',
   health.map((e) => e.crisisHp).sort((a, b) => b - a).join('/') ===
     [Life.HEALTH.warnHp, Life.HEALTH.dangerHp, Life.HEALTH.criticalHp].join('/'),
-  health.map((e) => e.id + '≤' + e.crisisHp).join(', ') + ' · 엔진 ' + JSON.stringify(Life.HEALTH));
-check('건강 사건은 어느 나이에나 열린다(any · 1~80세)',
-  health.every((e) => e.stage === 'any' && e.minAge === 1 && e.maxAge === 80));
+  health.map((e) => e.id + '≤' + e.crisisHp).join(', ') + ' · 엔진 ' + JSON.stringify(Life.HEALTH).slice(0, 120));
+check('건강 사건은 성인에게만 열린다(any · 20~80세)', 
+  health.every((e) => e.stage === 'any' && e.minAge === 20 && e.maxAge === 80),
+  health.map((e) => e.id + ' ' + e.minAge + '~' + e.maxAge).join(', '));
+// 2026-11-25 — 나이에 따라 위험 문턱이 올라간다(중·장년의 체력 36은 실제로 경고)
+const t20 = Life.healthThresholdOf(20), t40 = Life.healthThresholdOf(40), t55 = Life.healthThresholdOf(55);
+const t60 = Life.healthThresholdOf(60), t70 = Life.healthThresholdOf(70), t80 = Life.healthThresholdOf(80);
+check('나이 배율 — 20대는 낮고 60대 이후는 높다', t20.warnHp < t40.warnHp && t40.warnHp < t55.warnHp &&
+  t55.warnHp < t70.warnHp && t70.warnHp <= t80.warnHp,
+  `20세 ${t20.warnHp} · 40세 ${t40.warnHp} · 55세 ${t55.warnHp} · 60세 ${t60.warnHp} · 70세 ${t70.warnHp} · 80세 ${t80.warnHp}`);
+check('60대의 체력 36은 경고 구간', 36 <= t60.warnHp, `60세 경고선 ${t60.warnHp}`);
+check('20대의 체력 36은 경고가 아니다', 36 > t20.warnHp, `20세 경고선 ${t20.warnHp}`);
 
 /* ── 2) 체력 0으로 버티면 경고 뒤에 조기 엔딩 ── */
 function crisisRun(startAge) {
@@ -96,16 +105,32 @@ check('건강 사건이 매달 먼저 내밀어진다', cr.steps.filter((x) => x
   s.stats.hp = 15;
   const h2 = Life.healthEventFor(s);
   check('위독 구간(18 이하)에서는 위독 사건부터', !!h2 && h2.id === 'hl_danger', h2 && h2.id);
-  s.stats.hp = 24;
+  s.stats.hp = 26;
   const h3 = Life.healthEventFor(s);
-  check('조금 덜하면 신호 사건부터(28 이하)', !!h3 && h3.id === 'hl_warn', h3 && h3.id);
-  s.stats.hp = 29;
-  check('29 이상이면 건강 사건이 열리지 않는다', Life.healthEventFor(s) === null);
+  check('조금 덜하면 신호 사건부터', !!h3 && h3.id === 'hl_warn', h3 && h3.id);
+  s.stats.hp = Life.healthThresholdOf(s.age).warnHp + 1;
+  check('경고선을 넘으면 건강 사건이 열리지 않는다', Life.healthEventFor(s) === null,
+    '체력 ' + s.stats.hp + ' > 경고선 ' + Life.healthThresholdOf(s.age).warnHp);
 })();
 
+// 2026-11-25 — 20세 전에는 건강 부담이 쌓이지도, 인생이 끝나지도 않는다
 const crChild = crisisRun(1);
-check('어린 나이에도 같은 규칙으로 끝난다(예외 없음)', crChild.s.ended && crChild.s.endingKind === 'health',
-  crChild.s.age + '세 · ' + crChild.s.endingKind);
+check('어린 나이(20세 전)에는 건강 악화로 끝나지 않는다', !crChild.s.ended && crChild.s.age <= 20,
+  crChild.s.age + '세 · ' + (crChild.s.endingKind || '진행 중') + ' · 부담 ' + Life.healthOf(crChild.s).burden);
+const kidLong = (function () {
+  const s = Life.newGame({ name: '아이', gender: '여', startAge: 1 });
+  s.stats.hp = 0;
+  let guard = 0;
+  while (!s.ended && s.age < 20 && guard++ < 400) {
+    const ev = Life.currentEvent(s);
+    Life.choose(s, ev.health ? ev.choices.length - 1 : 0);
+    Life.advance(s);
+  }
+  return { ended: s.ended, age: s.age, kind: s.endingKind, hp: Math.round(s.stats.hp), burden: Life.healthOf(s).burden };
+})();
+check('체력 0으로 자라도 20세까지는 살아 있다', !kidLong.ended || kidLong.age >= 20,
+  kidLong.age + '세 · ' + (kidLong.kind || '진행 중') + ' · 체력 ' + kidLong.hp);
+check('20세 전에는 부담이 쌓이지 않는다', kidLong.burden === 0, '부담 ' + kidLong.burden);
 
 /* ── 3) 긴급 회복으로 살아난다 ── */
 (function healSave() {

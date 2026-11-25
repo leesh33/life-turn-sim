@@ -38,10 +38,14 @@ function record(key, s) {
   b.asset.push(st.asset);
   const score = Life.scoreOfStats(st);
   b.score.push(score);
+  // 제목은 '그 졸업 나이'의 호칭으로 만든다 — 기록은 다음 나이로 넘어간 뒤에 남기므로
+  // 그대로 쓰면 유치원 졸업생이 '초등학생'이 된다(2026-11-25).
+  const def = GRADS.filter((g) => g.key === key)[0];
+  const titleAge = def ? def.age : s.age;
   b.rec.push({
     stats: { hp: st.hp, mental: st.mental, charm: st.charm, social: st.social, intel: st.intel, luck: st.luck, asset: st.asset },
     score,
-    title: Life.summary(s).title
+    title: Life.summary(Object.assign({}, s, { age: titleAge })).title
   });
 }
 
@@ -186,7 +190,8 @@ const lifeSorted = lifeEnds.slice().sort((a, b) => b.score - a.score);
     stageLabel: '80세 완주',
     age: 80,
     score: Math.round(pick.score * 10) / 10,
-    grade: pick.score >= 66 ? 'A' : pick.score >= 54 ? 'B' : 'C',
+    // 2026-11-25 — 등급은 엔진과 같은 한 가지 기준(Life.scoreGrade)으로 매긴다
+    grade: Life.scoreGrade(pick.score).grade,
     top: null,
     title: pick.title,
     name: nextName(),

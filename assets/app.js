@@ -454,7 +454,7 @@
       var v = state.stats[st.key];
       var pct = Life.statPct(st.key, v);
       // 체력이 위험 구간이면 눈에 보이게 붉게 — 경고 토스트를 놓쳐도 알아보게
-      var danger = st.key === 'hp' && v <= Life.HEALTH.dangerHp;
+      var danger = st.key === 'hp' && v <= Life.healthThresholdOf(state.age).dangerHp;
       var barColor = (st.key === 'asset' && v < 0) ? ';background:#c2413a'
         : (danger ? ';background:#c2413a' : '');
       return '<div class="stat' + (danger ? ' danger' : '') + '" data-key="' + st.key + '">' +
@@ -1039,7 +1039,7 @@
         var msg = '🎂 ' + state.age + '세가 되었습니다';
         if (res.ledger && res.ledger.net) {
           var net = res.ledger.net;
-          msg += ' · 연 수지 ' + (net > 0 ? '+' : '') + net.toLocaleString('ko-KR') + '만원';
+          msg += ' · 연 수지 ' + (net > 0 ? '+' : '') + Life.formatAsset(net);
         }
         toast(msg);
       }

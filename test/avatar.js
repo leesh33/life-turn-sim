@@ -103,7 +103,9 @@ Avatar.BANDS.forEach((b) => {
   check(`${b.id} 진행률 0~100`, m.pct >= 0 && m.pct <= 100, m.pct + '%');
   // 출발선 기록이 없으면 지금 값이 곧 출발선 — 어느 나이대든 35%에서 시작한다
   check(`${b.id} 시작 진행률 30~40%`, m.pct >= 30 && m.pct <= 40, m.pct + '%');
-  check(`${b.id} 목표는 출발선보다 위`, m.target > m.anchor, `${m.anchor} → ${m.target}`);
+  // 2026-11-25 — 20대·50대·노년은 '지키기' 미션: 목표는 절대선, 출발선은 그 선과 같다
+  check(`${b.id} 목표는 출발선보다 위`, b.mission.hold ? m.target === b.mission.hold : m.target > m.anchor,
+    `${m.anchor} → ${m.target}`);
 });
 
 // 유아 미션 — 신생아는 '체력'이 아니라 '호감도'로 자란다 (출발선 호감도 46 → 목표 65)
@@ -182,11 +184,11 @@ check('빚 상태는 금액을 보여 준다', Avatar.mission(debt).inDebt === t
   Avatar.mission(debt).curText);
 check('빚 상태에서는 미션 달성 아님', Avatar.checkMission(debt) === null);
 const cleared = S(30, { asset: 0 }, { missionBase: { adult: -1200 } });
-check('빚을 갚으면 목표가 재산 1.5천만원 돌파', Avatar.mission(cleared).goal === '재산 1.5천만원 돌파',
+check('빚을 갚으면 목표가 재산 1,500만 원 돌파', Avatar.mission(cleared).goal === '재산 1,500만 원 돌파',
   Avatar.mission(cleared).goal);
 check('빚을 갚으면 진행률 35%부터', Avatar.mission(cleared).pct === 35, Avatar.mission(cleared).pct + '%');
 const rich = S(30, { asset: 9500 }, { missionBase: { adult: 9500 } });
-check('재산 목표 = 출발선 + 1,500만', Avatar.mission(rich).target === 11000 && /1.1억/.test(Avatar.mission(rich).goal),
+check('재산 목표 = 출발선 + 1,500만', Avatar.mission(rich).target === 11000 && /1억 1,000만 원/.test(Avatar.mission(rich).goal),
   Avatar.mission(rich).goal);
 rich.stats.asset = 11000;
 const got2 = Avatar.checkMission(rich);

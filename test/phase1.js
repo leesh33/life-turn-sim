@@ -124,7 +124,7 @@ putHall([PARENT]);
 const list1 = Life.ancestors();
 check('가문 후보 1명', list1.length === 1 && list1[0].name === '상훈');
 check('유산 = 순재산 6%', list1[0].heir === 1920, String(list1[0].heir));
-check('유산 표기', list1[0].heirText === '1,920만원', list1[0].heirText);
+check('유산 표기', list1[0].heirText === '1,920만 원', list1[0].heirText);
 check('대수 2대', list1[0].gen === 2);
 check('재능 = 가장 높은 능력치', list1[0].bonus.key === 'social' && list1[0].bonus.amount === 3 &&
   list1[0].trait === '사람이 따르는 집안');
@@ -212,7 +212,7 @@ cardState.flags.자녀수 = 2; cardState.flags.결혼 = true;
 const model = ShareCard.model(cardState);
 check('카드: 이름·종류', model.name === '유 솔' && model.kicker === '80세 완주', model.kicker);
 check('카드: 제목·등급·총점', !!model.title && !!model.grade && typeof model.score === 'number');
-check('카드: 능력치 6개 + 재산', model.stats.length === 6 && model.asset && model.asset.text === '4,200만원',
+check('카드: 능력치 6개 + 재산', model.stats.length === 6 && model.asset && model.asset.text === '4,200만 원',
   model.stats.map((s) => s.label).join(','));
 check('카드: 대수 표기', model.generationLabel === '2대', model.generationLabel);
 check('카드: 가문 줄', model.note.indexOf('부모님: 상훈 ♥ 희연') !== -1, model.note);
@@ -263,7 +263,7 @@ check('카드: draw 예외 없음', !drawErr, drawErr || 'OK');
 const joined = ctx.texts.join(' | ');
 check('카드: draw 에 이름·제목·브랜드', joined.indexOf('유 솔') !== -1 && joined.indexOf(model.title) !== -1 &&
   joined.indexOf('life-turn-sim.vercel.app') !== -1, ctx.texts.length + '개 글자');
-check('카드: draw 에 재산·칭호', joined.indexOf('4,200만원') !== -1 && joined.indexOf('2대') !== -1);
+check('카드: draw 에 재산·칭호', joined.indexOf('4,200만 원') !== -1 && joined.indexOf('2대') !== -1);
 
 // 이력 하이라이트 — 요약이 고른 가장 굵은 사건이 카드에도 실린다
 const hlState = Object.assign({}, cardState, {
@@ -321,7 +321,7 @@ check('건강 조기 엔딩 카드: 나이·까닭', hm.finalAge === 47 && hm.ki
 // 공유 시트에 실리는 글
 check('카드: 공유 글에 나이·등급·재산·주소',
   ShareCard.shareText(cardState).indexOf('80세') !== -1 &&
-  ShareCard.shareText(cardState).indexOf('4,200만원') !== -1 &&
+  ShareCard.shareText(cardState).indexOf('4,200만 원') !== -1 &&
   ShareCard.shareText(cardState).indexOf('life-turn-sim.vercel.app') !== -1,
   ShareCard.shareText(cardState).replace(/\n/g, ' / '));
 

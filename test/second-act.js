@@ -187,7 +187,7 @@ check('60세 정년 이벤트가 있다', !!retireEv && retireEv.at && retireEv.
 /* ── 7) 80년 완주에서도 2막이 실제로 이어진다 ── */
 (function fullRun() {
   let sawMyung = 0, sawAct = 0, full = 0, pensionEarly = 0;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const s = Life.newGame({ name: '2막', gender: i % 2 ? '여' : '남', startAge: 1, scenario: ['kr', 'imf', 'chaebol', 'dirt'][i % 4] });
     let guard = 0;
     while (!s.ended && guard++ < 4000) {
@@ -203,10 +203,10 @@ check('60세 정년 이벤트가 있다', !!retireEv && retireEv.at && retireEv.
     if (s.flags.명퇴) sawMyung++;
     if (s.flags['2막']) sawAct++;
   }
-  check('80년 완주 6회 중 명퇴가 실제로 일어난다', sawMyung >= 1, sawMyung + '/6');
-  check('명퇴한 인생은 2막을 고른다', sawAct >= sawMyung && sawAct >= 1, sawAct + '/6');
+  check('80년 완주 10회 중 명퇴가 실제로 일어난다', sawMyung >= 1, sawMyung + '/10');
+  check('명퇴한 인생은 2막을 고른다', sawAct >= sawMyung && sawAct >= 1, sawAct + '/10');
   check('54~59세에 연금으로 계산된 달 0회', pensionEarly === 0, pensionEarly + '회');
-  check('2막을 겪어도 80세까지 완주한다', full >= 5, full + '/6');
+  check('2막을 겪어도 80세까지 완주한다', full >= 8, full + '/10');
 })();
 
 console.log(out.join('\n'));

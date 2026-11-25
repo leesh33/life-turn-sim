@@ -25,11 +25,20 @@
        · 목표 = 출발선 + gain, 출발선 = 그 구간에 처음 들어선 순간의 능력치
        · 1세부터 이어서 와도, 14세·35세에서 시작해도 막대는 늘 35%에서 출발한다
        · ceil = 그 능력치가 실제로 닿는 천장(88 넘으면 유지 규칙이 눌러 내린다).
-         천장에 붙은 능력치를 목표로 삼으면 영영 못 채우므로 목표를 천장까지만 올린다. */
+         천장에 붙은 능력치를 목표로 삼으면 영영 못 채우므로 목표를 천장까지만 올린다.
+
+     2026-11-25 — 50대·노년 미션을 '달성'이 아니라 '지키기'로 바꿨다.
+       예전엔 '50대 미션 · 체력 88 달성'이었는데, 체력은 50세쯤이면 천장(88)에 붙어 있어
+       진입하자마자 100%로 뜨고 보너스까지 받았다(전수조사 P1-9). 반대로 나이 들면 노화로
+       체력이 내려가 '영영 못 채우는 목표'가 되는 판도 생겼다.
+       이제는 절대선(20대 55 · 50대 70 · 노년 55)을 그어 두고, 그 선 위에서 지낸 달 수로 잰다
+       (30개월 = 2년 반). 이미 높은 사람은 노화를 막으며 지켜야 하고, 낮은 사람은 올라와 지켜야 한다.
+       20대도 같은 이유로 '체력 지키기'로 바꿨다 — 20대 매력은 85 근처에 붙어 있어 +8이 안 닿았다.
+       진입 순간에는 어느 쪽이든 막대가 35%에서 출발한다. */
   var BANDS = [
     { id: 'baby', from: 1, to: 7, name: '유아기', emoji: '🍼', tint: '#FFF0E3', tint2: '#FFDFC4',
       hair: '#43312A', hair2: '#5A4338', cloth: '#F8C3AC', cloth2: '#FFF9F2', accent: '#E79C80',
-      mission: { id: 'm_baby', label: '유아 미션', key: 'social', gain: 45, ceil: 95, verb: '달성', bonus: { social: 3, charm: 2 } } },
+      mission: { id: 'm_baby', label: '유아 미션', key: 'social', gain: 38, ceil: 95, verb: '달성', bonus: { social: 3, charm: 2 } } },
     { id: 'child', from: 8, to: 13, name: '초등학교', emoji: '🎒', tint: '#E9F1FF', tint2: '#D2E3FB',
       hair: '#2E251F', hair2: '#463930', cloth: '#3D5A99', cloth2: '#FFFFFF', accent: '#E0603C',
       mission: { id: 'm_child', label: '초등 미션', key: 'intel', gain: 8, ceil: 88, verb: '돌파', bonus: { intel: 3 } } },
@@ -38,16 +47,16 @@
       mission: { id: 'm_teen', label: '10대 미션', key: 'intel', gain: 10, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
     { id: 'youth', from: 20, to: 25, name: '대학·청년', emoji: '🎓', tint: '#FFF3E1', tint2: '#FBDFB4',
       hair: '#33261D', hair2: '#4C3828', cloth: '#2C8C7A', cloth2: '#FFFFFF', accent: '#C9871F',
-      mission: { id: 'm_youth', label: '20대 미션', key: 'charm', gain: 8, ceil: 89, verb: '달성', bonus: { charm: 3, social: 2 } } },
+      mission: { id: 'm_youth', label: '20대 미션', key: 'hp', hold: 55, months: 30, verb: '지키기', bonus: { hp: 3, mental: 2 } } },
     { id: 'adult', from: 26, to: 49, name: '직장인·성인', emoji: '💼', tint: '#E8EEF9', tint2: '#D2DFF1',
       hair: '#2C241E', hair2: '#41352B', cloth: '#2E3A55', cloth2: '#FFFFFF', accent: '#E0653C',
-      mission: { id: 'm_adult', label: '30·40대 미션', key: 'intel', gain: 9, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
+      mission: { id: 'm_adult', label: '30·40대 미션', key: 'intel', gain: 4, ceil: 88, verb: '돌파', bonus: { intel: 3, mental: 2 } } },
     { id: 'midlife', from: 50, to: 64, name: '중년', emoji: '🌗', tint: '#EDF1F1', tint2: '#D9E3E2',
       hair: '#4A423B', hair2: '#C6BFB6', cloth: '#5B6B7C', cloth2: '#F1EAE0', accent: '#8C6B3F',
-      mission: { id: 'm_midlife', label: '50대 미션', key: 'hp', gain: 16, ceil: 88, verb: '달성', bonus: { hp: 3, mental: 2 } } },
+      mission: { id: 'm_midlife', label: '50대 미션', key: 'hp', hold: 70, months: 30, verb: '지키기', bonus: { hp: 3, mental: 2 } } },
     { id: 'senior', from: 65, to: 200, name: '노년', emoji: '🍂', tint: '#F7F0E4', tint2: '#E8DCC7',
       hair: '#D3CDC5', hair2: '#B7AFA6', cloth: '#8A7355', cloth2: '#F6F0E6', accent: '#6E5A42',
-      mission: { id: 'm_senior', label: '노년 미션', key: 'hp', gain: 9, ceil: 88, verb: '달성', bonus: { hp: 3, mental: 2 } } }
+      mission: { id: 'm_senior', label: '노년 미션', key: 'hp', hold: 55, months: 30, verb: '지키기', bonus: { hp: 3, mental: 2 } } }
   ];
 
   function bandOf(age) {
@@ -601,7 +610,14 @@
     return out.join('');
   }
 
-  /* ── 재산 표기 ── */
+  /* ── 재산 표기 ──
+     화면의 금액은 모두 엔진의 formatAsset 을 쓴다 — '1억 2,000만 원' / '500만원' 처럼
+     한 가지 규칙으로 읽히게(미션 목표·연 수지·전당). 엔진이 없을 때만 옛 표기로 물러난다. */
+  function moneyText(v) {
+    if (global.Life && typeof global.Life.formatAsset === 'function') return global.Life.formatAsset(v);
+    var n = Math.round(Math.abs(v));
+    return (v < 0 ? '-' : '') + (n >= 10000 ? (Math.round(n / 1000) / 10) + '억 원' : n.toLocaleString('ko-KR') + '만원');
+  }
   function manText(v) {
     var n = Math.round(Math.abs(v));
     var sign = v < 0 ? '-' : '';
@@ -637,9 +653,58 @@
     return state.missionBase[band.id];
   }
 
+  /* ── 지키기 미션(50대·노년) ──
+     절대선(def.hold) 위에서 지낸 달 수로 잰다. state.missionHold[bandId] 에 한 달에 한 번만 센다
+     (같은 턴에 화면을 여러 번 그려도 부풀지 않게 state.turn 으로 막는다).
+     진입 순간 막대는 다른 미션과 같이 35%에서 출발하고, 선 아래로 내려간 달은 세지 않는다. */
+  function holdMission(state, band, def) {
+    var st = state.stats || {};
+    var cur = num(st[def.key], 0);
+    var need = def.months || 30;
+    if (!state.missionHold) state.missionHold = {};
+    var t = state.missionHold[band.id];
+    var turn = num(state.turn, 0);
+    // 들어선 달은 세지 않는다 — 그 달은 막대가 35%에서 출발하는 달이다
+    if (!t || typeof t !== 'object') t = state.missionHold[band.id] = { months: 0, turn: turn };
+    if (typeof t.months !== 'number' || isNaN(t.months)) t.months = 0;
+    if (t.turn !== turn) {
+      t.turn = turn;
+      if (cur >= def.hold) t.months += 1;
+    }
+    if (state.missions && state.missions[def.id]) t.months = Math.max(t.months, need);
+    var done = !!(state.missions && state.missions[def.id]);
+    var pct = done ? 100
+      : clamp(Math.round(START_SHARE * 100 + (Math.min(t.months, need) / need) * (100 - START_SHARE * 100)), 0, 100);
+    var bonusLabel = Object.keys(def.bonus).map(function (k) {
+      if (k === 'asset') return '재산 +' + moneyText(def.bonus[k]);
+      return (KEY_LABEL[k] || k) + ' +' + def.bonus[k];
+    }).join(' · ');
+    return {
+      id: def.id,
+      bandId: band.id,
+      label: missionLabelOf(band, state.age),
+      goal: KEY_LABEL[def.key] + ' ' + def.hold + ' ' + def.verb,
+      inDebt: false,
+      key: def.key,
+      cur: cur,
+      target: def.hold,
+      base: def.hold,
+      anchor: def.hold,
+      hold: def.hold,
+      months: t.months,
+      need: need,
+      pct: pct,
+      done: done,
+      bonus: def.bonus,
+      bonusLabel: bonusLabel,
+      curText: String(Math.round(cur))
+    };
+  }
+
   function mission(state) {
     var band = bandOf(state.age);
     var def = band.mission;
+    if (def.hold) return holdMission(state, band, def);
     var st = state.stats || {};
     var cur = def.key === 'asset' ? num(st.asset, 0) : num(st[def.key], 0);
     var anchor = ensureBase(state);
@@ -665,12 +730,12 @@
     var goal = inDebt
       ? '빚 청산'
       : (def.key === 'asset'
-        ? '재산 ' + manText(target) + '원 ' + def.verb
+        ? '재산 ' + moneyText(target) + ' ' + def.verb
         : KEY_LABEL[def.key] + ' ' + target + ' ' + def.verb);
     var pct = inDebt ? 0 : clamp(((cur - base) / span) * 100, 0, 100);
     var done = !!(state.missions && state.missions[def.id]);
     var bonusLabel = Object.keys(def.bonus).map(function (k) {
-      if (k === 'asset') return '재산 +' + manText(def.bonus[k]) + '원';
+      if (k === 'asset') return '재산 +' + moneyText(def.bonus[k]);
       return (KEY_LABEL[k] || k) + ' +' + def.bonus[k];
     }).join(' · ');
     return {
@@ -688,7 +753,7 @@
       done: done,
       bonus: def.bonus,
       bonusLabel: bonusLabel,
-      curText: def.key === 'asset' ? manText(cur) + '원' : String(Math.round(cur))
+      curText: def.key === 'asset' ? moneyText(cur) : String(Math.round(cur))
     };
   }
 

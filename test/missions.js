@@ -18,13 +18,17 @@ const BANDS = Avatar.BANDS;
 /* ═════════ ① 미션 정의 ═════════ */
 check('나이대 7개 모두 미션 정의', BANDS.every((b) => b.mission && b.mission.id && b.mission.key), BANDS.length + '개');
 check('미션 id 가 서로 다름', new Set(BANDS.map((b) => b.mission.id)).size === BANDS.length);
+// 2026-11-25 — 50대·노년은 '지키기'(hold) 미션: 성장폭 대신 절대선(hold)과 지킬 달 수(months)
 const badDef = BANDS.filter((b) => {
   const m = b.mission;
-  return !KEYS.has(m.key) || typeof m.gain !== 'number' || m.gain <= 0 ||
-    typeof m.ceil !== 'number' || m.ceil <= 0 || m.ceil > 100 ||
-    !m.bonus || !Object.keys(m.bonus).length || !m.label || !m.verb;
+  const hold = typeof m.hold === 'number' && m.hold > 0 && typeof m.months === 'number' && m.months > 0;
+  const grow = typeof m.gain === 'number' && m.gain > 0 &&
+    typeof m.ceil === 'number' && m.ceil > 0 && m.ceil <= 100;
+  return !KEYS.has(m.key) || !(hold || grow) || !m.bonus || !Object.keys(m.bonus).length || !m.label || !m.verb;
 });
-check('정의 점검(능력치·성장폭·천장·보너스)', badDef.length === 0, badDef.map((b) => b.id).join(', '));
+check('정의 점검(능력치·성장폭/지키기·천장·보너스)', badDef.length === 0, badDef.map((b) => b.id).join(', '));
+check('지키기 미션은 20대·50대·노년', BANDS.filter((b) => b.mission.hold).map((b) => b.id).join(',') === 'youth,midlife,senior',
+  BANDS.filter((b) => b.mission.hold).map((b) => `${b.id} ${b.mission.key} ${b.mission.hold} ${b.mission.months}개월`).join(' / '));
 check('능력치는 0~100 게이지 여섯 개 중 하나', BANDS.every((b) => b.mission.key !== 'luck' || b.id === 'x'),
   BANDS.map((b) => b.mission.key).join(','));
 
@@ -35,15 +39,22 @@ startAges.forEach((age) => {
   const s = Life.newGame({ name: '시작' + age, gender: '남', startAge: age });
   Avatar.ensureBase(s);
   const m = Avatar.mission(s);
+  const hold = !!Avatar.bandOf(age).mission.hold;
   check(`${age}세 시작 미션 ${m.pct}% (30~45%)`, m.pct >= 30 && m.pct <= 45, `${m.label} · ${m.goal}`);
   check(`${age}세 시작 미션은 70% 미만`, m.pct < 70, m.pct + '%');
   check(`${age}세 시작 미션은 아직 미달성`, m.done === false && m.pct < 100);
-  check(`${age}세 목표는 출발선보다 위`, m.target > m.anchor, `${m.anchor} → ${m.target}`);
-  check(`${age}세 출발선이 상태에 남음`, s.missionBase && s.missionBase[Avatar.bandOf(age).id] === m.anchor,
-    JSON.stringify(s.missionBase));
-  const ceil = Avatar.bandOf(age).mission.ceil;
-  check(`${age}세 목표가 천장 이하`, m.target <= ceil, `${m.target} ≤ ${ceil}`);
-  check(`${age}세 목표 문구`, /^(호감도|역량|매력|체력|멘탈) \d+ (달성|돌파)$/.test(m.goal), m.goal);
+  check(`${age}세 목표는 출발선보다 위`, hold ? m.target === Avatar.bandOf(age).mission.hold : m.target > m.anchor,
+    `${m.anchor} → ${m.target}`);
+  if (!hold) {
+    check(`${age}세 출발선이 상태에 남음`, s.missionBase && s.missionBase[Avatar.bandOf(age).id] === m.anchor,
+      JSON.stringify(s.missionBase));
+    const ceil = Avatar.bandOf(age).mission.ceil;
+    check(`${age}세 목표가 천장 이하`, m.target <= ceil, `${m.target} ≤ ${ceil}`);
+  } else {
+    check(`${age}세 지키기 미션은 지킨 달 0`, m.months === 0 && m.need === Avatar.bandOf(age).mission.months,
+      `${m.months}/${m.need}개월`);
+  }
+  check(`${age}세 목표 문구`, /^(호감도|역량|매력|체력|멘탈) \d+ (달성|돌파|지키기)$/.test(m.goal), m.goal);
 });
 
 /* ═════════ ③ 1세부터 이어서 — 나이대가 바뀔 때마다 35% ═════════ */
