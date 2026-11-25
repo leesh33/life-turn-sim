@@ -1,4 +1,5 @@
 // 2026-11-24 빌드 4 — 나이대 기본 호칭 세분화 + 금액 표기('1억만원' → '1억 원')
+// 2026-11-25 — 금액은 억 아래도 '500만 원'으로 띄어 쓰고, 퇴직금 문구·금액을 맞춘다(P2-6)
 //  · 직업이 없을 때 전부 'K-청년' 이던 칭호를 나이·상태로 나눈다(1세 요약이 '평범하게 살아낸 K-청년').
 //  · 재산 포매터가 '억' 뒤에 '만원' 을 또 붙여 '1억만원' 으로 찍히던 것을 '1억 원' / '1억 2,000만 원' 으로.
 //  · 명예의 전당 기본 시드(가상 인물)의 제목도 같은 규칙을 따르고, 이미 시드된 기기는 제목만 갱신된다.
@@ -135,6 +136,25 @@ check('이미 시드된 기기: 내 기록 제목은 손대지 않음', !!mineRe
 check('이미 시드된 기기: 새 시드가 뒤늦게 끼어들지 않음', recs.filter((r) => r.seed).length === 1, `${recs.filter((r) => r.seed).length}건`);
 const saved = JSON.parse(localStorage.getItem(HALL_KEY));
 check('시드 갱신 표시 저장(seedRev)', saved.seedRev === 2, String(saved.seedRev));
+
+/* ═════════════ 4) 이벤트 본문·선택지의 금액 표기 (2026-11-25 P2-6) ═════════════ */
+// 숫자 뒤 '만원'을 붙여 쓴 표기가 남아 있으면 formatAsset('500만 원')과 어긋난다.
+// ('만원 지하철'·'만원짜리'처럼 금액이 아닌 말은 숫자가 앞에 오지 않아 걸리지 않는다)
+const eventDir = path.join(BASE, 'events');
+const badMoney = [];
+for (const f of fs.readdirSync(eventDir).filter((x) => x.endsWith('.js'))) {
+  const src = fs.readFileSync(path.join(eventDir, f), 'utf8');
+  const m = src.match(/[0-9][0-9,]*만원/g);
+  if (m) badMoney.push(f + ':' + m.slice(0, 3).join(','));
+}
+check("이벤트 금액은 'N만 원'으로 띄어 쓴다", badMoney.length === 0, badMoney.slice(0, 4).join(' / '));
+const 퇴직금 = Life.byId('mid54a');
+check('명퇴 수락 문구에 퇴직금 1,800만 원', 퇴직금.choices[0].result.indexOf('1,800만 원') !== -1, 퇴직금.choices[0].result.slice(0, 30));
+check('명퇴 협상 문구에 2,200만 원', 퇴직금.choices[1].result.indexOf('2,200만 원') !== -1, 퇴직금.choices[1].result.slice(0, 34));
+check('정년 퇴직금 2,600만 원', Life.byId('sa_60b').choices[0].result.indexOf('2,600만 원') !== -1,
+  Life.byId('sa_60b').choices[0].result.slice(0, 26));
+check('2막 첫 달 문구에 퇴직금 중복 없음', Life.byId('sa_54a').text.indexOf('들어왔습니다') === -1,
+  Life.byId('sa_54a').text.slice(0, 30));
 
 const fail = ran.filter((r) => r.startsWith('FAIL'));
 console.log(ran.join('\n'));

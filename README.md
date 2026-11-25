@@ -603,7 +603,13 @@ App Store 출시 뒤 미뤄 둔 **웹 밸런스 개편**입니다. 앱(`life-tur
 | 퇴직금 문구·금액이 어긋나고 `만원`/`만 원` 표기가 섞임 (P2-6) | 명퇴 1,800만 원(협상 2,200만 원)·정년 2,600만 원으로 문구에 금액 명시, `2막` 첫 달 문구 중복 제거. 모든 금액 표기를 `formatAsset` 하나로(`500만 원` · `1억 2,000만 원`) — 이벤트 60여 곳·연 수지·미션·결과 카드 |
 
 - 실측 도구: `node tools/balance-report.js --runs 4` — 정책 8종(무난·무작위·첫 선택·돈·건강·건강 소홀·경고 외면·몸 외면) × 시나리오 4 × 4회로 80년을 살려 체력·재산·등급·경고 달·조기 엔딩 나이·미션 진입률을 한 표로 냅니다.
-- 회귀: `node test/` 22종 전체 통과. `test/health.js` 32항목(나이 배율·20세 전 보호 추가), `test/missions.js` 82항목(지키기 미션), `test/second-act.js` 48항목(퇴직금 2,600만·정년), `test/naming.js` 62항목(`만 원` 표기).
+- 회귀: `node test/` 22종 전체 통과. `test/health.js` 32항목(나이 배율·20세 전 보호 추가), `test/missions.js` 82항목(지키기 미션), `test/second-act.js` 48항목(퇴직금 2,600만·정년), `test/naming.js` 67항목(`만 원` 표기·퇴직금 문구), `test/stats.js` 46항목(점수 하나·건강이 등급에 반영).
+- **라이브 확인(2026-11-25, https://life-turn-sim.vercel.app · 390×844)** — `main` 푸시 뒤 Vercel 자동 배포. 배포본 `assets/engine.js`·`avatar.js`·`events/health.js` md5가 로컬과 같음.
+  - 50세 화면: `🎯 50대 미션 · 체력 70 지키기 · 35%` (진입 100% 아님) — `downloads/live-50s-mission-390x844.png`
+  - 60세 화면: `🎯 60대 미션 · 체력 70 지키기 · 35%` — `downloads/live-60s-mission-390x844.png`
+  - 80세 엔딩: `B · 탄탄한 인생 · 총점 63` · 체력 75 / 멘탈 78(88·94 아님) — `downloads/live-ending-390x844.png`. 같은 인생의 전당 기록도 `B · 63.4` (같은 점수)
+  - 명퇴·2막: `퇴직금 1,800만 원`(협상 2,200만 원) → 다음 달 `인생 2막` 문구에 퇴직금 중복 없음 — `downloads/live-54b-act2-390x844.png`
+  - 시작 화면·콘솔 오류 0 — `downloads/live-start-390x844.png`
 
 ### 5) 검사·도구
 

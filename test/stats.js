@@ -199,6 +199,23 @@ check('회고 편지 10줄', letter.length === 10, `${letter.length}줄`);
 check('회고 편지에 머리·운 이야기', letter.some((l) => /머리|운|역량|행운/.test(l)),
   letter.filter((l) => /머리|운/.test(l))[0] || '-');
 
+/* ═════════ 인생 점수 — 하나의 기준 (2026-11-25 P1-4) ═════════ */
+// 엔딩 등급(gradeOf)·전당 점수(scoreOfStats)·랭킹 점수가 같은 식이어야 한다.
+const stA = { hp: 75, mental: 80, charm: 72, social: 80, intel: 76, luck: 50, asset: 25000 };
+const stB = { hp: 30, mental: 80, charm: 70, social: 78, intel: 76, luck: 50, asset: 25000 };
+check('scoreOfStats = lifeScore (같은 함수)', Life.scoreOfStats(stA) === Life.lifeScore(stA) &&
+  Life.scoreOfStats(stB) === Life.lifeScore(stB), `${Life.scoreOfStats(stA)} · ${Life.scoreOfStats(stB)}`);
+const gA = Life.gradeOf({ stats: stA, history: [] });
+check('gradeOf 점수 = scoreOfStats 점수', Math.abs(gA.score - Life.scoreOfStats(stA)) < 1e-9,
+  `${gA.score} · ${Life.scoreOfStats(stA)}`);
+check('등급은 점수 하나로 갈린다', Life.scoreGrade(gA.score).grade === gA.grade &&
+  Life.scoreGrade(0).grade === 'D' && Life.scoreGrade(100).grade === 'S',
+  `${gA.grade}(${Math.round(gA.score)}) · D(0) · S(100)`);
+check('건강이 무너진 인생은 같은 재산이라도 점수가 낮다', Life.scoreOfStats(stB) < Life.scoreOfStats(stA),
+  `체력 30 ${Life.scoreOfStats(stB).toFixed(1)} < 체력 75 ${Life.scoreOfStats(stA).toFixed(1)} (둘 다 2.5억)`);
+check('재산이 같으면 능력치가 높은 쪽이 높다',
+  Life.lifeScore(Object.assign({}, stA, { hp: 60 })) < Life.lifeScore(stA), '');
+
 /* ═════════ 출력 ═════════ */
 console.log(results.join('\n'));
 const fails = results.filter((r) => r.startsWith('FAIL')).length;
