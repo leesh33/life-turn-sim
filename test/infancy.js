@@ -133,6 +133,62 @@ check('백일(100일≈3.3개월) 타이밍이 3~5개월차 안', !!hundred && h
   hundred && '4개월차');
 check('백일 사진 지문에 배고픔이 남아 있음', !!hundred && /배가 고픕니다|배고픕니다/.test(hundred.text), hundred && hundred.text);
 
+/* ═════════ ④-b 영유아 발달 월령 ═════════
+   1세 = 태어난 달(1개월차)~돌(12개월차). 발달 이벤트가 실제 육아 월령에 맞는지 본다.
+   (2026-11-25 피드백: 8개월차 터미타임·9개월차 배밀이는 너무 늦다) */
+const monthAt = (ev) => (ev && Array.isArray(ev.at) && !Array.isArray(ev.at[0]) ? ev.at[1] : null);
+const MONTH_MAP = [
+  // id, 기대 개월차, 기대 범위 [최소, 최대], 설명
+  ['rt_n05', 3, [2, 3], '터미타임(엎드려 연습)'],
+  ['baby_babble', 3, [3, 5], '첫 옹알이'],
+  ['inf1k', 5, [3, 5], '뒤집기'],
+  ['crawling', 6, [5, 7], '배밀이(기기)'],
+  ['first_tooth', 7, [6, 10], '첫 이'],
+  ['first_word', 10, [9, 15], '첫 단어'],
+  ['first_steps', 11, [11, 12], '첫 걸음마'],
+  ['doljanchi', 12, [11, 12], '돌잔치'],
+  ['inf2a', 12, [12, 12], '두 번째 생일(2세 12개월차)']
+];
+MONTH_MAP.forEach(([id, want, range, label]) => {
+  const ev = byId(id);
+  if (!ev) { check(`${label} 존재`, false, '없음'); return; }
+  const m = monthAt(ev);
+  check(`${label} ${want}개월차 고정`, m === want && ev.at[0] === (id === 'inf2a' ? 2 : 1), ev ? JSON.stringify(ev.at) : '없음');
+  check(`${label} 월령 범위 ${range[0]}~${range[1]}`, m !== null && m >= range[0] && m <= range[1], `${m}개월차`);
+});
+
+// 1세 발달 순서: 태어남 → 터미타임 → 백일 → 뒤집기 → 배밀이 → 첫 이 → 첫 단어 → 걸음마 → 돌잔치
+const order = ['birth_cry', 'formula_30', 'rt_n05', 'hundred_days', 'inf1k', 'crawling', 'first_tooth', 'first_word', 'first_steps', 'doljanchi'];
+const monthSeq = order.map((id) => monthAt(byId(id)));
+check('1세 발달 순서가 월령 오름차순', monthSeq.every((m, i) => m !== null && (i === 0 || m >= monthSeq[i - 1])), monthSeq.join(' → '));
+
+// 월령 조건(when)이 붙은 발달 이벤트 — 이른 달에는 열리지 않는다
+const monthState = (month) => ({
+  age: 1, month: month, turn: month, gender: '남', flags: {},
+  stats: { hp: 60, mental: 60, charm: 55, social: 55, intel: 55, luck: 50, asset: 100 }, current: null, history: [], missions: {}
+});
+const opensAt = (id, month) => {
+  const ev = byId(id);
+  if (!ev) return null;
+  return typeof ev.when === 'function' ? !!ev.when(monthState(month)) : true;
+};
+const WHEN_MAP = [
+  ['rt_n04', '낯가림', 6, 7],
+  ['rt_n09', '옹알이 주고받기', 3, 4],
+  ['rt_n10', '첫 이유식', 4, 5],
+  ['baby_food', '이유식 시간', 4, 5],
+  ['inf1c', '밤중 수유 줄이기', 3, 4],
+  ['inf1d', '이유식 거부', 4, 5]
+];
+WHEN_MAP.forEach(([id, label, closedMonth, openMonth]) => {
+  check(`${label} ${closedMonth}개월차엔 안 나옴`, opensAt(id, closedMonth) === false, String(opensAt(id, closedMonth)));
+  check(`${label} ${openMonth}개월차엔 열림`, opensAt(id, openMonth) === true, String(opensAt(id, openMonth)));
+});
+
+// 1세 이벤트가 12개월 밖으로 새지 않는다
+const outOfYear = infancy.filter((e) => e.minAge === 1 && e.maxAge === 1 && e.at && (e.at[0] !== 1 || e.at[1] < 1 || e.at[1] > 12));
+check('1세 고정 이벤트는 모두 1~12개월차', outOfYear.length === 0, outOfYear.map((e) => e.id + JSON.stringify(e.at)).join(' / '));
+
 /* ═════════ ⑤ 유아기 말풍선 ═════════ */
 const S = (age, stats) => ({
   age: age, month: 4, turn: 3, gender: '남',

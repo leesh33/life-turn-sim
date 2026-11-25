@@ -78,6 +78,7 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
   },
   {
     id: 'baby_food', stage: 'infancy', minAge: 1, maxAge: 1, place: '이유식 의자',
+    when: function (s) { return s.month >= 5; },
     title: '이유식 시간',
     text: '이유식이 나왔습니다. 미음입니다. 옆에서 아빠가 숟가락을 들고 있습니다.',
     choices: [
@@ -86,7 +87,8 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'crawling', stage: 'infancy', at: [1, 9], place: '거실',
+    // 배밀이(기기)는 5~7개월차 — 1세 6개월차에 고정한다 (9개월차는 너무 늦다는 피드백)
+    id: 'crawling', stage: 'infancy', at: [1, 6], place: '거실',
     title: '배밀이 시작',
     text: '거실 끝에 리모컨이 있습니다. 저건 반드시 물어야 합니다.',
     choices: [
@@ -108,7 +110,8 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
 
   /* ══════════════ 2~7세 ══════════════ */
   {
-    id: 'first_steps', stage: 'infancy', at: [2, 3], place: '거실', milestone: true,
+    // 첫 걸음마는 11~12개월차 — 돌잔치(12개월차) 바로 앞, 1세 11개월차에 고정한다
+    id: 'first_steps', stage: 'infancy', at: [1, 11], place: '거실', milestone: true,
     title: '첫 걸음마',
     text: '소파를 잡고 일어섰습니다. 저기 아빠가 두 팔을 벌리고 있습니다. 세 걸음이면 닿습니다.',
     choices: [
@@ -117,7 +120,8 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     ]
   },
   {
-    id: 'first_word', stage: 'infancy', at: [2, 7], place: '거실', milestone: true,
+    // 첫 단어는 10~15개월차 — 1세 10개월차에 두어 2세 7개월차(19개월)보다 이르게
+    id: 'first_word', stage: 'infancy', at: [1, 10], place: '거실', milestone: true,
     title: '첫 단어',
     text: '오늘 처음으로 제대로 된 단어를 말할 것 같습니다. 입이 근질거립니다.',
     choices: [
