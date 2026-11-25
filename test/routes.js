@@ -84,8 +84,23 @@ const before = Life.currentEvent(rr).id;
 const next = Life.reroll(rr);
 check('다시 뽑기: 이벤트가 바뀜', !!next && next.id !== before, `${before} → ${next && next.id}`);
 check('다시 뽑기: 선택 전에는 계속 가능', Life.canReroll(rr) === true);
+check('다시 뽑기: 1회 쓰면 4회 남음', Life.rewardState(rr).rerollLeft === 4, `남은 ${Life.rewardState(rr).rerollLeft}회`);
 Life.choose(rr, 0);
 check('다시 뽑기: 선택 후에는 불가', Life.canReroll(rr) === false);
+
+// 5-1) 다시 뽑기 제한 — 중요한 사건(마일스톤)은 안 되고, 한 판에 5회까지 (2026-11-25)
+let ms = Life.newGame({ name: '중요한사건', gender: '남', startAge: 25 });
+ms.current = { eventId: 'job_start', chosen: null, event: null };
+check('다시 뽑기: 마일스톤(취직)은 다시 뽑을 수 없다',
+  Life.canReroll(ms) === false && Life.rewardState(ms).rerollBlock === 'milestone',
+  Life.rewardState(ms).rerollBlock);
+let lim = Life.newGame({ name: '횟수제한', gender: '여', startAge: 30 });
+lim.current = { eventId: 'company_dinner', chosen: null, event: null };
+lim.rewards = { heal: 0, reroll: 5, undo: 0 };
+check('다시 뽑기: 한 판 5회를 다 쓰면 불가',
+  Life.canReroll(lim) === false && Life.rewardState(lim).rerollBlock === 'limit' && Life.rewardState(lim).rerollLeft === 0);
+check('다시 뽑기: 5회 제한은 판마다 새로 센다',
+  Life.rewardState(Life.newGame({ name: '새판', gender: '여', startAge: 30 })).rerollLeft === 5);
 
 // 6) 보상형 광고: 긴급 회복
 let h = Life.newGame({ name: '회복', gender: '남', startAge: 40 });
@@ -220,6 +235,61 @@ FOLLOW.forEach(([parent, child, age]) => {
   check('완주 엔딩 회고 8~11줄', Life.recall(s80, 'life').length >= 8);
   Life.clear();
   global.window.localStorage.removeItem('lifeTurnSim.hall.v1');
+})();
+
+/* ── 11) 수능·원서 결과 갈래는 하나만 (2026-11-25) ──
+   예전에는 수능 당일 '명문대'가 켜진 뒤 원서에서 '지방대'가 또 켜져
+   결과 카드에 '명문대 진학 · 지방대 진학'이 나란히 찍혔다. */
+(function () {
+  const ADMIT = ['수능_명문', '수능_지방', '전문대'];
+  const bad = [];
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1]].forEach(([day, form]) => {
+    const s = Life.newGame({ name: '수능', gender: '남', startAge: 19 });
+    s.current = { eventId: 'csat_day', chosen: null, event: null };
+    Life.choose(s, day);
+    s.current = { eventId: 'csat_result', chosen: null, event: null };
+    Life.choose(s, form);
+    const on = ADMIT.filter((k) => s.flags[k]);
+    if (on.length > 1) bad.push(`수능${day}→원서${form}: ${on.join('+')}`);
+    if (day !== 2 && on.length === 0) bad.push(`수능${day}→원서${form}: 결과 없음`);
+    const tags = Life.summary(s).tags.filter((t) => /진학/.test(t));
+    if (tags.length > 1) bad.push(`수능${day}→원서${form} 태그: ${tags.join('+')}`);
+  });
+  check('수능 결과는 하나만 (명문대·지방대·전문대 배타)', bad.length === 0, bad.slice(0, 4).join(' / ') || '8조합');
+
+  // 미니 승부(수능 시계)로 명문대가 켜져도, 원서 결과가 그것을 덮는다
+  const m = Life.newGame({ name: '수능미니', gender: '여', startAge: 18 });
+  m.current = { eventId: 'mg_high_suneung', chosen: null, event: null };
+  Life.choose(m, 1, { miniWin: true });
+  const byWin = ADMIT.filter((k) => m.flags[k]);
+  m.current = { eventId: 'csat_result', chosen: null, event: null };
+  Life.choose(m, 0);
+  check('수능 미니 승부로 켜진 명문대도 원서 결과가 덮는다',
+    byWin.join() === '수능_명문' && m.flags.수능_지방 === true && m.flags.수능_명문 === false,
+    `미니 후 ${byWin.join() || '없음'} → 원서 후 ${ADMIT.filter((k) => m.flags[k]).join()}`);
+})();
+
+/* ── 12) 졸업 회고는 그 시기 기억에서 고른다 (2026-11-25) ──
+   고등학교 졸업 회고에 '1세 조리원 퇴소'가 나오던 문제. */
+(function () {
+  const g = Life.newGame({ name: '회고', gender: '남', startAge: 1 });
+  g.age = 19;
+  g.stats = { hp: 60, mental: 58, charm: 58, social: 56, intel: 60, luck: 50, asset: 30 };
+  g.history = [
+    { turn: 1, age: 1, month: 2, eventId: 'formula_30', title: '조리원 퇴소', situation: '', place: '조리원',
+      milestone: true, choice: '한 번에 든든하게', result: '잘 먹었습니다.', deltas: { hp: 3, mental: 2, social: 2 }, setKeys: ['대식가'] },
+    { turn: 200, age: 17, month: 3, eventId: 'csat_d100', title: '수능 D-100', situation: '', place: '교실',
+      milestone: true, choice: '올인한다', result: '하루 14시간.', deltas: { mental: -2, hp: -3 }, setKeys: ['수능_올인'] },
+    { turn: 210, age: 18, month: 6, eventId: 'night_study', title: '야자', situation: '', place: '교실',
+      milestone: false, choice: '끝까지 앉아 있다', result: '불이 꺼질 때까지.', deltas: { mental: 2 }, setKeys: [] }
+  ];
+  g.grad = { key: 'high', age: 19, registered: false, stats: g.stats };
+  const lines = Life.recall(g, 'grad');
+  check('고등학교 졸업 회고에 유아기 사건이 끼지 않는다',
+    !lines.some((l) => l.indexOf('조리원') !== -1), lines.slice(2, 4).join(' / '));
+  check('고등학교 졸업 회고에 그 시기(고등학교) 사건이 나온다',
+    lines.some((l) => l.indexOf('수능 D-100') !== -1 || l.indexOf('야자') !== -1), lines.slice(2, 4).join(' / '));
+  check('졸업 회고는 8줄 이상', lines.length >= 8, lines.length + '줄');
 })();
 
 console.log(ran.join('\n'));

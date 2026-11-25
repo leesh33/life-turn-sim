@@ -113,6 +113,31 @@ paths.forEach((p) => {
     '60세 ' + l60.job + ' ' + l60.income);
 });
 
+/* ── 3-1) 명퇴 경로의 재취업 연봉 (2026-11-25) ──
+   구조조정(restructuring)은 나갈 때 직업을 비우는데,
+   54세 명퇴 제안(mid54a)은 직업을 그대로 두어 재취업 연봉이 대기업 연봉으로 계산됐다. */
+(function () {
+  const a = at54();
+  put(a, 'mid54a');
+  Life.choose(a, 0);
+  check('명퇴 제안 수락: 직업이 비워진다', a.flags.직업 === null, String(a.flags.직업));
+  a.flags.재취업 = true; a.age = 56;
+  const la = Life.ledgerOf(a);
+  const b = at54();
+  b.flags = { 명퇴: true, 퇴직금_정산: true, 직업: null, 재취업: true };
+  b.age = 56;
+  const lb = Life.ledgerOf(b);
+  check('명퇴 제안 경로도 재취업 연봉이 구조조정과 같다',
+    la.income === lb.income && la.income > 0, `명퇴 ${la.income} · 구조조정 ${lb.income} (${la.job})`);
+  check('명퇴 제안 경로: 대기업 연봉이 그대로 남지 않는다',
+    la.income < Math.round(Life.LEDGER.income['대기업 기획자'] * 1.25 * 0.85), `${la.income} < 대기업 기준`);
+  // 정년까지 남는 선택은 직업을 유지한다
+  const c = at54();
+  put(c, 'mid54a');
+  Life.choose(c, 2);
+  check('정년까지 남는 선택은 직업이 그대로다', c.flags.직업 === '대기업 기획자' && c.flags.정년_선택 === true, String(c.flags.직업));
+})();
+
 /* ── 4) 2막의 장면들 ── */
 ['sa_56a', 'sa_56b', 'sa_56c', 'sa_57a', 'sa_58a', 'sa_59a'].forEach((id) => {
   const ev = byId(id);

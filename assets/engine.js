@@ -100,7 +100,7 @@
          (assets/events/scenario.js) — 재벌가의 승계 압박, 흙수저의 아르바이트, 90년대생의 세대 서사.
        · 기본값('kr')은 지금까지의 균형을 그대로 둔다(아무것도 더하지 않는다). */
   var SCENARIOS = [
-    { id: 'kr', emoji: '🇰🇷', name: '기본 한국 현실', short: '한국 현실',
+    { id: 'kr', emoji: '🏠', name: '기본 한국 현실', short: '한국 현실',
       desc: '평범한 집, 평범한 통장. 특별히 유리하지도 불리하지도 않은 출발입니다.',
       hint: '평범한 집 · 균형 잡힌 출발',
       stats: {}, assetMul: 1, assetAdd: 0, flags: {},
@@ -226,13 +226,16 @@
     }
     return _all;
   }
-  var _index = null, _indexLen = -1;
+  var _index = null, _indexLen = -1, _indexLast = null;
   function byId(id) {
     var list = allEvents();
-    if (!_index || _indexLen !== list.length) {
+    // 길이만 보면 '하나 빼고 하나 더하기'(push/pop 교체)를 놓친다 — 마지막 항목까지 본다
+    var last = list.length ? list[list.length - 1] : null;
+    if (!_index || _indexLen !== list.length || _indexLast !== last) {
       _index = {};
       for (var i = 0; i < list.length; i++) _index[list[i].id] = list[i];
       _indexLen = list.length;
+      _indexLast = last;
     }
     return _index[id] || null;
   }
@@ -532,7 +535,8 @@
   var REWARD = {
     healAmount: 12,      // 긴급 회복량 (체력·멘탈 각각)
     healLimit: 3,        // 한 판에 회복 최대 횟수
-    healThreshold: 30    // 체력 또는 멘탈이 이 값 이하일 때만 활성화
+    healThreshold: 30,   // 체력 또는 멘탈이 이 값 이하일 때만 활성화
+    rerollLimit: 5       // 한 판에 다시 뽑기 최대 횟수
   };
 
   function canUndo(s) {
@@ -576,8 +580,26 @@
     return s.current ? currentEvent(s) : null;
   }
 
+  /* 다시 뽑기 가능 여부 + 못 하는 이유
+     · 선택을 하기 전에만
+     · 마일스톤(수능·입학·취직처럼 인생이 갈리는 장면)은 다시 뽑지 않는다
+     · 한 판에 5회까지 */
+  function rerollState(s) {
+    var left = REWARD.rerollLimit - (s && s.rewards && s.rewards.reroll ? s.rewards.reroll : 0);
+    if (left < 0) left = 0;
+    var block = null;
+    if (!s || s.ended || !s.current) block = 'ended';
+    else if (s.current.chosen !== null) block = 'chosen';
+    else {
+      var ev = s.current.event || byId(s.current.eventId);
+      if (ev && ev.milestone) block = 'milestone';
+    }
+    if (!block && left <= 0) block = 'limit';
+    return { ok: !block, left: left, block: block };
+  }
+
   function canReroll(s) {
-    return !!(s && !s.ended && s.current && s.current.chosen === null);
+    return rerollState(s).ok;
   }
 
   // 현재 이벤트를 다른 이벤트로 바꾼다
@@ -617,9 +639,13 @@
 
   function rewardState(s) {
     if (s && !s.rewards) s.rewards = { heal: 0, reroll: 0, undo: 0 };
+    var rr = rerollState(s);
     return {
       canUndo: canUndo(s),
-      canReroll: canReroll(s),
+      canReroll: rr.ok,
+      rerollLeft: rr.left,
+      rerollBlock: rr.block,
+      rerollLimit: REWARD.rerollLimit,
       canHeal: canHeal(s),
       healLeft: s && s.rewards ? REWARD.healLimit - s.rewards.heal : REWARD.healLimit,
       healAmount: REWARD.healAmount,
@@ -1679,14 +1705,7 @@
     if (s.flags.직업) tags.unshift(s.flags.직업);
     if ((s.flags.자녀수 || 0) >= 2) tags.push('자녀 ' + s.flags.자녀수 + '명');
 
-    var highlights = s.history.slice().map(function (h) {
-      var impact = 0;
-      Object.keys(h.deltas || {}).forEach(function (k) {
-        var v = h.deltas[k];
-        impact += (k === 'asset') ? Math.min(3, Math.abs(v) / 300) : Math.abs(v);
-      });
-      return { h: h, impact: impact + (h.milestone ? 4 : 0) };
-    }).sort(function (a, b) { return b.impact - a.impact; }).slice(0, 3).map(function (x) { return x.h; });
+    var highlights = s.history.slice().sort(byImpact).slice(0, 3);
 
     var oneLiner = buildOneLiner(s, g);
 
@@ -1788,7 +1807,19 @@
       var v = h.deltas[k];
       impact += (k === 'asset') ? Math.min(3, Math.abs(v) / 300) : Math.abs(v);
     });
-    return impact + (h.milestone ? 4 : 0);
+    // 유아기(1~7세)의 마일스톤은 인생에서의 무게가 작다 — 같은 4점을 주면
+    // 매 판 '1세 조리원 퇴소'가 하이라이트 1번을 차지한다.
+    if (h.milestone) impact += (h.age <= 7 ? 1 : 4);
+    return impact;
+  }
+
+  // 하이라이트 정렬: 점수가 같으면 뒤에 겪은 사건을 앞세운다(인생은 뒤로 갈수록 굵어진다)
+  function byImpact(a, b) {
+    var d = impactOf(b) - impactOf(a);
+    if (Math.abs(d) > 1e-9) return d;
+    if (b.age !== a.age) return b.age - a.age;
+    if (b.month !== a.month) return b.month - a.month;
+    return (b.turn || 0) - (a.turn || 0);
   }
 
   function statSnapshot(st) {
@@ -1803,14 +1834,36 @@
   }
 
   /* ── 졸업 결산 정보 ── */
+  /* ── 졸업식 문구 ──
+     24세 졸업식은 '대학교 졸업식'으로 고정돼 있었다.
+     전문대에 간 사람, 대학에 가지 않고 일찍 길을 고른 사람에게도 같은 문구가 나오면 어색하다.
+     그 사람이 실제로 걸어온 길에 맞춰 이름·라벨·설명만 바꿔 준다(점수·전당 키는 그대로 college). */
+  function gradDefFor(s, def) {
+    if (!def || def.key !== 'college') return def;
+    var f = (s && s.flags) || {};
+    if (f.전문대) {
+      return Object.assign({}, def, {
+        emoji: '🎓', name: '전문대 졸업식', label: '전문대 졸업 엔딩', short: '전문대 졸업',
+        years: 2, sub: '전문대 2년', stageLabel: '전문대'
+      });
+    }
+    if (!(f.수능_명문 || f.수능_지방 || f.대학생 || f.대졸 || f.대학원_진학)) {
+      return Object.assign({}, def, {
+        emoji: '🧭', name: '스무 살의 결산', label: '스무 살 결산 엔딩', short: '스무 살 결산',
+        years: 5, sub: '대학 대신 일찍 고른 길', stageLabel: '스무 살', recallKey: 'twenties'
+      });
+    }
+    return def;
+  }
+
   function gradInfo(s) {
     if (!s || !s.grad) return null;
-    var def = GRAD_BY_KEY[s.grad.key];
+    var def = gradDefFor(s, GRAD_BY_KEY[s.grad.key]);
     if (!def) return null;
     var st = s.grad.stats || statSnapshot(s.stats);
     var stage = stageOf(def.age);
     var entries = (s.history || []).filter(function (h) { return h.age >= stage.from && h.age <= stage.to; });
-    var highlights = entries.slice().sort(function (a, b) { return impactOf(b) - impactOf(a); }).slice(0, 3);
+    var highlights = entries.slice().sort(byImpact).slice(0, 3);
 
     var flags = [];
     entries.forEach(function (h) {
@@ -2247,6 +2300,11 @@
       '졸업증명서 한 장이, 몇 해의 밤낮을 접어 넣은 종이가 되었습니다.',
       '도서관 창가 자리, 음료수 캔, 그리고 이름 모를 누군가의 필기 소리.'
     ],
+    twenties: [
+      '교실 대신 일터로 먼저 들어갔습니다. 배움은 그 뒤로도 계속됐습니다.',
+      '친구들이 캠퍼스에 있을 때, 나는 다른 속도로 세상을 익혔습니다.',
+      '스무 살의 몇 해는 이름 없이 지나갔습니다. 그 시간이 지금의 나를 받치고 있습니다.'
+    ],
     life80: [
       '여든 번의 봄을 지나, 이제 창가에 앉아 지나온 길을 셉니다.',
       '손등의 주름 사이로, 그 시절의 햇빛이 아직 남아 있습니다.',
@@ -2278,6 +2336,10 @@
     college: [
       '이제 학생이라는 이름을 내려놓고, 내 이름으로 서야 합니다.',
       '졸업식장을 나서는 발걸음이, 처음 걷는 길처럼 낯섭습니다.'
+    ],
+    twenties: [
+      '이제 스무 살의 몇 해를 마쳤습니다. 여기까지 온 것이 벅차고, 아직 남은 길이 길게 보입니다.',
+      '학위 대신 경력이라는 이름으로 지난 몇 해를 묶었습니다. 그것도 내가 들고 가야 할 짐입니다.'
     ],
     life80: [
       '긴 인생이었습니다. 잘 살았는지는 아직 모르겠지만, 살아냈습니다.',
@@ -2384,7 +2446,8 @@
   // 실제 스탯·플래그·선택 기록으로 만드는 8~10줄 회고
   function recallLines(s, mode, info) {
     var wholeLife = mode === 'life' || mode === 'health';
-    var key = mode === 'life' ? 'life80' : mode === 'health' ? 'life_health' : (info ? info.key : 'kindergarten');
+    var key = mode === 'life' ? 'life80' : mode === 'health' ? 'life_health'
+      : (info ? (info.def && info.def.recallKey ? info.def.recallKey : info.key) : 'kindergarten');
     var age = wholeLife ? Math.min(s.age, END_AGE) : (info ? info.age : s.age);
     var st = !wholeLife && info ? info.stats : s.stats;
     var rnd = recallRand([s.name, s.createdAt, mode, key, Math.round(st.hp), Math.round(st.mental)].join('|'));
@@ -2397,17 +2460,20 @@
         ? '몸이 먼저 멈추겠다고 했습니다. 그 말을 듣기까지 ' + age + '년이 걸렸습니다.'
         : '그 사이 세상은 몇 번이나 모습을 바꿨습니다. 나도 그렇게 바뀌었습니다.');
     } else {
-      var stageName = info && info.stage ? info.stage.name : '학교';
+      var stageName = info && info.def && info.def.stageLabel ? info.def.stageLabel
+        : (info && info.stage ? info.stage.name : '학교');
       lines.push('그때 나는 ' + age + '세, ' + stageName + '의 마지막 달을 보내고 있었습니다.');
     }
 
     // 3~4줄: 실제로 겪은 사건에서 기억 한두 개
     var pool = (s.history || []).filter(function (h) { return h.age <= age; });
     if (!wholeLife && info) {
+      // 졸업·엔딩 회고는 그 시기의 기억에서 고른다 — 고교 졸업 회고에
+      // '1세 조리원 퇴소'가 끼어들지 않게, 앞 시기는 해당 시기가 비었을 때만 쓴다.
       var scoped = pool.filter(function (h) { return h.age >= info.stage.from && h.age <= info.stage.to; });
-      if (scoped.length) pool = scoped.concat(pool.filter(function (h) { return h.age < info.stage.from; }));
+      if (scoped.length) pool = scoped;
     }
-    var mem = pool.slice().sort(function (a, b) { return impactOf(b) - impactOf(a); }).slice(0, 2);
+    var mem = pool.slice().sort(byImpact).slice(0, 2);
     mem.sort(function (a, b) { return a.age - b.age; });
     if (mem[0]) {
       lines.push(mem[0].age + '세 ' + mem[0].month + '개월차, ' + mem[0].title + '. 그날의 공기가 아직 남아 있습니다.');

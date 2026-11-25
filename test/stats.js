@@ -61,11 +61,13 @@ const fake2 = { id: '__t2', stage: 'college', minAge: 20, maxAge: 20, title: 't'
   choices: [{ label: 'a', result: 'r', effects: { intel: 5, luck: 5 } }] };
 EVENTS.push(fake2);
 capped.current = { eventId: '__t2', chosen: null, event: null };
-Life.choose(capped, 0);
+const capRes = Life.choose(capped, 0);
 EVENTS.pop();
 check('역량 상한 100', capped.stats.intel <= 100, String(capped.stats.intel));
 check('행운 상한 100', capped.stats.luck <= 100, String(capped.stats.luck));
-check('99에서 +5는 조금만 오름(고수준 체감)', capped.stats.intel < 100, String(capped.stats.intel));
+// 99에서 +5는 0.25배로 줄어 1만 오른다(그래도 100 상한에는 닿는다) — 고수준 체감이 걸린다는 뜻
+check('99에서 +5는 조금만 오름(고수준 체감)', !!capRes && capRes.deltas.intel <= 2,
+  `${capRes && capRes.deltas.intel} 오름 · ${capped.stats.intel}(상한 100)`);
 
 /* ═════════ ④ 최고치 유지 ═════════ */
 const up = Life.newGame({ name: '유지', gender: '남', startAge: 30 });

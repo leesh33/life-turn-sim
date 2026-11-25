@@ -164,6 +164,60 @@ Life.choose(year, 0);
 const adv2 = Life.advance(year);
 check('생일이 아니면 장부 없음', adv2.ledger === null || adv2.ledger === undefined);
 
+/* ── 7) 명백한 표시 오류 (2026-11-25) ── */
+(function () {
+  // 24세 결산 문구는 걸어온 길에 맞춘다
+  function at24(flags) {
+    const s = Life.newGame({ name: '결산', gender: '남', startAge: 17 });
+    s.age = 24; s.month = 12;
+    s.flags = Object.assign({ 고등학생: true }, flags);
+    s.stats = { hp: 60, mental: 58, charm: 58, social: 56, intel: 60, luck: 50, asset: 500 };
+    s.current = { eventId: 'company_dinner', chosen: 0, event: null };
+    Life.advance(s);
+    return { s, info: Life.gradInfo(s), recall: Life.recall(s, 'grad') };
+  }
+  const expert = at24({ 전문대: true });
+  const none = at24({});
+  const uni = at24({ 수능_명문: true });
+  check('24세 결산 — 전문대는 전문대 졸업식',
+    expert.info.def.name === '전문대 졸업식' && expert.info.def.short === '전문대 졸업', expert.info.def.name);
+  check('24세 결산 — 대학에 가지 않은 사람은 대학교 졸업식이 아니다',
+    none.info.def.name === '스무 살의 결산' && none.info.def.short === '스무 살 결산', none.info.def.name);
+  check('24세 결산 — 대학 진학자는 그대로 대학교 졸업식',
+    uni.info.def.name === '대학교 졸업식', uni.info.def.name);
+  check('24세 결산 — 전당 키는 college 로 유지',
+    expert.info.key === 'college' && expert.info.def.key === 'college', expert.info.key);
+  check('24세 회고의 시기 이름도 그 길에 맞는다',
+    expert.recall.some((l) => l.indexOf('전문대의 마지막 달') !== -1) &&
+    none.recall.some((l) => l.indexOf('스무 살의 마지막 달') !== -1) &&
+    !none.recall.some((l) => l.indexOf('대학교의 마지막 달') !== -1),
+    none.recall[1]);
+
+  // 출발 시나리오 이모지에 국기(지역 표시 문자) 금지 — 한글과 겹쳐 보인다
+  const flags2 = Life.SCENARIOS.filter((sc) => /[\u{1F1E6}-\u{1F1FF}]/u.test(sc.emoji || ''));
+  check('출발 시나리오 이모지에 국기 문자 없음', flags2.length === 0,
+    flags2.map((sc) => sc.id + ' ' + sc.emoji).join(' ') || Life.SCENARIOS.map((sc) => sc.emoji).join(''));
+
+  // 공직_길 오타 — 공무원 체인의 requireFlags 는 공무원_길 이다
+  const typo = EVENTS.filter((ev) => JSON.stringify(ev.requireFlags || '').indexOf('공직_길') !== -1);
+  check("requireFlags 에 '공직_길' 오타 없음", typo.length === 0, typo.map((ev) => ev.id).join(','));
+
+  // 수능 결과 갈래는 어느 이벤트에서도 둘이 함께 켜지지 않는다
+  const ADMIT = new Set(['수능_명문', '수능_지방', '전문대']);
+  const both = [];
+  EVENTS.forEach((ev) => {
+    (ev.choices || []).forEach((ch) => {
+      const specs = [ch.set, ch.mini && ch.mini.win && ch.mini.win.set, ch.mini && ch.mini.lose && ch.mini.lose.set];
+      specs.forEach((sp) => {
+        if (!sp || typeof sp !== 'object') return;
+        const on = Object.keys(sp).filter((k) => ADMIT.has(k) && sp[k] === true);
+        if (on.length > 1) both.push(ev.id + ': ' + on.join('+'));
+      });
+    });
+  });
+  check('한 선택지가 수능 결과를 둘 켜지 않는다', both.length === 0, both.slice(0, 4).join(' / '));
+})();
+
 /* ── 출력 ── */
 console.log(results.join('\n'));
 console.log('\n전수조사 검사:', results.length, '항목 · 실패', fails, '건');

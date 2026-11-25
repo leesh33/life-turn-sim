@@ -122,4 +122,23 @@
     only: only
   };
   if (typeof globalThis !== 'undefined') globalThis.LifeTracks = global.LifeTracks;
+
+  /* ── 대입 결과 갈래 도우미 ──
+     수능·원서 결과는 하나만 남는다: 명문대 / 지방대 / 전문대.
+     예전에는 수능 당일 '명문대'가 켜진 뒤 원서에서 '지방대'가 또 켜져
+     결과 카드에 '명문대 진학 · 지방대 진학'이 나란히 찍혔다.
+       LifeAdmission.exclusive('수능_명문') → { 수능_명문: true, 수능_지방: false, 전문대: false } */
+  var ADMISSIONS = ['수능_명문', '수능_지방', '전문대'];
+
+  function admission(name) {
+    var out = {};
+    for (var i = 0; i < ADMISSIONS.length; i++) out[ADMISSIONS[i]] = (ADMISSIONS[i] === name);
+    return out;
+  }
+
+  global.LifeAdmission = {
+    LIST: ADMISSIONS.slice(),
+    exclusive: admission
+  };
+  if (typeof globalThis !== 'undefined') globalThis.LifeAdmission = global.LifeAdmission;
 })(typeof window !== 'undefined' ? window : globalThis);

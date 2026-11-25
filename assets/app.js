@@ -86,7 +86,7 @@
     document.getElementById('screen-start').classList.toggle('has-resume', !!saved);
     if (saved) {
       card.hidden = false;
-      $('resumeName').textContent = saved.name + ' · ' + saved.age + '세';
+      $('resumeName').textContent = saved.name + ' · ' + Math.min(saved.age, Life.END_AGE) + '세';
       $('resumeMeta').textContent = saved.history.length + '개의 선택 · ' +
         (saved.ended ? '엔딩' : (saved.grad ? '졸업 결산' : '진행 중'));
     } else {
@@ -275,7 +275,7 @@
   }
 
   function startGame() {
-    var name = $('nameInput').value.trim() || '상훈';
+    var name = $('nameInput').value.trim() || '나';
     var legacyId = currentAncestor() ? pickedLegacy : null;
     state = Life.newGame({
       name: name,
@@ -736,6 +736,8 @@
   var REWARD_HINT = {
     undo: '지금은 되돌릴 선택이 없어요',
     reroll: '선택을 하기 전에만 다시 뽑을 수 있어요',
+    rerollMilestone: '중요한 사건은 다시 뽑을 수 없어요',
+    rerollLimit: '다시 뽑기는 한 판에 5회까지예요',
     heal: '체력·멘탈이 30 이하일 때 쓸 수 있어요'
   };
 
@@ -762,9 +764,13 @@
       : '기록 없음';
 
     reroll.disabled = !r.canReroll;
-    reroll.querySelector('.rb-sub').textContent = r.canReroll
-      ? (free ? '다른 사건으로' : '광고 보고 다시 뽑기')
-      : '지금은 불가';
+    var rerollSub;
+    if (r.canReroll) {
+      rerollSub = (free ? '다른 사건으로' : '광고 보고 다시 뽑기') + ' (' + r.rerollLeft + '회)';
+    } else if (r.rerollBlock === 'milestone') rerollSub = '중요한 사건';
+    else if (r.rerollBlock === 'limit') rerollSub = '이번 판 소진';
+    else rerollSub = '지금은 불가';
+    reroll.querySelector('.rb-sub').textContent = rerollSub;
 
     heal.disabled = !r.canHeal;
     var healSub = heal.querySelector('.rb-sub');
@@ -779,7 +785,13 @@
     autoClear();
     var r = Life.rewardState(state);
     var ok = kind === 'undo' ? r.canUndo : kind === 'reroll' ? r.canReroll : r.canHeal;
-    if (!ok) { toast(REWARD_HINT[kind] || '지금은 쓸 수 없어요'); return; }
+    if (!ok) {
+      var hint = REWARD_HINT[kind];
+      if (kind === 'reroll' && r.rerollBlock === 'milestone') hint = REWARD_HINT.rerollMilestone;
+      if (kind === 'reroll' && r.rerollBlock === 'limit') hint = REWARD_HINT.rerollLimit;
+      toast(hint || '지금은 쓸 수 없어요');
+      return;
+    }
     // 광고 지면을 감춘 상태에서는 광고 모달 없이 바로 적용한다.
     if (!adsOn()) { applyReward(kind); return; }
     if (typeof window.showRewardedAd !== 'function') { toast('광고 모듈을 찾지 못했습니다'); return; }
@@ -1159,7 +1171,7 @@
         '<div class="gh-emoji">' + def.emoji + '</div>' +
         '<div class="grad-kicker">' + info.age + '세 · 12개월차 · ' + esc(def.short) + '</div>' +
         '<h2 class="grad-name">' + esc(def.name) + '</h2>' +
-        '<p class="grad-sub">' + esc(info.stage.name) + ' ' + def.years + '년 · 선택 ' + info.count + '개</p>' +
+        '<p class="grad-sub">' + (def.sub ? esc(def.sub) : esc(info.stage.name) + ' ' + def.years + '년') + ' · 선택 ' + info.count + '개</p>' +
         stats +
       '</div>' +
       recallCard(recall, '그 시절의 나에게', info.age + '세 · ' + def.short) +

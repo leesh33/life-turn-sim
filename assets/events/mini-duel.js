@@ -564,7 +564,7 @@
       win: {
         result: '딱 맞춰 마지막 문제를 풀었습니다. 답을 적고 시계를 봤습니다.',
         effects: { mental: 3, hp: 1 },
-        set: { 수능_명문: true }
+        set: LifeAdmission.exclusive('수능_명문')
       },
       lose: {
         result: '시간이 부족해 마지막 문제를 비웠습니다. 시험장을 나오며 한숨을 쉬었습니다.',

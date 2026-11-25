@@ -286,6 +286,63 @@ check('다른 갈래 이벤트가 섞여 나오지 않음', crossEvents === 0, c
 check('예고·체육고 입학 이벤트 존재', !!byId('tn_h90') && !!byId('tn_h91'));
 check('고입 선택지는 예고·체고 준비생에게 숨김', !!byId('high_enter').when);
 
+/* ═════════ ⑨ 인생 하이라이트 (2026-11-25) ═════════
+   · 유아기 마일스톤이 매 판 하이라이트 1번을 차지하지 않는다
+   · 점수가 같으면 뒤에 겪은 사건을 앞세운다 */
+(function () {
+  const h = Life.newGame({ name: '하이라이트', gender: '남', startAge: 1 });
+  h.age = 47;
+  h.stats = { hp: 60, mental: 55, charm: 55, social: 55, intel: 60, luck: 50, asset: 5000 };
+  const entry = (age, month, turn, title, deltas, milestone) => ({
+    turn, age, month, eventId: 'x' + turn, title, situation: '', place: '', milestone: !!milestone,
+    choice: 'a', result: 'r', deltas, setKeys: []
+  });
+  h.history = [
+    entry(1, 2, 1, '조리원 퇴소', { hp: 3, mental: 2, social: 2 }, true),
+    entry(19, 9, 200, '수능 당일', { mental: 3, hp: -2 }, true),
+    entry(46, 4, 400, '부모님 병원', { asset: -1500, mental: -1 }, true)
+  ];
+  const hl = Life.summary(h).highlights;
+  check('하이라이트 1번이 유아기 마일스톤이 아니다', hl[0].title !== '조리원 퇴소', hl.map((x) => x.title).join(' > '));
+
+  // 뒤에 큰 사건이 세 개 있으면 유아기 사건은 하이라이트 3칸에서 빠진다
+  const h2 = Life.newGame({ name: '하이라이트2', gender: '여', startAge: 1 });
+  h2.age = 47;
+  h2.stats = { hp: 60, mental: 55, charm: 55, social: 55, intel: 60, luck: 50, asset: 5000 };
+  h2.history = [
+    entry(1, 2, 1, '조리원 퇴소', { hp: 3, mental: 2, social: 2 }, true),
+    entry(19, 9, 200, '수능 당일', { mental: 3, hp: -2 }, true),
+    entry(35, 5, 300, '결혼', { mental: 2, social: 2, asset: 2000 }, true),
+    entry(46, 4, 400, '부모님 병원', { asset: -1500, mental: -1 }, true)
+  ];
+  const hl2 = Life.summary(h2).highlights;
+  check('뒤에 큰 사건이 있으면 유아기 사건은 3칸에서 빠진다', hl2.every((x) => x.title !== '조리원 퇴소'),
+    hl2.map((x) => x.age + '세 ' + x.title).join(' > '));
+
+  // 동점이면 나중 사건 — 같은 효과의 두 마일스톤
+  const t = Life.newGame({ name: '동점', gender: '여', startAge: 1 });
+  t.age = 60;
+  t.stats = { hp: 60, mental: 55, charm: 55, social: 55, intel: 60, luck: 50, asset: 3000 };
+  t.history = [
+    entry(25, 1, 100, '첫 출근', { mental: 3, social: 2 }, true),
+    entry(41, 6, 300, '늦은 출근', { mental: 3, social: 2 }, true)
+  ];
+  const tie = Life.summary(t).highlights;
+  check('동점이면 뒤에 겪은 사건을 앞세운다', tie[0].title === '늦은 출근' && tie[1].title === '첫 출근',
+    tie.map((x) => x.age + '세 ' + x.title).join(' > '));
+
+  // 유아기 마일스톤 가중치가 성인 마일스톤보다 낮다 — 같은 효과라면 뒤가 이긴다
+  const v = Life.newGame({ name: '가중', gender: '남', startAge: 1 });
+  v.age = 40;
+  v.stats = { hp: 60, mental: 55, charm: 55, social: 55, intel: 60, luck: 50, asset: 3000 };
+  v.history = [
+    entry(1, 4, 5, '백일 사진', { mental: 3, social: 2 }, true),
+    entry(30, 2, 250, '이직', { mental: 3, social: 2 }, true)
+  ];
+  check('유아기 마일스톤은 성인 마일스톤보다 약하다', Life.summary(v).highlights[0].title === '이직',
+    Life.summary(v).highlights.map((x) => x.title).join(' > '));
+})();
+
 /* ── 출력 ── */
 console.log(results.join('\n'));
 const fails = results.filter((r) => r.startsWith('FAIL')).length;

@@ -255,6 +255,13 @@ const localSeed = () => Object.fromEntries(LOCAL_KEYS.map((k) => [k, k === SESSI
   check('SQL — authenticated 만 실행', /grant execute on function public\.life_sim_delete_my_account\(\) to authenticated/.test(sql) &&
     /revoke all on function public\.life_sim_delete_my_account\(\) from anon/.test(sql));
 
+  /* ═════════ ⑩ 이름·이어하기 표시 (2026-11-25) ═════════ */
+  check("이름을 비우면 '나'로 시작", /value\.trim\(\)\s*\|\|\s*'나'/.test(APP_SRC));
+  check('이름 입력 칸 안내문도 상훈이 아니다', !/placeholder="상훈"/.test(HTML), (HTML.match(/id="nameInput"[^>]*/) || [''])[0]);
+  check('이어하기 카드 나이는 80세에서 끊는다', /Math\.min\(saved\.age, Life\.END_AGE\)/.test(APP_SRC));
+  check('다시 뽑기 버튼은 남은 횟수·막는 이유를 보여 준다',
+    /rerollBlock === 'milestone'/.test(APP_SRC) && /rerollLeft/.test(APP_SRC));
+
   /* ═════════ 결과 ═════════ */
   results.forEach((r) => console.log(r));
   const fails = results.filter((r) => r.startsWith('FAIL'));

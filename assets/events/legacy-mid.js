@@ -189,10 +189,10 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
           if (s.flags.특목고 || s.flags.수능_올인) return '손이 자동으로 움직였습니다. 예상보다 훨씬 잘 봤습니다. 이 성적으로는 상위권 대학도 노려볼 만합니다.';
           return '평소 실력보다 조금 잘 봤습니다. 운이 따라준 시험이었습니다.';
         },
-        effects: { mental: 3, hp: -2 }, set: { 수능_명문: true } },
+        effects: { mental: 3, hp: -2 }, set: LifeAdmission.exclusive('수능_명문') },
       { label: '시간 배분을 무리해서 도전한다',
         result: '한 과목이 무너졌습니다. 불안하게 넘어갔습니다.',
-        effects: { mental: -2 }, set: { 수능_지방: true } },
+        effects: { mental: -2 }, set: LifeAdmission.exclusive('수능_지방') },
       { label: '가채점 후 바로 재수를 결정한다',
         result: '성적표를 보기도 전에 재수학원을 알아봤습니다.',
         effects: { mental: -1, social: -1 }, set: { 재수생: true }, queue: ['retry_academy'] }
@@ -212,9 +212,9 @@ window.LIFE_EVENTS = (window.LIFE_EVENTS || []).concat([
     title: '원서 접수',
     text: '성적표가 나왔습니다. 원서는 단 한 번, 세 개까지 쓸 수 있습니다.',
     choices: [
-      { label: '안정 지원 — 합격이 먼저다', result: '무난한 대학에 원서를 냈습니다. 합격 가능성이 높아졌습니다.', effects: { mental: 2 }, set: { 수능_지방: true } },
-      { label: '상향 지원 — 한 번에 걸어본다', result: '한 칸 위, 한 칸 아래, 한 칸 위. 도박이 시작됐습니다.', effects: { mental: -1, charm: 1 }, set: { 수능_명문: true } },
-      { label: '삼수는 없다 · 전문대 실용학과', result: '바로 취업할 수 있는 길을 골랐습니다.', effects: { mental: 2, hp: 1 }, set: { 전문대: true } }
+      { label: '안정 지원 — 합격이 먼저다', result: '무난한 대학에 원서를 냈습니다. 합격 가능성이 높아졌습니다.', effects: { mental: 2 }, set: LifeAdmission.exclusive('수능_지방') },
+      { label: '상향 지원 — 한 번에 걸어본다', result: '한 칸 위, 한 칸 아래, 한 칸 위. 도박이 시작됐습니다.', effects: { mental: -1, charm: 1 }, set: LifeAdmission.exclusive('수능_명문') },
+      { label: '삼수는 없다 · 전문대 실용학과', result: '바로 취업할 수 있는 길을 골랐습니다.', effects: { mental: 2, hp: 1 }, set: LifeAdmission.exclusive('전문대') }
     ]
   },
   {
