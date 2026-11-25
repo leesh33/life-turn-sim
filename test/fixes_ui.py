@@ -25,6 +25,7 @@ CHROME = "/workspace/.cache/ms-playwright/chromium-1134/chrome-linux/chrome"
 W, H = 390, 844
 KEY = "lifeTurnSim.save.v1"
 results = []
+errors = []
 
 
 def check(name, ok, detail=""):
@@ -47,6 +48,8 @@ def read_save(folder, name):
 
 def page_with(ctx, url, save_text):
     pg = ctx.new_page()
+    pg.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+    pg.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
     if save_text is not None:
         pg.add_init_script("try { localStorage.setItem(%s, %s); } catch (e) {}"
                            % (json.dumps(KEY), json.dumps(save_text)))
@@ -59,7 +62,7 @@ def resume(pg):
     """이어하기 카드가 그려질 때까지 기다렸다 누른다.
     부팅이 느리거나 첫 로드에서 저장본을 못 읽은 판은 한 번 새로고침해 다시 심는다."""
     try:
-        pg.wait_for_selector("#resumeCard", state="visible", timeout=6000)
+        pg.wait_for_selector("#resumeCard", state="visible", timeout=12000)
     except Exception:
         pg.reload(wait_until="load")
         pg.wait_for_timeout(1000)
@@ -85,6 +88,15 @@ def run(browser, url, tag, out, saves):
     check("출발 시나리오 첫 칸이 🏠", bool(emojis) and "🏠" in emojis[0], (emojis[0] or "").strip()[:20] if emojis else "없음")
     check("시작 화면 가로 넘침 없음", no_overflow(pg))
     pg.screenshot(path=os.path.join(out, f"fixes-{tag}-01-start.png"))
+    # 이름을 비우고 시작 → '나'로 저장되고 첫 사건이 열린다
+    pg.click("#startBtn")
+    pg.wait_for_timeout(1200)
+    saved = pg.evaluate("() => { try { return JSON.parse(localStorage.getItem(%s) || 'null'); } catch (e) { return null; } }" % json.dumps(KEY))
+    check("이름을 비우면 '나'로 시작한다", bool(saved) and saved.get("name") == "나", (saved or {}).get("name"))
+    first = pg.inner_text(".card-title") if pg.query_selector(".card-title") else ""
+    check("새 인생의 첫 사건이 열린다", bool(first.strip()), first)
+    pg.screenshot(path=os.path.join(out, f"fixes-{tag}-01b-first-turn.png"))
+    pg.close()
 
     # ── 2) 고3 원서 → 고교 졸업 결산 태그 ──
     pg2 = page_with(ctx, url, read_save(saves, "csat19"))
@@ -172,6 +184,8 @@ def run(browser, url, tag, out, saves):
     check("다시 뽑기 안내에 남은 횟수(5회)", "5회" in sub5, sub5)
     pg5.screenshot(path=os.path.join(out, f"fixes-{tag}-06-reroll-ok.png"))
     pg5.close()
+    noise = [e for e in errors if "supabase" not in e.lower() and "Failed to load resource" not in e]
+    check("콘솔·페이지 오류 없음", not noise, " / ".join(noise[:3]) or "0건")
     ctx.close()
 
 
