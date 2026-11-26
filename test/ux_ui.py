@@ -37,6 +37,7 @@ CHROME = "/workspace/.cache/ms-playwright/chromium-1134/chrome-linux/chrome"
 W, H = 390, 844
 OUT = "/workspace/downloads/ux-audit/fixed-life"
 BEFORE = "/workspace/downloads/ux-audit"
+GRAD_SAVE = "/workspace/downloads/life-grad7-save.json"
 results = []
 
 DRIVE = """(targetAge) => {
@@ -251,32 +252,40 @@ def main():
         else:
             check("L1 칭호 배지 팝업 관측", False, "16턴 안에 칭호가 해금되지 않음")
 
-        # '도감 →' 버튼 — 새 판에서 첫 칭호가 떴을 때 바로 누른다
+        # '도감 →' 버튼 — 같은 탭에서 칭호 기록만 지우고 새 판을 열어 첫 칭호에서 누른다
+        # (탭을 늘리면 컨테이너 /dev/shm 이 버티지 못해 라이브 페이지가 죽는다)
         pop_btn_ok = False
-        ctx_b, pg_b = fresh()
-        pg_b.goto(url, wait_until="load")
-        pg_b.wait_for_timeout(800)
-        pg_b.click('.age-card[data-age="1"]')
-        pg_b.fill("#nameInput", "도감테스트")
-        pg_b.click("#startBtn")
-        pg_b.wait_for_timeout(900)
+        pg.evaluate("() => { try { localStorage.removeItem('lifeTurnSim.titles.v1'); } catch (e) {} }")
+        # 같은 문서에서 ⋯ → 새로 시작 (다시 열지 않는다 — 라이브 재접속이 컨테이너 자원을 말아먹는다)
+        pg.once("dialog", lambda d: d.accept())
+        pg.click("#moreBtn")
+        pg.wait_for_timeout(150)
+        pg.click("#resetBtn")
+        pg.wait_for_timeout(900)
+        pg.wait_for_selector("#ageGrid .age-card", timeout=15000)
+        pg.click('.age-card[data-age="1"]')
+        pg.fill("#nameInput", "도감테스트")
+        pg.click("#startBtn")
+        pg.wait_for_timeout(900)
         for turn in range(12):
-            if pg_b.query_selector("#badgePop"):
+            if pg.query_selector("#badgePop"):
                 try:
-                    pg_b.click("#badgePop .bp-open")
-                    pg_b.wait_for_timeout(400)
-                    pop_btn_ok = pg_b.is_visible("#titleModal")
+                    pg.click("#badgePop .bp-open")
+                    pg.wait_for_timeout(400)
+                    pop_btn_ok = pg.is_visible("#titleModal")
                 except Exception as e:
                     print("  (도감 버튼 클릭 예외:", e, ")")
                 break
-            if pg_b.query_selector("#choices .choice:not([disabled])"):
-                pg_b.click("#choices .choice:not([disabled])", timeout=3000)
-                pg_b.wait_for_timeout(650)
-            if pg_b.is_visible("#advanceBtn") and not pg_b.is_disabled("#advanceBtn"):
-                pg_b.click("#advanceBtn")
-                pg_b.wait_for_timeout(700)
+            if pg.query_selector("#choices .choice:not([disabled])"):
+                pg.click("#choices .choice:not([disabled])", timeout=3000)
+                pg.wait_for_timeout(650)
+            if pg.is_visible("#advanceBtn") and not pg.is_disabled("#advanceBtn"):
+                pg.click("#advanceBtn")
+                pg.wait_for_timeout(700)
+        if pg.is_visible("#titleModal"):
+            pg.click("#tmClose")
+            pg.wait_for_timeout(200)
         check("L1 '도감 →' 버튼은 도감을 연다", pop_btn_ok, "칭호 도감 열림" if pop_btn_ok else "관측 못함")
-        ctx_b.close()
 
         # ─────────── ④ 진행 중 요약 (L4) ───────────
         pg.wait_for_timeout(200)
@@ -317,8 +326,7 @@ def main():
         pg.click("#hallBack")
         pg.wait_for_timeout(500)
 
-        # ─────────── ⑥ 종료 화면 나이 (L6) ───────────
-        ctx.close()
+        # ─────────── ⑥ 종료 화면 나이 (L6) — 80세 저장본을 심은 새 탭 ───────────
         ctx2, pg2 = fresh()
         pg2.add_init_script("""
             try { localStorage.setItem('lifeTurnSim.save.v1', %s); } catch (e) {}
@@ -331,7 +339,7 @@ def main():
         pg2.wait_for_timeout(500)
         pg2.click("#advanceBtn")
         pg2.wait_for_timeout(1800)
-        shot(pg2, "07-ending")
+        pg2.screenshot(path=os.path.join(OUT, f"{tag}-07-ending-390x844.png"))
         end = pg2.inner_text("#endingScroll")
         avatar_age = pg2.inner_text(".end-avatar span") if pg2.query_selector(".end-avatar span") else ""
         check("L6 아바타 나이 = 마지막 나이 80", "80세의 모습" in avatar_age and "81" not in avatar_age, avatar_age)
@@ -342,45 +350,80 @@ def main():
         check("종료 화면 등급·결과 카드 유지", pg2.query_selector(".grade-row") is not None and pg2.query_selector("#endShare") is not None)
         ctx2.close()
 
-        # ─────────── ⑦ 졸업 결산 전환 (L12) ───────────
-        ctx3, pg3 = fresh()
-        pg3.goto(url, wait_until="load")
-        pg3.wait_for_timeout(900)
-        pg3.evaluate(DRIVE, 7)
-        pg3.reload(wait_until="load")
-        pg3.wait_for_timeout(900)
-        pg3.click("#resumeCard")
-        pg3.wait_for_timeout(900)
-        pg3.click("#choices .choice:not([disabled])")
-        pg3.wait_for_timeout(500)
-        pg3.click("#advanceBtn")
-        pill_on_grad = 0
-        pill_seen = False
-        for _ in range(26):
-            info = pg3.evaluate("""() => {
-              const tw = document.querySelector('.timewarp');
-              const cs = tw ? getComputedStyle(tw) : null;
-              const grad = document.getElementById('screen-grad');
-              const hero = document.querySelector('#gradScroll .grad-hero, #gradScroll .recall-card');
-              const gs = grad ? getComputedStyle(grad) : null;
-              const r = (e) => { if(!e) return null; const b=e.getBoundingClientRect(); return {left:b.left,top:b.top,right:b.right,bottom:b.bottom}; };
-              return {op: cs ? parseFloat(cs.opacity) : 0, tw: r(tw), hero: r(hero),
-                      gradOn: !!gs && gs.display !== 'none'};
-            }""")
-            if info["op"] > 0.05:
-                pill_seen = True
-                if info["gradOn"] and overlap(info["tw"], info["hero"]) > 0:
-                    pill_on_grad += 1
-            pg3.wait_for_timeout(50)
-        pg3.wait_for_timeout(400)
-        shot(pg3, "09-grad")
-        check("L12 졸업 결산이 전환 표시와 겹치지 않음", pill_seen and pill_on_grad == 0,
-              f"겹친 샘플 {pill_on_grad}개")
-        check("L12 졸업 결산 화면 도착", pg3.is_visible("#screen-grad"), pg3.inner_text("#gradScroll .grad-name") if pg3.query_selector("#gradScroll .grad-name") else "")
-        ctx3.close()
 
         check("콘솔·페이지 오류 0", len(errors) == 0, " / ".join(errors[:3]))
         b.close()
+
+    # ─────────── ⑦ 졸업 결산 전환 (L12) ───────────
+    # 7세까지 84턴을 한 번에 돌리는 무거운 검사라, 앞선 탭들을 닫은 뒤 새 브라우저에서 따로 한다
+    # (컨테이너 /dev/shm 부족으로 같은 브라우저의 네 번째 탭이 죽는 일이 있었다).
+    grad_save = None
+    if os.path.exists(GRAD_SAVE):
+        grad_save = json.load(open(GRAD_SAVE, encoding="utf-8"))
+    elif shutil.which("node"):
+        try:
+            import subprocess
+            subprocess.run([shutil.which("node"), os.path.join(os.path.dirname(os.path.abspath(__file__)), "mkgrad.js")],
+                           check=True, timeout=120, capture_output=True)
+            if os.path.exists(GRAD_SAVE):
+                grad_save = json.load(open(GRAD_SAVE, encoding="utf-8"))
+        except Exception as e:
+            print("  (7세 저장본 생성 실패:", e, ")")
+
+    def grad_check():
+        with sync_playwright() as p3:
+            b3 = p3.chromium.launch(executable_path=CHROME if os.path.exists(CHROME) else None,
+                                    args=["--no-sandbox", "--disable-dev-shm-usage"])
+            ctx = b3.new_context(viewport={"width": W, "height": H}, device_scale_factor=2,
+                                 is_mobile=True, has_touch=True, locale="ko-KR", timezone_id="Asia/Seoul")
+            pg3 = ctx.new_page()
+            if grad_save:
+                pg3.add_init_script("""
+                    try { localStorage.setItem('lifeTurnSim.save.v1', %s); } catch (e) {}
+                """ % json.dumps(json.dumps(grad_save, ensure_ascii=False)))
+            pg3.goto(url, wait_until="load")
+            pg3.wait_for_timeout(900)
+            if not grad_save:
+                pg3.evaluate(DRIVE, 7)
+                pg3.reload(wait_until="load")
+                pg3.wait_for_timeout(900)
+            pg3.click("#resumeCard")
+            pg3.wait_for_timeout(900)
+            pg3.click("#choices .choice:not([disabled])")
+            pg3.wait_for_timeout(500)
+            pg3.click("#advanceBtn")
+            pill_on_grad = 0
+            pill_seen = False
+            for _ in range(26):
+                info = pg3.evaluate("""() => {
+                  const tw = document.querySelector('.timewarp');
+                  const cs = tw ? getComputedStyle(tw) : null;
+                  const grad = document.getElementById('screen-grad');
+                  const hero = document.querySelector('#gradScroll .grad-hero, #gradScroll .recall-card');
+                  const gs = grad ? getComputedStyle(grad) : null;
+                  const r = (e) => { if(!e) return null; const b=e.getBoundingClientRect(); return {left:b.left,top:b.top,right:b.right,bottom:b.bottom}; };
+                  return {op: cs ? parseFloat(cs.opacity) : 0, tw: r(tw), hero: r(hero),
+                          gradOn: !!gs && gs.display !== 'none'};
+                }""")
+                if info["op"] > 0.05:
+                    pill_seen = True
+                    if info["gradOn"] and overlap(info["tw"], info["hero"]) > 0:
+                        pill_on_grad += 1
+                pg3.wait_for_timeout(50)
+            pg3.wait_for_timeout(400)
+            pg3.screenshot(path=os.path.join(OUT, f"{tag}-09-grad-390x844.png"))
+            check("L12 졸업 결산이 전환 표시와 겹치지 않음", pill_seen and pill_on_grad == 0,
+                  f"겹친 샘플 {pill_on_grad}개")
+            check("L12 졸업 결산 화면 도착", pg3.is_visible("#screen-grad"),
+                  pg3.inner_text("#gradScroll .grad-name") if pg3.query_selector("#gradScroll .grad-name") else "")
+            b3.close()
+
+    try:
+        grad_check()
+    except Exception as e:  # 컨테이너 리소스 오류면 한 번만 다시
+        print("  (졸업 결산 검사 재시도:", type(e).__name__, str(e)[:80], ")")
+        grad_check()
+
 
     if httpd:
         httpd.shutdown()
