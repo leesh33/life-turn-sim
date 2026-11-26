@@ -39,6 +39,20 @@ OUT = "/workspace/downloads/ux-audit/fixed-life"
 BEFORE = "/workspace/downloads/ux-audit"
 results = []
 
+DRIVE = """(targetAge) => {
+  const s = window.Life.newGame({ name: '상훈', gender: '남', startAge: 1 });
+  let guard = 0;
+  while (guard++ < 4000) {
+    if (s.age === targetAge && s.month === 12) break;
+    const ev = window.Life.currentEvent(s);
+    window.Life.choose(s, Math.floor(Math.random() * ev.choices.length));
+    const r = window.Life.advance(s);
+    if (r.graduation) window.Life.graduate(s, false);
+  }
+  window.Life.save(s);
+  return { age: s.age, month: s.month, turns: s.history.length };
+}"""
+
 
 def check(name, ok, detail=""):
     results.append((ok, name, detail))
@@ -327,6 +341,43 @@ def main():
         check("L6 종료 화면에는 닫기 줄이 없다(진짜 엔딩)", not pg2.is_visible("#endHead"))
         check("종료 화면 등급·결과 카드 유지", pg2.query_selector(".grade-row") is not None and pg2.query_selector("#endShare") is not None)
         ctx2.close()
+
+        # ─────────── ⑦ 졸업 결산 전환 (L12) ───────────
+        ctx3, pg3 = fresh()
+        pg3.goto(url, wait_until="load")
+        pg3.wait_for_timeout(900)
+        pg3.evaluate(DRIVE, 7)
+        pg3.reload(wait_until="load")
+        pg3.wait_for_timeout(900)
+        pg3.click("#resumeCard")
+        pg3.wait_for_timeout(900)
+        pg3.click("#choices .choice:not([disabled])")
+        pg3.wait_for_timeout(500)
+        pg3.click("#advanceBtn")
+        pill_on_grad = 0
+        pill_seen = False
+        for _ in range(26):
+            info = pg3.evaluate("""() => {
+              const tw = document.querySelector('.timewarp');
+              const cs = tw ? getComputedStyle(tw) : null;
+              const grad = document.getElementById('screen-grad');
+              const hero = document.querySelector('#gradScroll .grad-hero, #gradScroll .recall-card');
+              const gs = grad ? getComputedStyle(grad) : null;
+              const r = (e) => { if(!e) return null; const b=e.getBoundingClientRect(); return {left:b.left,top:b.top,right:b.right,bottom:b.bottom}; };
+              return {op: cs ? parseFloat(cs.opacity) : 0, tw: r(tw), hero: r(hero),
+                      gradOn: !!gs && gs.display !== 'none'};
+            }""")
+            if info["op"] > 0.05:
+                pill_seen = True
+                if info["gradOn"] and overlap(info["tw"], info["hero"]) > 0:
+                    pill_on_grad += 1
+            pg3.wait_for_timeout(50)
+        pg3.wait_for_timeout(400)
+        shot(pg3, "09-grad")
+        check("L12 졸업 결산이 전환 표시와 겹치지 않음", pill_seen and pill_on_grad == 0,
+              f"겹친 샘플 {pill_on_grad}개")
+        check("L12 졸업 결산 화면 도착", pg3.is_visible("#screen-grad"), pg3.inner_text("#gradScroll .grad-name") if pg3.query_selector("#gradScroll .grad-name") else "")
+        ctx3.close()
 
         check("콘솔·페이지 오류 0", len(errors) == 0, " / ".join(errors[:3]))
         b.close()
