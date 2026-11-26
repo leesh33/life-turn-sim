@@ -108,10 +108,14 @@
           <span class="sb-age"><span id="ageLabel">1세</span><span class="dot">·</span><span id="dayLabel">1개월차</span></span>
         </div>
         <div class="sb-actions">
-          <button class="ghost-btn" id="hallBtnPlay">🏆 전당</button>
           <button class="ghost-btn" id="fbBtnPlay" aria-label="제안·제보">💬 제보</button>
           <button class="ghost-btn" id="summaryBtn" aria-label="인생 요약">요약</button>
-          <button class="ghost-btn danger" id="resetBtn">새로 시작</button>
+          <button class="ghost-btn sb-more-btn" id="moreBtn" aria-label="더보기" aria-haspopup="menu" aria-expanded="false">⋯</button>
+          <!-- 전당·새로 시작은 '⋯' 안으로 — 파괴적인 '새로 시작'을 '요약' 옆에 두지 않는다 -->
+          <div class="sb-menu" id="moreMenu" role="menu" hidden>
+            <button type="button" class="sb-menu-item" id="hallBtnPlay" role="menuitem">🏆 명예의 전당</button>
+            <button type="button" class="sb-menu-item danger" id="resetBtn" role="menuitem">🔄 새로 시작</button>
+          </div>
         </div>
       </div>
       <div class="stats" id="stats"></div>
@@ -157,6 +161,11 @@
 
   <!-- ───────────── 엔딩 화면 ───────────── -->
   <section id="screen-ending" class="screen">
+    <!-- 진행 중에 '요약'으로 열었을 때만 나오는 닫기 줄 — 게임이 끝난 화면이 아니라는 것을 먼저 알린다 -->
+    <header class="end-head" id="endHead" hidden>
+      <button type="button" class="end-close" id="endClose" aria-label="플레이로 돌아가기">✕ 플레이로</button>
+      <span class="end-head-label">인생 요약</span>
+    </header>
     <div class="ending-scroll" id="endingScroll"></div>
   </section>
 

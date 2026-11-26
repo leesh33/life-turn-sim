@@ -1833,10 +1833,11 @@
 
   function buildOneLiner(s, g) {
     var st = s.stats;
+    // 구분자를 하나로 — 쉼표와 가운뎃점을 섞지 않는다 (2026-11-26 UX 점검 L10)
     var parts = [];
-    parts.push('체력 ' + Math.round(st.hp) + ', 멘탈 ' + Math.round(st.mental) +
-      ', 매력 ' + Math.round(st.charm) + ', 호감도 ' + Math.round(st.social));
-    parts.push('역량 ' + Math.round(st.intel) + ', 행운 ' + Math.round(st.luck));
+    parts.push('체력 ' + Math.round(st.hp) + ' · 멘탈 ' + Math.round(st.mental) +
+      ' · 매력 ' + Math.round(st.charm) + ' · 호감도 ' + Math.round(st.social) +
+      ' · 역량 ' + Math.round(st.intel) + ' · 행운 ' + Math.round(st.luck));
     parts.push('남은 재산은 ' + formatAsset(st.asset));
     var tail = [];
     if (st.intel >= 80) tail.push('머리로 풀어낸 일이 많고');
@@ -1849,7 +1850,7 @@
     else if (st.social <= 35) tail.push('곁은 조용합니다');
     if (st.asset >= 30000) tail.push('통장이 든든합니다');
     else if (st.asset < 0) tail.push('빚이 남아 있습니다');
-    var sentence = parts.join(' · ') + '.';
+    var sentence = parts.join('. ') + '.';
     if (tail.length) sentence += ' ' + tail.join(', ') + '.';
     return sentence;
   }
@@ -2573,10 +2574,10 @@
     var mem = pool.slice().sort(byImpact).slice(0, 2);
     mem.sort(function (a, b) { return a.age - b.age; });
     if (mem[0]) {
-      lines.push(mem[0].age + '세 ' + mem[0].month + '개월차, ' + mem[0].title + '. 그날의 공기가 아직 남아 있습니다.');
+      lines.push(ageMonthLabel(mem[0].age, mem[0].month) + ', ' + mem[0].title + '. 그날의 공기가 아직 남아 있습니다.');
     }
     if (mem[1]) {
-      lines.push(mem[1].age + '세 ' + mem[1].month + '개월차의 ' + mem[1].title + ' — 그때는 그게 전부인 줄 알았습니다.');
+      lines.push(ageMonthLabel(mem[1].age, mem[1].month) + '의 ' + mem[1].title + ' — 그때는 그게 전부인 줄 알았습니다.');
     }
 
     // 5줄: 마음과 몸 (한 문장으로 묶어 역량·행운 줄 자리를 낸다)
@@ -2668,6 +2669,23 @@
     return lines.slice(0, 10);
   }
 
+  /* ── 나이·개월차 표기 ──
+     1세는 태어나서 첫 돌까지(1~12개월차)라 '1세 · 4개월차'가 '1년 4개월'로 읽혔다.
+     1세 구간만 '생후 N개월' / '돌 (12개월)'로 적고, 2세부터는 'N세 · N개월차' 그대로 쓴다.
+     내부 값(age·month)은 건드리지 않고 화면 표기만 바꾼다. (2026-11-26 UX 점검 L3) */
+  function ageMonthParts(age, month) {
+    var m = Math.max(1, Math.min(MONTHS, Math.round(month || 1)));
+    if (age === 1) {
+      return { age: '', day: m >= 12 ? '돌 (12개월)' : '생후 ' + m + '개월', dot: false };
+    }
+    return { age: age + '세', day: m + '개월차', dot: true };
+  }
+
+  function ageMonthLabel(age, month) {
+    var p = ageMonthParts(age, month);
+    return p.age ? p.age + ' · ' + p.day : p.day;
+  }
+
   /* ── 공개 API ── */
   global.Life = {
     ledgerOf: ledgerOf,
@@ -2689,6 +2707,8 @@
     luckBias: luckBias,
     END_AGE: END_AGE,
     MONTHS: MONTHS,
+    ageMonthParts: ageMonthParts,
+    ageMonthLabel: ageMonthLabel,
     GRADUATIONS: GRADUATIONS,
     gradInfo: gradInfo,
     graduate: graduate,

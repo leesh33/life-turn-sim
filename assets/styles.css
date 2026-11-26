@@ -346,7 +346,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.age-card[data-wide="1"] { grid-column: span 2; }
+.age-card[data-wide="1"] {
+  /* 마지막 7번째 타일(35세 결혼)은 한 칸 폭을 유지한 채 가운데 놓는다 —
+     전체 폭으로 늘리면 '강조된 선택지'처럼 보였다. */
+  grid-column: span 2;
+  justify-self: center;
+  width: calc(50% - 4.5px);
+}
 .age-card.selected {
   border-color: var(--accent);
   background: linear-gradient(180deg, #fff 0%, #fff6f1 100%);
@@ -615,32 +621,68 @@ body {
 /* ═════════════ 플레이 화면 ═════════════ */
 .statusbar {
   flex: 0 0 auto;
+  position: relative;
   padding: calc(10px + var(--safe-t)) 10px 10px;
   background: rgba(244, 241, 235, 0.86);
   backdrop-filter: saturate(1.4) blur(18px);
   -webkit-backdrop-filter: saturate(1.4) blur(18px);
   border-bottom: 1px solid var(--line-2);
-  z-index: 5;
+  /* ⋯ 메뉴가 능력치 줄 밑으로 내려와도 사건 카드(z 6)·아바타 위에 보이게 */
+  z-index: 12;
 }
 .sb-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; row-gap: 4px; }
-/* 이름은 절대 줄이지 않는다 — 전에 '오…'로 잘렸다. 자리가 모자라면 버튼 줄이 다음 줄로 내려간다. */
+/* 이름은 남는 자리를 그대로 쓴다 — 전에는 50px(4자)에서 먼저 잘렸다. */
 .sb-who { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .sb-name {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ink-3);
   letter-spacing: 0.1px;
-  max-width: 50px;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sb-age { font-size: 15.5px; font-weight: 800; letter-spacing: -0.6px; white-space: nowrap; }
+.sb-age { font-size: 15.5px; font-weight: 800; letter-spacing: -0.6px; white-space: nowrap; flex: 0 0 auto; }
 .sb-age .dot { color: var(--ink-4); margin: 0 3px; font-weight: 600; }
-/* 상단 버튼 4개(전당·제보·요약·새로 시작)가 390px 한 줄에 들어가도록 압축 */
+.sb-age.no-dot .dot { display: none; }
+/* 상단 버튼은 제보·요약·⋯ 세 개만 — 전당·새로 시작은 ⋯ 메뉴 안에 */
 .sb-actions { display: flex; gap: 2px; flex: 0 0 auto; margin-left: auto; }
 .sb-actions .ghost-btn { font-size: 9.5px; padding: 5px 4px; letter-spacing: -0.3px; }
+.sb-more-btn { font-size: 13px !important; line-height: 1; padding: 3px 7px !important; color: var(--ink-2); }
+.sb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  z-index: 40;
+  min-width: 132px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sb-menu[hidden] { display: none !important; }
+.sb-menu-item {
+  font-family: inherit;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sb-menu-item:active { background: var(--line-2); }
+.sb-menu-item.danger { color: #b3352c; }
 
 .stats {
   display: grid;
@@ -974,6 +1016,56 @@ body {
 }
 
 /* ═════════════ 엔딩 ═════════════ */
+/* 진행 중 '요약' 화면의 닫기 줄 — 스크롤 밖에 붙박이다 */
+.end-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + var(--safe-t)) 16px 8px;
+  border-bottom: 1px solid var(--line-2);
+  background: rgba(244, 241, 235, 0.94);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  z-index: 3;
+}
+.end-head[hidden] { display: none !important; }
+.end-close {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+.end-close:active { transform: scale(0.96); }
+.end-head-label { font-size: 12px; font-weight: 800; color: var(--ink-3); letter-spacing: -0.2px; }
+.end-head:not([hidden]) + .ending-scroll { padding-top: 12px; }
+
+/* 진행 중 요약 — 등급 대신 '아직 인생이 끝나지 않았다'는 표시 */
+.sum-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+  letter-spacing: -0.2px;
+}
+.sum-live-chip {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #1c6b47;
+  background: #e5f5ec;
+  border: 1px solid rgba(28, 107, 71, 0.18);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+
 .ending-scroll {
   flex: 1;
   min-height: 0;
@@ -1176,7 +1268,7 @@ body {
   border-radius: 999px;
   box-shadow: var(--shadow);
 }
-.timewarp.run { animation: warp 0.62s ease both; }
+.timewarp.run { animation: warp 0.58s ease both; }
 @keyframes warp {
   0% { opacity: 0; }
   25% { opacity: 1; }
@@ -1690,13 +1782,12 @@ body {
 .hall-tabs {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 4px 16px 10px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  /* 탭 8개(전체·유치원·초등·중학·고교·대학·완주·조기)를 2줄로 접어 모두 보이게 한다.
+     전에는 가로 스크롤이 숨겨져 있어 '조기'가 반만 보여도 넘길 수 있다는 걸 몰랐다. */
 }
-.hall-tabs::-webkit-scrollbar { display: none; }
 .hall-tab {
   flex: 0 0 auto;
   display: inline-flex;
@@ -2504,13 +2595,15 @@ body {
 .boom-choice { margin: 5px 0 0; font-size: 14px; font-weight: 700; color: #3a2f1c; letter-spacing: -0.3px; }
 .boom-line { margin: 5px 0 0; font-size: 11.5px; color: #9a7b3c; line-height: 1.45; }
 
-/* ── 칭호 해금 배지 팝업 ── */
+/* ── 칭호 해금 배지 팝업 ──
+   상단 상태바·능력치를 덮지 않게 하단 도크 바로 위에서 올라온다.
+   카드는 누를 수 없고 '도감 →' 버튼만 동작한다. (2026-11-26 UX 점검 L1) */
 .badge-pop {
   position: absolute;
   left: 12px;
   right: 12px;
-  top: calc(8px + var(--safe-t));
-  z-index: 92;
+  bottom: calc(118px + var(--safe-b));
+  z-index: 61;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -2520,9 +2613,9 @@ body {
   border-radius: 18px;
   box-shadow: var(--shadow-lift);
   opacity: 0;
-  transform: translateY(-16px);
+  transform: translateY(16px);
   transition: opacity 0.26s ease, transform 0.28s cubic-bezier(0.22, 1.2, 0.36, 1);
-  cursor: pointer;
+  cursor: default;
 }
 .badge-pop.show { opacity: 1; transform: none; }
 .bp-emoji {
@@ -2546,7 +2639,19 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.bp-open { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: var(--accent-ink); }
+.bp-open {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border: 1px solid rgba(182, 67, 31, 0.2);
+  border-radius: 999px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+.bp-open:active { transform: scale(0.95); }
 
 /* ── 칭호·인연 도감 (전체 화면) ── */
 .title-modal {

@@ -431,13 +431,22 @@
   }
 
   /* ── 플레이 화면 ── */
+  // 상태바 나이 줄 — 1세는 '생후 N개월' / '돌 (12개월)'로 적는다(Life.ageMonthParts)
+  function setAgeLabels() {
+    if (!state) return;
+    var p = Life.ageMonthParts(state.age, state.month);
+    $('ageLabel').textContent = p.age;
+    $('dayLabel').textContent = p.day;
+    var host = $('ageLabel').parentNode;
+    if (host) host.classList.toggle('no-dot', !p.dot);
+  }
+
   function renderGame() {
     autoClear();
     if (!state) return;
     missionFlash = false;
     $('whoName').textContent = state.name;
-    $('ageLabel').textContent = state.age + '세';
-    $('dayLabel').textContent = state.month + '개월차';
+    setAgeLabels();
     $('logCount').textContent = state.history.length;
     renderStats();
     renderEvent(false);
@@ -584,7 +593,7 @@
     var isChosen = chosen !== null && chosen !== undefined;
     var boom = Life.boomerangOf(state, ev);
 
-    var badges = '<span class="badge age">' + state.age + '세 · ' + state.month + '개월차</span>';
+    var badges = '<span class="badge age">' + Life.ageMonthLabel(state.age, state.month) + '</span>';
     if (ev.cameo) badges += '<span class="badge cameo">🧬 이전 회차 인물</span>';
     if (ev.boomerang) badges += '<span class="badge boom">🪃 과거의 부메랑</span>';
     if (ev.milestone) badges += '<span class="badge milestone">★ 마일스톤</span>';
@@ -594,7 +603,7 @@
     if (ev.boomerang) {
       boomHtml = '<div class="boom-note">' +
         (boom
-          ? '<div class="boom-when">🪃 <b>' + boom.age + '세 ' + boom.month + '개월차</b>의 선택이 돌아왔습니다</div>' +
+          ? '<div class="boom-when">🪃 <b>' + Life.ageMonthLabel(boom.age, boom.month) + '</b>의 선택이 돌아왔습니다</div>' +
             '<p class="boom-choice">‘' + esc(boom.choice) + '’</p>'
           : '<div class="boom-when">🪃 오래전의 선택이 돌아왔습니다</div>') +
         (ev.boomerangNote ? '<p class="boom-line">' + esc(ev.boomerangNote) + '</p>' : '') +
@@ -806,8 +815,7 @@
       Life.save(state);
       if (!ev) { toast('되돌릴 기록이 없습니다'); renderRewards(); return; }
       renderGame();
-      $('ageLabel').textContent = state.age + '세';
-      $('dayLabel').textContent = state.month + '개월차';
+      setAgeLabels();
       $('logCount').textContent = state.history.length;
       $('advanceBtn').disabled = true;
       toast('⏪ 직전 선택을 되돌렸습니다');
@@ -1011,14 +1019,14 @@
       renderEnding(true); return;
     }
 
-    $('ageLabel').textContent = state.age + '세';
-    $('dayLabel').textContent = state.month + '개월차';
+    setAgeLabels();
     $('logCount').textContent = state.history.length;
 
     // 졸업 결산 — 12개월차 턴을 마치고 다음 나이로 넘어간 순간
+    // 새 화면은 '한 달이 지났습니다' 표시가 사라진 뒤에 그린다 — 회고 제목줄을 가리지 않게
     if (res.graduation) {
       timewarp();
-      setTimeout(renderGrad, 220);
+      setTimeout(renderGrad, 600);
       return;
     }
 
@@ -1026,6 +1034,7 @@
     var card = $('eventCard');
     if (card) card.classList.add('leaving');
 
+    // 새 사건 카드는 전환 표시(0.58s)가 끝난 뒤에 그린다 — 선택지 1번을 덮지 않게
     setTimeout(function () {
       renderStats();
       if (mission) popStatDeltas(mission.deltas, 260);
@@ -1054,7 +1063,7 @@
           toast('⚠️ 몸이 신호를 보냅니다 · 회복을 미루면 인생이 일찍 끝납니다');
         }
       }
-    }, 250);
+    }, 600);
   }
 
   /* ── 인생 일지 ── */
@@ -1073,7 +1082,7 @@
         }
         var dk = Object.keys(item.deltas || {});
         html += '<div class="tl-item">' +
-          '<div class="tl-when">' + item.age + '세 · ' + item.month + '개월차' + (item.place ? ' · ' + esc(item.place) : '') +
+          '<div class="tl-when">' + Life.ageMonthLabel(item.age, item.month) + (item.place ? ' · ' + esc(item.place) : '') +
             (item.cameo ? ' · 🧬 이전 회차' : '') + '</div>' +
           '<div class="tl-title">' + esc(item.title) + '</div>' +
           '<span class="tl-choice">' + esc(item.choice) + '</span>' +
@@ -1149,7 +1158,7 @@
     }).join('') + '</div>';
 
     var highlights = info.highlights.slice(0, 2).map(function (hl) {
-      return '<div class="grad-memory"><span>' + hl.age + '세 · ' + hl.month + '개월차' +
+      return '<div class="grad-memory"><span>' + Life.ageMonthLabel(hl.age, hl.month) +
         (hl.place ? ' · ' + esc(hl.place) : '') + '</span>' +
         '<b>' + esc(hl.title) + '</b></div>';
     }).join('');
@@ -1169,7 +1178,7 @@
       '<div class="grad-hero">' +
         (window.LifeAvatar ? '<div class="grad-avatar">' + window.LifeAvatar.svg({ age: info.age, gender: state.gender, stats: state.stats }) + '</div>' : '') +
         '<div class="gh-emoji">' + def.emoji + '</div>' +
-        '<div class="grad-kicker">' + info.age + '세 · 12개월차 · ' + esc(def.short) + '</div>' +
+        '<div class="grad-kicker">' + Life.ageMonthLabel(info.age, 12) + ' · ' + esc(def.short) + '</div>' +
         '<h2 class="grad-name">' + esc(def.name) + '</h2>' +
         '<p class="grad-sub">' + (def.sub ? esc(def.sub) : esc(info.stage.name) + ' ' + def.years + '년') + ' · 선택 ' + info.count + '개</p>' +
         stats +
@@ -1234,7 +1243,7 @@
     hallReturn = 'start';
     if (back === 'play' && state) { showScreen('play'); renderGame(); return; }
     if (back === 'grad' && state && state.grad) { renderGrad(); return; }
-    if (back === 'ending' && state && state.ended) { renderEnding(true); return; }
+    if (back === 'ending' && state) { renderEnding(lastEndingFinal); return; }
     showScreen('start');
     renderStart();
   }
@@ -1549,17 +1558,24 @@
     });
   }
 
-  /* ── 엔딩 / 인생 요약 ── */
+  /* ── 엔딩 / 인생 요약 ──
+     isFinal=true  → 80세·건강 종료의 진짜 엔딩
+     isFinal=false → 플레이 중 '요약' (인생은 계속된다 — 등급·결과 카드를 내지 않는다) */
+  var lastEndingFinal = true;
+
   function renderEnding(isFinal) {
     if (!state) return;
     if (state.grad && state.grad.registered) { renderGradEnding(); return; }
     var sum = Life.summary(state);
     var healthEnd = state.endingKind === 'health';
     var gradeClass = sum.grade.toLowerCase();
+    var finalAge = Math.min(state.age, Life.END_AGE);
+    lastEndingFinal = !!isFinal;
+    if ($('endHead')) $('endHead').hidden = !!isFinal;
 
     var highlights = sum.highlights.map(function (hl) {
       return '<div class="highlight">' +
-        '<div class="h-when">' + hl.age + '세 · ' + hl.month + '개월차 · ' + esc(hl.place || '') + '</div>' +
+        '<div class="h-when">' + Life.ageMonthLabel(hl.age, hl.month) + ' · ' + esc(hl.place || '') + '</div>' +
         '<div class="h-title">' + esc(hl.title) + '</div>' +
         '<div class="h-text">' + esc(hl.result) + '</div>' +
         '</div>';
@@ -1570,21 +1586,24 @@
     var lifeRank = Life.hallRank(healthEnd ? 'life_health' : 'life80', Life.scoreOfStats(state.stats));
 
     var html =
-      '<div class="grade-row">' +
-        '<div class="grade ' + gradeClass + '">' + sum.grade + '</div>' +
-        '<div><div class="g-meta">' + esc(sum.gradeLabel) + ' · 총점 ' + sum.score + '</div>' +
-        '<div class="g-meta">' + (isFinal ? '인생을 마쳤습니다' : '여기까지의 인생') + '</div></div>' +
-      '</div>' +
+      (isFinal
+        ? '<div class="grade-row">' +
+            '<div class="grade ' + gradeClass + '">' + sum.grade + '</div>' +
+            '<div><div class="g-meta">' + esc(sum.gradeLabel) + ' · 총점 ' + sum.score + '</div>' +
+            '<div class="g-meta">인생을 마쳤습니다</div></div>' +
+          '</div>'
+        : '<div class="sum-live"><span class="sum-live-chip">진행 중</span>' +
+            '<span>' + Life.ageMonthLabel(state.age, state.month) + ' · 선택 ' + sum.turns + '개</span></div>') +
       '<div class="ending-card">' +
         (window.LifeAvatar ? '<div class="end-avatar">' + window.LifeAvatar.svg(state) +
-          '<span>' + (state.gender === '여' ? '여성' : '남성') + ' · ' + state.age + '세의 모습</span></div>' : '') +
+          '<span>' + (state.gender === '여' ? '여성' : '남성') + ' · ' + finalAge + '세의 모습</span></div>' : '') +
         '<div class="end-kicker">' + (healthEnd ? '몸이 먼저 인생을 접었습니다' : (isFinal ? '당신의 인생은' : '지금까지의 인생은')) + '</div>' +
         (healthEnd ? '<div class="end-health" style="margin:10px 0;padding:9px 10px;border-radius:12px;background:#fdecec;color:#a12b25;font-weight:700;text-align:center;line-height:1.45">💔 건강 악화로 ' + sum.finalAge + '세에 인생이 끝났습니다</div>' : '') +
-        (sum.archetype ? '<div class="end-arch">' + sum.archetype.emoji + ' ' + esc(sum.archetype.label) + '</div>' : '') +
+        (isFinal && sum.archetype ? '<div class="end-arch">' + sum.archetype.emoji + ' ' + esc(sum.archetype.label) + '</div>' : '') +
         '<h2 class="end-title">' + esc(sum.title) + '</h2>' +
         '<p class="end-summary">' + esc(sum.oneLiner) + '</p>' +
         '<div class="end-stats">' +
-          '<div class="end-stat"><div class="es-label">마지막 나이</div><div class="es-val">' + sum.finalAge + '세</div></div>' +
+          '<div class="end-stat"><div class="es-label">' + (isFinal ? '마지막 나이' : '현재 나이') + '</div><div class="es-val">' + finalAge + '세</div></div>' +
           '<div class="end-stat"><div class="es-label">남은 재산</div><div class="es-val">' + esc(Life.formatAsset(sum.stats.asset)) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">체력 / 멘탈</div><div class="es-val">' + Math.round(sum.stats.hp) + ' / ' + Math.round(sum.stats.mental) + '</div></div>' +
           '<div class="end-stat"><div class="es-label">매력 / 호감도</div><div class="es-val">' + Math.round(sum.stats.charm) + ' / ' + Math.round(sum.stats.social) + '</div></div>' +
@@ -1611,8 +1630,10 @@
       '</div>' +
       '<div class="end-actions second">' +
         '<button class="btn log" id="endHall">🏆 명예의 전당</button>' +
-        '<button class="btn log share-card" id="endShare" aria-label="결과 카드 저장 또는 공유">' +
-          '<b>📸 결과 카드</b><span>저장 · 공유</span></button>' +
+        (isFinal
+          ? '<button class="btn log share-card" id="endShare" aria-label="결과 카드 저장 또는 공유">' +
+              '<b>📸 결과 카드</b><span>저장 · 공유</span></button>'
+          : '') +
       '</div>';
 
     $('endingScroll').innerHTML = html;
@@ -1679,6 +1700,7 @@
   function renderGradEnding() {
     var info = Life.gradInfo(state);
     if (!info) { renderEnding(false); return; }
+    if ($('endHead')) $('endHead').hidden = true;
     var def = info.def;
     var recall = Life.recall(state, 'grad');
     var sum = Life.summary(state);
@@ -1686,7 +1708,7 @@
 
     var highlights = sum.highlights.map(function (hl) {
       return '<div class="highlight">' +
-        '<div class="h-when">' + hl.age + '세 · ' + hl.month + '개월차 · ' + esc(hl.place || '') + '</div>' +
+        '<div class="h-when">' + Life.ageMonthLabel(hl.age, hl.month) + ' · ' + esc(hl.place || '') + '</div>' +
         '<div class="h-title">' + esc(hl.title) + '</div>' +
         '<div class="h-text">' + esc(hl.result) + '</div></div>';
     }).join('');
@@ -1768,8 +1790,11 @@
         '<div class="bp-name">' + esc(t.name) + '</div>' +
         '<div class="bp-desc">' + esc(t.desc) + '</div>' +
       '</div>' +
-      '<span class="bp-open">도감 →</span>';
-    pop.addEventListener('click', function () {
+      '<button type="button" class="bp-open" id="badgeOpen">도감 →</button>';
+    // 카드 전체는 누르지 않는다 — 지나가다 잘못 눌러 화면이 바뀌지 않게.
+    // '도감 →' 버튼만 도감을 연다.
+    pop.querySelector('.bp-open').addEventListener('click', function (e) {
+      e.stopPropagation();
       clearTimeout(badgeTimer);
       pop.remove();
       openTitleBook();
@@ -1780,7 +1805,7 @@
     badgeTimer = setTimeout(function () {
       pop.classList.remove('show');
       setTimeout(function () { if (pop.parentNode) pop.remove(); }, 320);
-    }, 4200);
+    }, 2500);
   }
 
   function ensureTitleModal() {
@@ -1817,7 +1842,7 @@
     $('tmBar').style.width = Math.max(2, prog.pct) + '%';
     $('tmBody').innerHTML = window.TitleBook.LIST.map(function (t) {
       var rec = owned[t.id];
-      var when = rec ? (rec.age + '세 ' + (rec.month || 1) + '개월차' + (rec.name ? ' · ' + rec.name : '')) :
+      var when = rec ? (Life.ageMonthLabel(rec.age, rec.month || 1) + (rec.name ? ' · ' + rec.name : '')) :
         (t.ages[0] === t.ages[1] ? t.ages[0] + '세에 해금' : t.ages[0] + '~' + t.ages[1] + '세에 해금');
       return '<div class="tb-item' + (rec ? ' got' : '') + '">' +
         '<div class="tb-emoji">' + (rec ? t.emoji : '🔒') + '</div>' +
@@ -1870,6 +1895,31 @@
     $('screen-start').scrollTop = 0;
   }
 
+  function closeMoreMenu() {
+    var menu = $('moreMenu'), btn = $('moreBtn');
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function bindMoreMenu() {
+    var btn = $('moreBtn'), menu = $('moreMenu');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = menu.hidden;
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) {
+      if (menu.hidden) return;
+      if (e.target === btn || menu.contains(e.target)) return;
+      closeMoreMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMoreMenu();
+    });
+  }
+
   /* ── 바인딩 ── */
   function bind() {
     $('advanceBtn').addEventListener('click', advance);
@@ -1878,10 +1928,22 @@
     $('overlay').addEventListener('click', closeSheet);
     $('summaryBtn').addEventListener('click', function () {
       if (!state) return;
+      autoClear();
       renderEnding(false);
     });
-    $('resetBtn').addEventListener('click', resetGame);
-    $('hallBtnPlay').addEventListener('click', function () { openHall('play'); });
+    if ($('endClose')) $('endClose').addEventListener('click', function () {
+      showScreen('play');
+      renderGame();
+    });
+    $('resetBtn').addEventListener('click', function () {
+      closeMoreMenu();
+      resetGame();
+    });
+    $('hallBtnPlay').addEventListener('click', function () {
+      closeMoreMenu();
+      openHall('play');
+    });
+    bindMoreMenu();
     var fbPlay = $('fbBtnPlay');
     if (fbPlay) fbPlay.addEventListener('click', openFeedback);
 
