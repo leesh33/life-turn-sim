@@ -13,6 +13,10 @@
 --   · 지우기 life_sim_leaderboard_remove(p_id) / life_sim_leaderboard_clear()  — 본인 행만
 --   · 테이블에는 RLS 를 켜고 정책을 두지 않는다 → 직접 select/insert 불가, RPC 로만.
 --   · 앱은 anon(publishable) 키 + 로그인 토큰으로만 동작한다. service_role 키는 쓰지 않는다.
+--
+-- 2026-11-28 점수식 동기화 — life_sim_leaderboard_submit 의 score/재산 검증을
+--   앱 엔진 lifeScore 와 같은 식(게이지 평균 × 0.40 + 재산 몫 0~56, (log10/5.3)²)으로 교체했다.
+--   실서버(zdcdvjlssncsawpqsjwe)에 적용 완료(2026-11-28). 이 파일은 다시 실행해도 안전하다.
 -- ─────────────────────────────────────────────────────────────
 
 -- 1. 테이블 ──────────────────────────────────────────────────
