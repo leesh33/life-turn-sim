@@ -38,7 +38,7 @@ comment on table  public.life_sim_leaderboard is '「인생 한 턴」 전체 �
 comment on column public.life_sim_leaderboard.display_name   is '랭킹에 보이는 이름(닉네임). 비어 있으면 익명 플레이어';
 comment on column public.life_sim_leaderboard.character_name is '그 인생의 캐릭터 이름';
 comment on column public.life_sim_leaderboard.run_key        is '앱 전당 기록 id — 같은 인생은 한 행으로 갱신';
-comment on column public.life_sim_leaderboard.score          is '종합 점수(0~100) — 여섯 게이지 평균 55% + 재산 45%';
+comment on column public.life_sim_leaderboard.score          is '종합 점수(0~100) — 엔진 lifeScore: 여섯 게이지 평균 × 0.40 + 재산 몫(0~56, log10/5.3 의 제곱)';
 comment on column public.life_sim_leaderboard.net_assets     is '마지막 재산(만원). 빚이면 음수';
 
 -- 값 검증 — 앱 버그가 아니라 DB가 마지막으로 막아 준다.
@@ -182,12 +182,17 @@ begin
     v_scn := 'kr';
   end if;
 
-  -- 점수 ↔ 재산 앞뒤 맞추기 — 앱의 공식(여섯 게이지 평균 × 0.55 + 재산 몫 최대 45)에서
-  -- 나올 수 없는 조합(예: 재산 100억인데 총점 10)은 받지 않는다.
+  -- 점수 ↔ 재산 앞뒤 맞추기 — 앱 엔진의 lifeScore(2026-11-25 통일)와 같은 식으로 검증한다.
+  --   lifeScore = clamp(게이지 평균 × 0.40 + 재산 몫, 0, 100)
+  --   재산 몫   = clamp((log10(재산+1) / 5.3)² × 56, 0, 56)
+  -- 게이지 몫은 0~40 이므로, 받은 점수는 [재산 몫 - 0.6, 40 + 재산 몫 + 0.6] 안이어야 한다.
+  -- (2026-11-28 이전에는 옛 공식 0.55·45·log10/4.6 으로 검사해, 재산 1억·게이지 낮은
+  --  32점대의 정상 기록이 '점수와 재산이 맞지 않습니다'로 거부됐다.)
   v_asset_score := case when v_assets > 0
-    then least(45, greatest(0, (log(10::double precision, (v_assets + 1)::double precision) / 4.6) * 45))
+    then least(56, greatest(0,
+      power(greatest(0, log(10::double precision, (v_assets + 1)::double precision) / 5.3), 2) * 56))
     else 0 end;
-  if v_score < v_asset_score - 0.6 or v_score > 55.5 + v_asset_score then
+  if v_score < v_asset_score - 0.6 or v_score > 40 + v_asset_score + 0.6 then
     raise exception '점수와 재산이 맞지 않습니다' using errcode = '22023';
   end if;
 

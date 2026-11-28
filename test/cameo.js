@@ -171,7 +171,7 @@ Life.save(s3);
 const reload = Life.load();
 check('저장/불러오기에서 관계 유지', reload && reload.cameos[0].rel === 'married' && reload.cameos[0].name === '상훈',
   reload && reload.cameos[0].rel);
-check('저장본 버전 v5', reload && reload.v === 5, reload && reload.v);
+check('저장본 버전 v6', reload && reload.v === 6, reload && reload.v);
 
 const s4 = Life.newGame({ name: '희연', gender: '여', startAge: 25 });
 strong(s4);
@@ -214,7 +214,7 @@ const legacy = {
   hallId: null, undo: null, rewards: { heal: 0, reroll: 0, undo: 0 }, createdAt: 1
 };
 const migrated = Life.migrate(JSON.parse(JSON.stringify(legacy)));
-check('v4 저장본 → v5로 올라감', migrated.v === 5, migrated.v);
+check('v4 저장본 → v6로 올라감', migrated.v === 6, migrated.v);
 check('v4 저장본에 카메오가 붙음', Array.isArray(migrated.cameos) && migrated.cameos[0].name === '상훈',
   JSON.stringify(migrated.cameos.map((c) => c.name)));
 check('v4 저장본 이어하기 무사고', !!Life.currentEvent(migrated));

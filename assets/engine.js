@@ -6,7 +6,7 @@
   'use strict';
 
   var SAVE_KEY = 'lifeTurnSim.save.v1';
-  var SAVE_VERSION = 5;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운) → v5(이전 회차 인물 · 2026-11-20 출발 시나리오·가문 유산을 같은 v5 모양에 더함)
+  var SAVE_VERSION = 6;      // v1(일차 단위) → v2(개월차) → v3(졸업 결산·명예의 전당) → v4(역량·행운) → v5(이전 회차 인물·시나리오·가문 유산) → v6(2026-11-28 진행 속도 mode · 없으면 일반 모드)
   var END_AGE = 80;          // 이 나이를 넘기면 인생 요약(엔딩)
   var MONTHS = 12;           // 한 살 = 12개월차
   var LAST_MONTH = 12;       // 한 살의 마지막 이벤트 개월차
@@ -22,6 +22,22 @@
     { id: 'midlife',    name: '중년',     emoji: '🌗', from: 50, to: 64, accent: '#5B6B7C' },
     { id: 'senior',     name: '노년',     emoji: '🍂', from: 65, to: 80, accent: '#8A7355' }
   ];
+
+  /* ── 진행 속도 (2026-11-28 · 희연 님 피드백) ──
+     같은 인생을 두 가지 속도로 볼 수 있게 한다.
+       normal : 한 달에 한 번, 960개월을 차근차근 (기존 그대로)
+       fast   : 시간은 그대로 흐르고 사건만 골라 보는 압축 모드 (3~5분 완주)
+     빠른 모드에서도 시간 효과(유지 압박·노화·행운·연 수지·건강 부담)는 건너뛴 달마다
+     그대로 적용되므로, 스탯·재산·건강의 규칙은 1개월 모드와 같다. */
+  var MODES = [
+    { id: 'normal', name: '일반 모드', emoji: '📅', short: '한 달씩',
+      desc: '한 달에 한 번, 960개월을 차근차근', hint: '1개월씩 진행' },
+    { id: 'fast',   name: '빠른 모드', emoji: '⚡', short: '핵심만',
+      desc: '핵심 사건만 골라 3~5분에 완주', hint: '1~2년씩 압축 진행' }
+  ];
+  var MODE_BY_ID = {};
+  MODES.forEach(function (m) { MODE_BY_ID[m.id] = m; });
+  function modeOf(id) { return MODE_BY_ID[id] || MODE_BY_ID.normal; }
 
   var START_AGES = [
     { age: 1,  label: '출산',            emoji: '👶', wide: 0, desc: '태어난 날부터' },
@@ -778,6 +794,7 @@
       v: SAVE_VERSION,
       name: (opts.name || '').trim() || '나',
       gender: gender,
+      mode: opts.mode === 'fast' ? 'fast' : 'normal',
       startAge: startAge,
       age: startAge,
       month: 1,
@@ -828,15 +845,19 @@
     return 1;
   }
 
-  function resolveEffects(s, spec) {
+  function resolveEffects(s, spec, spread) {
     var deltas = {};
     if (!spec) return deltas;
     if (typeof spec === 'function') spec = spec(s) || {};
-    Object.keys(spec).forEach(function (k) {
-      var v = spec[k];
+    var k = (typeof spread === 'number' && spread > 0) ? spread : 1;
+    Object.keys(spec).forEach(function (k2) {
+      var v = spec[k2];
       if (Array.isArray(v)) v = randInt(s, v[0], v[1]);
       if (typeof v !== 'number' || !v) return;
-      if (k === 'asset') {
+      if (k2 === 'asset') {
+        // 빠른 모드의 카드도 여러 달을 덮으므로 돈의 출입도 그만큼 키운다(제곱근만 —
+        // 결혼식·전세금 같은 '한 번에 나가는 큰돈'이 6배가 되지는 않게).
+        if (k > 1) v = Math.round(v * Math.sqrt(k));
         var beforeAsset = s.stats.asset;
         var nextAsset = Math.round(beforeAsset + v);
         // 미성년자는 빚을 질 수 없다 — 어릴 적 문방구·간식 값이 통장을 마이너스로 만들지 않게.
@@ -844,16 +865,18 @@
         if (s.age < 20 && beforeAsset >= 0 && nextAsset < 0) nextAsset = 0;
         s.stats.asset = nextAsset;
         if (nextAsset !== beforeAsset) deltas.asset = (deltas.asset || 0) + (nextAsset - beforeAsset);
-      } else if (s.stats[k] !== undefined) {
-        var before = s.stats[k];
-        var add = v > 0 ? v * gainFactor(before) : v;
+      } else if (s.stats[k2] !== undefined) {
+        var before = s.stats[k2];
+        // 빠른 모드: 카드 하나가 여러 달을 덮으므로, 그 선택이 그 기간을 끌고 간 것으로 본다.
+        // 오르는 쪽만 보폭만큼 키우고(생활 리듬), 내리는 쪽은 그대로 둔다.
+        var add = v > 0 ? v * gainFactor(before) * k : v;
         var next = clamp(before + add, 0, 100);
         // 미성년자의 체력은 0까지 떨어지지 않는다 — 부모가 챙기는 시기이고,
         // 6~7세가 체력 0으로 건강 악화 엔딩을 맞는 흐름을 막는다(20세 전에는 부담도 안 쌓인다).
-        if (k === 'hp' && s.age < HEALTH.minEndAge && next < 20) next = 20;
-        s.stats[k] = next;
-        var diff = Math.round(s.stats[k] - before);
-        if (diff) deltas[k] = (deltas[k] || 0) + diff;
+        if (k2 === 'hp' && s.age < HEALTH.minEndAge && next < 20) next = 20;
+        s.stats[k2] = next;
+        var diff = Math.round(s.stats[k2] - before);
+        if (diff) deltas[k2] = (deltas[k2] || 0) + diff;
       }
     });
     return deltas;
@@ -922,8 +945,8 @@
       var cameoIdx = typeof choice.cameoIndex === 'number' ? choice.cameoIndex : 0;
       setCameoRel(s, cameoIdx, relSpec);
     }
-    var deltas = resolveEffects(s, choice.effects);
-    if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects));
+    var deltas = resolveEffects(s, choice.effects, spreadOf(s));
+    if (branch && branch.effects) mergeDeltas(deltas, resolveEffects(s, branch.effects, spreadOf(s)));
     // 위험한 몸으로 무리했는가 (체력이 위험 구간인데 −3 이상 깎은 선택)
     noteStrain(s, s.undo ? s.undo.stats.hp : s.stats.hp);
     if (choice.queue) {
@@ -939,6 +962,7 @@
       turn: s.turn,
       age: s.age,
       month: s.month,
+      span: s.current.span || 0,     // 빠른 모드에서 이 카드가 덮은 개월 수 (일반 모드는 0)
       eventId: ev.id,
       title: typeof ev.title === 'function' ? ev.title(s) : (ev.title || ''),
       situation: typeof ev.text === 'function' ? ev.text(s) : (ev.text || ''),
@@ -1399,9 +1423,233 @@
     return clamp((v - 50) / 50, -1, 1) * LUCK_SPAN;
   }
 
+  /* ═════════════ ⚡ 빠른 모드 (2026-11-28) ═════════════
+     희연 님 피드백: 960개월을 한 달씩 넘기면 한 판이 너무 길다.
+       · 보폭: 유아기 6개월 · 학창기 12개월 · 성인 이후 24개월
+       · 보폭 안에 갈림길(fork)이 있으면 그 달에서 멈춘다 — 갈림길은 건너뛰지 않는다
+       · 멈춘 달에 마일스톤이 있으면 그것을, 없으면 '핵심 사건'(weight 3 이상이거나
+         결혼·직업·자녀·진학처럼 큰 플래그를 세우는 사건) 하나를 내민다
+       · 그래도 없으면 'N개월이 흘렀습니다' 압축 카드 한 장으로 보낸다
+     시간 효과는 건너뛴 달마다 그대로 적용되므로(stepMonths) 스탯·재산·건강 규칙은
+     1개월 모드와 같다. 1개월 모드의 밸런스·유아기 월령은 건드리지 않는다. */
+  var FAST = {
+    stride: [
+      { to: 7,  months: 6 },
+      { to: 19, months: 12 },
+      { to: 80, months: 24 }
+    ],
+    notableWeight: 3,
+    // 이 플래그를 세우는 선택지는 '인생의 갈림길'이라 압축하지 않고 내민다
+    bigFlags: ['결혼', '배우자', '자녀', '자녀수', '직업', '창업', '사업체', '수능_명문',
+      '수능_지방', '전문대', '대학원_진학', '청약통장', '청약당첨', '집있음', '명퇴', '은퇴',
+      '유튜버', '이직', '승진', '창업_길', '개발_길', '공무원_길', '교사_길', '의사_길']
+  };
+
+  function isFast(s) { return !!s && s.mode === 'fast'; }
+
+  /* 빠른 모드의 카드 하나는 여러 달을 덮는다 — 그 선택이 그 기간을 끌고 간 것으로 본다.
+     6개월 1 · 12개월 1.5 · 24개월 3 (오르는 쪽만). 1개월 모드는 늘 1 이다. */
+  var FAST_SPREAD = { per: 4, min: 1, max: 6 };
+  function spreadOf(s) {
+    if (!isFast(s) || !s.current || !s.current.span) return 1;
+    return clamp(s.current.span / FAST_SPREAD.per, FAST_SPREAD.min, FAST_SPREAD.max);
+  }
+
+  function fastStrideOf(age) {
+    for (var i = 0; i < FAST.stride.length; i++) {
+      if (age <= FAST.stride[i].to) return FAST.stride[i].months;
+    }
+    return 24;
+  }
+
+  // 갈림길·큰 마일스톤이 있는 달의 색인 — 이벤트 목록이 바뀌면 다시 만든다
+  // (53개의 milestone:true 사건 + 17개의 fork — 인생의 큰 순간만 빠른 모드에서 멈춘다)
+  var _forkIdx = null, _forkLen = -1;
+  function forkIndex() {
+    var list = allEvents();
+    if (_forkIdx && _forkLen === list.length) return _forkIdx;
+    var idx = {};
+    for (var i = 0; i < list.length; i++) {
+      var ev = list[i];
+      if (!ev.at) continue;
+      if (!ev.fork && !ev.milestone) continue;
+      var pairs = Array.isArray(ev.at[0]) ? ev.at : [ev.at];
+      for (var j = 0; j < pairs.length; j++) {
+        var k = pairs[j][0] + '-' + pairs[j][1];
+        (idx[k] = idx[k] || []).push(ev);
+      }
+    }
+    _forkIdx = idx;
+    _forkLen = list.length;
+    return idx;
+  }
+
+  function forkAt(s, age, month) {
+    var list = forkIndex()[age + '-' + month] || [];
+    for (var i = 0; i < list.length; i++) {
+      // 나이 조건은 '그 달'로 이미 맞춰져 있다 — 지금 나이로 보면 앞선 달의 큰 순간을 놓친다
+      if (!used(s, list[i].id) && passesBeyondAge(list[i], s)) return list[i];
+    }
+    return null;
+  }
+
+  function setsBigFlag(ev) {
+    if (!ev || !ev.choices || !FAST.bigFlags.length) return false;
+    for (var i = 0; i < ev.choices.length; i++) {
+      var c = ev.choices[i] || {};
+      var specs = [c.set, c.mini && c.mini.win && c.mini.win.set, c.mini && c.mini.lose && c.mini.lose.set];
+      for (var j = 0; j < specs.length; j++) {
+        var sp = specs[j];
+        if (!sp || typeof sp !== 'object') continue;
+        for (var k in sp) {
+          if (FAST.bigFlags.indexOf(k) !== -1 && sp[k]) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /* 한 달씩 시간을 흘린다 — 1개월 모드의 advance() 와 같은 순서·같은 효과.
+     졸업 결산(s.grad)은 부르는 쪽이 정한다(빠른 모드는 건너뛴다). */
+  function stepMonths(s, n) {
+    var out = { months: 0, birthdays: 0, lastLedger: null, health: null, ended: false, endingKind: null };
+    for (var i = 0; i < n; i++) {
+      if (s.ended) break;
+      var birthday = false;
+      if (s.month >= LAST_MONTH) { s.age += 1; s.month = 1; birthday = true; }
+      else { s.month += 1; }
+      s.turn += 1;
+      applyUpkeep(s);
+      if (birthday) { applyAging(s); applyLuckDrift(s); }
+      var ledger = birthday ? applyLedger(s) : null;
+      if (ledger) out.lastLedger = ledger;
+      var health = s.age <= END_AGE ? applyHealth(s) : null;
+      if (health) out.health = health;
+      out.months += 1;
+      if (birthday) out.birthdays += 1;
+      if (s.ended) { out.ended = true; out.endingKind = s.endingKind; break; }
+      if (s.age > END_AGE) {
+        s.ended = true;
+        s.endingKind = 'life';
+        s.current = null;
+        registerLife(s);
+        out.ended = true;
+        out.endingKind = 'life';
+        break;
+      }
+    }
+    return out;
+  }
+
+  /* 압축 카드 — 보폭 안에 아무 사건도 없을 때 'N개월이 흘렀습니다' 한 장 */
+  var FAST_GAP_TEXT = {
+    infancy: '기고, 뒤집고, 기어다니고, 다시 잠들었습니다. 그렇게 몇 달이 지나갔습니다.',
+    elementary: '학교, 학원, 숙제, 그리고 주말. 달력이 몇 장 넘어갔는데 기억나는 건 별로 없습니다.',
+    middle: '시험, 친구, 게임, 그리고 다시 시험. 별일 없이 지나간 몇 달이었습니다.',
+    high: '모의고사, 자습, 그리고 밤. 시간이 빠르게 지나갔습니다.',
+    college: '수업, 과제, 알바, 사람들. 특별한 사건 없이 학기가 흘러갔습니다.',
+    work: '출근하고, 일하고, 퇴근하고. 통장은 조금씩 바뀌고, 마음은 조금씩 닳았습니다.',
+    family: '아이를 재우고, 밥을 챙기고, 다시 아침. 살림은 늘 비슷하게 굴러갑니다.',
+    midlife: '몸은 예전 같지 않고, 하루는 여전히 바쁩니다. 몇 해가 그렇게 지나갔습니다.',
+    senior: '아침에 일어나 걷고, 밥을 먹고, 누웠습니다. 요즘은 시간이 물처럼 흐릅니다.'
+  };
+
+  function fastGapEvent(s, months) {
+    var stage = stageOf(s.age);
+    var span = months >= 24 ? Math.round(months / 12) + '년' : months + '개월';
+    return {
+      id: '__fast_' + s.age + '_' + s.month + '_' + s.turn,
+      stage: stage.id,
+      place: '일상',
+      title: span + '이 흘렀습니다',
+      text: FAST_GAP_TEXT[stage.id] || FAST_GAP_TEXT.work,
+      choices: [
+        { label: '그렇게 시간이 갔다', result: '기록할 사건은 없었지만, ' + span + '만큼 나이가 들었습니다.', effects: {} }
+      ],
+      __fastGap: true
+    };
+  }
+
+  // 빠른 모드의 사건 고르기 — 마일스톤·건강·예약 → 핵심 사건 → 압축 카드
+  function pickEventFast(s) {
+    var list = allEvents(), i, ev;
+
+    // 1) 마일스톤 (갈림길 먼저)
+    var milestones = [], forks = [];
+    for (i = 0; i < list.length; i++) {
+      ev = list[i];
+      if (!matchesAt(ev, s.age, s.month) || used(s, ev.id) || !passes(ev, s)) continue;
+      milestones.push(ev);
+      if (ev.fork) forks.push(ev);
+    }
+    if (milestones.length) return weightedPick(s, forks.length ? forks : milestones);
+
+    // 2) 몸이 위험하면 건강 사건을 먼저 (1개월 모드와 같은 순서)
+    if (s.stats && s.stats.hp <= healthThresholdOf(s.age).warnHp) {
+      var healthEv = healthEventFor(s);
+      if (healthEv) return healthEv;
+    }
+
+    // 3) 예약된 후속 이벤트
+    while (s.queue && s.queue.length) {
+      var qid = s.queue.shift();
+      ev = byId(qid);
+      if (ev && !used(s, ev.id) && passes(ev, s)) return ev;
+    }
+
+    // 4) 핵심 사건 — weight 3 이상이거나 큰 플래그를 세우는 사건
+    var stage = stageOf(s.age).id;
+    var blocked = blockedInStage(s, stage);
+    var notable = [];
+    for (i = 0; i < list.length; i++) {
+      ev = list[i];
+      if (ev.at || ev.stage === 'any' || ev.stage !== stage) continue;
+      if (used(s, ev.id) || !passes(ev, s)) continue;
+      if (blocked.exact[contentKeyOf(ev, s)]) continue;
+      var w = typeof ev.weight === 'number' ? ev.weight : 0;
+      if (w >= FAST.notableWeight || setsBigFlag(ev)) notable.push(ev);
+    }
+    if (notable.length) return weightedPick(s, notable);
+
+    // 5) 압축 카드
+    return fastGapEvent(s, fastStrideOf(s.age));
+  }
+
+  function advanceFast(s) {
+    var fromAge = s.age, fromMonth = s.month;
+    var stride = fastStrideOf(s.age);
+    var stop = 0;
+    // 앞으로 3년 안의 '큰 순간'(갈림길·milestone)은 건너뛰지 않는다.
+    // 보폭보다 멀리 있어도 그 달까지 가서 멈춘다 — 취직·결혼·출산 같은 문은 반드시 지나간다.
+    var limit = Math.max(stride, 36);
+    for (var k = 1; k <= limit; k++) {
+      var a = s.age + Math.floor((s.month - 1 + k) / 12);
+      var m = ((s.month - 1 + k) % 12) + 1;
+      if (a > END_AGE) break;
+      if (forkAt(s, a, m)) { stop = k; break; }
+    }
+    if (!stop) stop = stride;
+
+    var out = stepMonths(s, stop);
+    var span = out.months || stop;
+    if (out.ended) {
+      return { ok: true, ended: true, birthday: out.birthdays > 0, graduation: null,
+        ledger: out.lastLedger, health: out.health, span: span, fast: true };
+    }
+
+    var ev = pickEventFast(s);
+    s.current = { eventId: ev.id, chosen: null, event: (ev.__generic || ev.__fastGap) ? ev : null,
+      span: span, fromAge: fromAge, fromMonth: fromMonth };
+    s.used.push(ev.id);
+    s.lastSeen[ev.id] = s.turn;
+    return { ok: true, ended: false, birthday: out.birthdays > 0, event: ev, graduation: null,
+      ledger: out.lastLedger, health: out.health, span: span, fast: true };
+  }
+
   function advance(s) {
     if (!s.current || s.current.chosen === null) return { ok: false };
     if (s.ended) return { ok: false };
+    if (isFast(s)) return advanceFast(s);
 
     var prevAge = s.age;
     var birthday = false;
@@ -1493,6 +1741,8 @@
     if (typeof s.generation !== 'number' || s.generation < 1) {
       s.generation = s.legacy && s.legacy.gen ? s.legacy.gen : 1;
     }
+    // v6: 진행 속도 — 예전 저장본은 일반 모드(한 달씩)로 이어 간다
+    if (s.mode !== 'fast') s.mode = 'normal';
     s.v = SAVE_VERSION;
     return s;
   }
@@ -1822,6 +2072,7 @@
       highlights: highlights,
       cameo: cameoSummary(s),
       career: s.flags.직업 || null,
+      mode: s.mode || 'normal',
       ending: s.endingKind || null,
       healthEnd: s.endingKind === 'health',
       health: healthOf(s),
@@ -2701,6 +2952,11 @@
       return g > 1 ? g + '대' : '1대';
     },
     START_AGES: START_AGES,
+    MODES: MODES,
+    modeOf: modeOf,
+    isFast: isFast,
+    fastStrideOf: fastStrideOf,
+    stepMonths: stepMonths,
     STATS: STATS,
     STAT_META: STAT_META,
     GAUGE_KEYS: GAUGE_KEYS,

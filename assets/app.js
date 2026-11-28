@@ -26,14 +26,18 @@
      마지막에 고른 시나리오는 localStorage 에 남겨 다음 판의 기본값으로 쓴다. */
   var SCENARIO_KEY = 'lifeTurnSim.scenario.v1';
   var GENDER_KEY = 'lifeTurnSim.gender.v1';     // 마지막에 고른 성별 — 다음 판의 기본값
+  var MODE_KEY = 'lifeTurnSim.mode.v1';         // 마지막에 고른 진행 속도 — 다음 판의 기본값
   var FLASH_KEY = 'lifeTurnSim.flash.v1';      // 화면을 새로 열며 한 번 보여 줄 안내(삭제 완료 등)
   var pickedScenario = 'kr';
+  var pickedMode = 'normal';
   var pickedLegacy = null;
   try {
     var savedScenario = localStorage.getItem(SCENARIO_KEY);
     if (savedScenario && Life && Life.scenarioOf(savedScenario).id === savedScenario) pickedScenario = savedScenario;
     var savedGender = localStorage.getItem(GENDER_KEY);
     if (savedGender === '남' || savedGender === '여' || savedGender === '랜덤') pickedGender = savedGender;
+    var savedMode = localStorage.getItem(MODE_KEY);
+    if (savedMode === 'fast' || savedMode === 'normal') pickedMode = savedMode;
   } catch (e) {}
 
   /* ── 5초 자동 넘김 ──
@@ -98,7 +102,27 @@
     if (hallBtn) hallBtn.textContent = '🏆 명예의 전당' + (mine.length ? ' ' + mine.length : '');
 
     renderScenarios();
+    renderModes();
     renderLegacy();
+  }
+
+  /* ── ⚡ 진행 속도 칩 (2026-11-28) ── */
+  function renderModes() {
+    var row = $('modeRow');
+    if (!row || !Life || !Life.MODES) return;
+    row.innerHTML = Life.MODES.map(function (m) {
+      var on = m.id === pickedMode;
+      return '<button type="button" class="mode-chip' + (on ? ' active' : '') + '"' +
+        ' data-mode="' + m.id + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+        ' title="' + esc(m.desc) + '">' +
+        '<span class="mc-emoji" aria-hidden="true">' + m.emoji + '</span>' +
+        '<span class="mc-body"><b>' + esc(m.name) + '</b><i>' + esc(m.id === 'fast' ? '3~5분' : '한 달씩') + '</i></span>' +
+        '</button>';
+    }).join('');
+    var hint = $('modeHint');
+    if (hint) hint.textContent = Life.modeOf(pickedMode).hint || '';
+    var start = $('screen-start');
+    if (start) start.classList.toggle('has-fast', pickedMode === 'fast');
   }
 
   /* ── 출발 시나리오 칩 ── */
@@ -218,6 +242,16 @@
       if (window.Sfx) window.Sfx.pick();
     });
 
+    var modeRow = $('modeRow');
+    if (modeRow) modeRow.addEventListener('click', function (e) {
+      var chip = e.target.closest('.mode-chip');
+      if (!chip) return;
+      pickedMode = chip.dataset.mode === 'fast' ? 'fast' : 'normal';
+      try { localStorage.setItem(MODE_KEY, pickedMode); } catch (err) {}
+      renderModes();
+      if (window.Sfx) window.Sfx.pick();
+    });
+
     $('legacyRow').addEventListener('click', openLegacyModal);
     $('lmClose').addEventListener('click', closeLegacyModal);
     $('legacyModal').addEventListener('click', function (e) {
@@ -282,7 +316,8 @@
       gender: pickedGender,
       startAge: pickedAge,
       scenario: pickedScenario,
-      legacy: legacyId
+      legacy: legacyId,
+      mode: pickedMode
     });
     try { localStorage.setItem(GENDER_KEY, pickedGender); } catch (e) {}
     // 미션 출발선(그 나이대에 들어설 때의 값)을 처음부터 저장본에 남긴다
@@ -300,6 +335,7 @@
       bits.push(sc.emoji + ' ' + sc.name);
     }
     if (cameoCount) bits.push('이전 인생 인물 ' + cameoCount + '명');
+    if (state.mode === 'fast') bits.unshift('⚡ 빠른 모드');
     toast(bits.length ? bits.join(' · ') + ' — 인생이 시작되었습니다' : '인생이 시작되었습니다');
   }
 
@@ -451,6 +487,7 @@
     renderStats();
     renderEvent(false);
     renderRewards();
+    $('advanceBtn').textContent = advanceLabel();
     $('advanceBtn').disabled = !(state.current && state.current.chosen !== null);
   }
 
@@ -594,6 +631,8 @@
     var boom = Life.boomerangOf(state, ev);
 
     var badges = '<span class="badge age">' + Life.ageMonthLabel(state.age, state.month) + '</span>';
+    if (ev.__fastGap) badges += '<span class="badge span">⏩ ' + esc(spanText(state.current.span).replace('이 지났습니다', '')) + ' 압축</span>';
+    else if (state.current && state.current.span > 1) badges += '<span class="badge span">⏩ ' + esc(state.current.span) + '개월</span>';
     if (ev.cameo) badges += '<span class="badge cameo">🧬 이전 회차 인물</span>';
     if (ev.boomerang) badges += '<span class="badge boom">🪃 과거의 부메랑</span>';
     if (ev.milestone) badges += '<span class="badge milestone">★ 마일스톤</span>';
@@ -992,17 +1031,33 @@
     updateAcctRow();
   }
 
-  function timewarp() {
+  function timewarp(text) {
     var node = document.querySelector('.timewarp');
     if (!node) {
       node = document.createElement('div');
       node.className = 'timewarp';
-      node.innerHTML = '<span>한 달이 지났습니다</span>';
+      node.innerHTML = '<span></span>';
       $('app').appendChild(node);
     }
+    var label = node.querySelector('span');
+    if (label) label.textContent = text || '한 달이 지났습니다';
     node.classList.remove('run');
     void node.offsetWidth;
     node.classList.add('run');
+  }
+
+  /* 진행하기 버튼 이름 — 빠른 모드는 카드 하나가 덮는 기간을 그대로 알려 준다 */
+  function advanceLabel() {
+    if (!state) return '다음 1개월 진행하기 →';
+    if (state.mode !== 'fast') return '다음 1개월 진행하기 →';
+    var n = Life.fastStrideOf(state.age);
+    var span = n >= 24 ? '2년' : n >= 12 ? '1년' : n + '개월';
+    return '⚡ 다음 ' + span + ' 진행하기 →';
+  }
+  function spanText(months) {
+    if (!months || months <= 1) return '한 달이 지났습니다';
+    if (months >= 24) return Math.round(months / 12) + '년이 지났습니다';
+    return months + '개월이 지났습니다';
   }
 
   function advance() {
@@ -1025,12 +1080,12 @@
     // 졸업 결산 — 12개월차 턴을 마치고 다음 나이로 넘어간 순간
     // 새 화면은 '한 달이 지났습니다' 표시가 사라진 뒤에 그린다 — 회고 제목줄을 가리지 않게
     if (res.graduation) {
-      timewarp();
+      timewarp(spanText(res.span));
       setTimeout(renderGrad, 600);
       return;
     }
 
-    timewarp();
+    timewarp(spanText(res.span));
     var card = $('eventCard');
     if (card) card.classList.add('leaving');
 
@@ -1042,6 +1097,7 @@
       missionFlash = false;
       renderRewards();
       $('advanceBtn').disabled = true;
+      $('advanceBtn').textContent = advanceLabel();
       $('stage').scrollTop = 0;
       if (res.birthday) {
         // 생일에는 그해 살림 장부(연 수지)를 같이 알려 준다 — 재산이 왜 늘고 줄었는지 보이게
@@ -1274,11 +1330,14 @@
 
     $('hallSub').textContent = '졸업·완주 기록 ' + recs.length + '건 · 내 기록 ' + mine.length + '건';
 
-    if (window.TitleBook) {
-      var tp = window.TitleBook.progress();
-      $('hallTitles').innerHTML = '<span class="ht-emoji">🏅</span>' +
-        '<span class="ht-body"><b>칭호·인연 도감</b>' +
-        '<span>' + tp.got + ' / ' + tp.total + ' 수집 · ' + tp.pct + '%</span></span>' +
+    if (window.TitleBook || window.CareerBook) {
+      var tprog = window.TitleBook ? window.TitleBook.progress() : { got: 0, total: 0, pct: 0 };
+      var jprog = window.CareerBook ? window.CareerBook.progress('job') : { got: 0, total: 0 };
+      var bprog = window.CareerBook ? window.CareerBook.progress('bond') : { got: 0, total: 0 };
+      $('hallTitles').innerHTML = '<span class="ht-emoji">📔</span>' +
+        '<span class="ht-body"><b>인생 도감</b>' +
+        '<span>칭호 ' + tprog.got + '/' + tprog.total + ' · 직업 ' + jprog.got + '/' + jprog.total +
+          ' · 인연 ' + bprog.got + '/' + bprog.total + '</span></span>' +
         '<span class="ht-go">보기 →</span>';
       $('hallTitles').hidden = false;
     }
@@ -1638,6 +1697,7 @@
 
     $('endingScroll').innerHTML = html;
     showScreen('ending');
+    if (isFinal) checkTitles();   // 마지막 나이에 만난 직업・인연도 도감에 남긴다
     if (isFinal && window.Sfx) window.Sfx.ending();
 
     var cont = $('endContinue');
@@ -1761,12 +1821,37 @@
     $('endShare').addEventListener('click', openShareCard);
   }
 
-  /* ═════════════ 칭호·인연 도감 ═════════════ */
+  /* ═════════════ 📔 인생 도감 — 칭호 · 직업 · 인연 ═════════════
+     2026-11-28: 칭호 도감 하나였던 것을 탭 세 개로 넓혔다.
+       🏅 칭호  : titles.js  (유년·학창기 숨은 칭호 20종)
+       💼 직업  : codex.js   (그 인생이 걸어간 길 22종)
+       💕 인연  : codex.js   (첫사랑·배우자·자녀·이전 회차 인물 13종)
+     기존 id(titleModal·tmBody·tmSub·tmBar)는 그대로 두어 예전 검사·바로가기가 계속 된다. */
   var badgeTimer = null;
+  var codexTab = 'title';
+  var CODEX_TABS = [
+    { id: 'title', emoji: '🏅', label: '칭호' },
+    { id: 'job',   emoji: '💼', label: '직업' },
+    { id: 'bond',  emoji: '💕', label: '인연' }
+  ];
 
   function checkTitles() {
-    if (!window.TitleBook || !state) return;
-    var got = window.TitleBook.check(state);
+    if (!state) return;
+    var got = [];
+    if (window.TitleBook) {
+      window.TitleBook.check(state).forEach(function (t) {
+        got.push({ emoji: t.emoji, name: t.name, desc: t.desc, kicker: '🏅 새 칭호', tab: 'title' });
+      });
+    }
+    if (window.CareerBook) {
+      window.CareerBook.check(state).forEach(function (t) {
+        got.push({
+          emoji: t.emoji, name: t.name, desc: t.desc,
+          kicker: t.kind === 'job' ? '💼 새 직업' : '💕 새 인연',
+          tab: t.kind === 'job' ? 'job' : 'bond'
+        });
+      });
+    }
     if (got.length) {
       if (window.Sfx) window.Sfx.title();
       showTitleBadge(got);
@@ -1786,7 +1871,7 @@
     pop.innerHTML =
       '<div class="bp-emoji">' + t.emoji + '</div>' +
       '<div class="bp-body">' +
-        '<div class="bp-kicker">🏅 새 칭호' + esc(extra) + '</div>' +
+        '<div class="bp-kicker">' + esc(t.kicker || '🏅 새 칭호') + esc(extra) + '</div>' +
         '<div class="bp-name">' + esc(t.name) + '</div>' +
         '<div class="bp-desc">' + esc(t.desc) + '</div>' +
       '</div>' +
@@ -1797,7 +1882,7 @@
       e.stopPropagation();
       clearTimeout(badgeTimer);
       pop.remove();
-      openTitleBook();
+      openTitleBook(t.tab || 'title');
     });
     $('app').appendChild(pop);
     requestAnimationFrame(function () { pop.classList.add('show'); });
@@ -1820,43 +1905,100 @@
       '<header class="tm-top">' +
         '<button type="button" class="tm-close" id="tmClose" aria-label="닫기">✕</button>' +
         '<div class="tm-title-box">' +
-          '<h2>🏅 칭호·인연 도감</h2>' +
+          '<h2>📔 인생 도감</h2>' +
           '<p id="tmSub">—</p>' +
         '</div>' +
       '</header>' +
+      '<div class="tm-tabs" id="tmTabs" role="tablist" aria-label="도감 종류"></div>' +
       '<div class="tm-progress"><i id="tmBar"></i></div>' +
       '<div class="tm-body" id="tmBody"></div>' +
-      '<p class="tm-note">해금한 칭호는 이 브라우저에 남습니다 · 새 인생을 시작해도 그대로예요</p>';
+      '<p class="tm-note" id="tmNote">해금한 도감은 이 브라우저에 남습니다 · 새 인생을 시작해도 그대로예요</p>';
     $('app').appendChild(modal);
     $('tmClose').addEventListener('click', closeTitleBook);
     modal.addEventListener('click', function (e) { if (e.target === modal) closeTitleBook(); });
+    $('tmTabs').addEventListener('click', function (e) {
+      var btn = e.target.closest('.tm-tab');
+      if (!btn) return;
+      codexTab = btn.dataset.tab || 'title';
+      renderCodex();
+      if (window.Sfx) window.Sfx.pick();
+    });
     return modal;
   }
 
-  function openTitleBook() {
-    if (!window.TitleBook) return;
-    var modal = ensureTitleModal();
-    var prog = window.TitleBook.progress();
-    var owned = window.TitleBook.owned();
-    $('tmSub').textContent = prog.got + ' / ' + prog.total + ' 수집 · ' + prog.pct + '%';
-    $('tmBar').style.width = Math.max(2, prog.pct) + '%';
-    $('tmBody').innerHTML = window.TitleBook.LIST.map(function (t) {
-      var rec = owned[t.id];
-      var when = rec ? (Life.ageMonthLabel(rec.age, rec.month || 1) + (rec.name ? ' · ' + rec.name : '')) :
-        (t.ages[0] === t.ages[1] ? t.ages[0] + '세에 해금' : t.ages[0] + '~' + t.ages[1] + '세에 해금');
-      return '<div class="tb-item' + (rec ? ' got' : '') + '">' +
-        '<div class="tb-emoji">' + (rec ? t.emoji : '🔒') + '</div>' +
-        '<div class="tb-body">' +
-          '<div class="tb-name">' + (rec ? esc(t.name) : '???') +
-            '<span class="tb-kind">' + esc(t.kind) + '</span></div>' +
-          '<div class="tb-desc">' + (rec ? esc(t.desc) : '아직 만나지 못한 칭호입니다') + '</div>' +
-          '<div class="tb-when">' + esc(when) + '</div>' +
-        '</div>' +
-      '</div>';
+  /* 탭별 진행도 */
+  function codexProgress() {
+    var out = { title: { got: 0, total: 0, pct: 0 }, job: { got: 0, total: 0, pct: 0 }, bond: { got: 0, total: 0, pct: 0 } };
+    if (window.TitleBook) out.title = window.TitleBook.progress();
+    if (window.CareerBook) {
+      out.job = window.CareerBook.progress('job');
+      out.bond = window.CareerBook.progress('bond');
+    }
+    var got = out.title.got + out.job.got + out.bond.got;
+    var total = out.title.total + out.job.total + out.bond.total;
+    return { tabs: out, got: got, total: total, pct: total ? Math.round((got / total) * 100) : 0 };
+  }
+
+  function itemHtml(rec, t, lockedDesc, kindLabel) {
+    var when = rec ? (Life.ageMonthLabel(rec.age, rec.month || 1) + (rec.name ? ' · ' + rec.name : '')) :
+      (t.ages && t.ages[0] === t.ages[1] ? t.ages[0] + '세에 해금' : (t.ages ? t.ages[0] + '~' + t.ages[1] + '세에 해금' : lockedDesc));
+    return '<div class="tb-item' + (rec ? ' got' : '') + '">' +
+      '<div class="tb-emoji">' + (rec ? t.emoji : '🔒') + '</div>' +
+      '<div class="tb-body">' +
+        '<div class="tb-name">' + (rec ? esc(t.name) : '???') +
+          '<span class="tb-kind">' + esc(kindLabel || t.kind || '') + '</span></div>' +
+        '<div class="tb-desc">' + (rec ? esc(t.desc) : esc(lockedDesc)) + '</div>' +
+        '<div class="tb-when">' + esc(when) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderCodex() {
+    var prog = codexProgress();
+    var tab = codexTab;
+    var tabs = CODEX_TABS.map(function (t) {
+      var on = t.id === tab;
+      var p = prog.tabs[t.id] || { got: 0, total: 0 };
+      return '<button type="button" class="tm-tab' + (on ? ' active' : '') + '" data-tab="' + t.id + '"' +
+        ' role="tab" aria-selected="' + (on ? 'true' : 'false') + '">' + t.emoji + ' ' + esc(t.label) +
+        '<span class="tm-tab-n">' + p.got + '/' + p.total + '</span></button>';
     }).join('');
+    $('tmTabs').innerHTML = tabs;
+    var p = prog.tabs[tab] || prog;
+    $('tmSub').textContent = p.got + ' / ' + p.total + ' 수집 · ' + p.pct + '%';
+    $('tmBar').style.width = Math.max(2, p.pct) + '%';
+
+    var html = '';
+    if (tab === 'title' && window.TitleBook) {
+      var owned = window.TitleBook.owned();
+      html = window.TitleBook.LIST.map(function (t) {
+        return itemHtml(owned[t.id], t, '아직 만나지 못한 칭호입니다', t.kind);
+      }).join('');
+      $('tmNote').hidden = false;
+      $('tmNote').textContent = '해금한 칭호는 이 브라우저에 남습니다 · 새 인생을 시작해도 그대로예요';
+    } else if (window.CareerBook) {
+      var group = tab === 'job' ? window.CareerBook.JOB : window.CareerBook.BOND;
+      var maps = window.CareerBook.owned();
+      html = group.map(function (t) {
+        return itemHtml(maps[t.id], t, tab === 'job' ? '아직 걸어보지 않은 길입니다' : '아직 만나지 못한 인연입니다',
+          tab === 'job' ? '직업' : '인연');
+      }).join('');
+      $('tmNote').hidden = false;
+      $('tmNote').textContent = tab === 'job'
+        ? '그 인생에서 실제로 걸어간 길만 쌓입니다 · 진학·첫 직장·창업·부업까지'
+        : '스쳐 간 인연도 남습니다 · 이전 회차 인물과의 인연은 🧬로 표시됩니다';
+    }
+    $('tmBody').innerHTML = html || '<div class="hall-empty">도감을 불러오지 못했습니다</div>';
+    $('tmBody').scrollTop = 0;
+  }
+
+  function openTitleBook(tab) {
+    if (!window.TitleBook && !window.CareerBook) return;
+    if (tab) codexTab = tab;
+    var modal = ensureTitleModal();
+    renderCodex();
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
-    $('tmBody').scrollTop = 0;
   }
 
   function closeTitleBook() {
@@ -1981,9 +2123,9 @@
 
     // 칭호 도감 진입 (시작 화면 · 플레이 화면)
     var tbStart = $('titleBtnStart');
-    if (tbStart) tbStart.addEventListener('click', openTitleBook);
+    if (tbStart) tbStart.addEventListener('click', function () { openTitleBook('title'); });
     var tbHall = $('hallTitles');
-    if (tbHall) tbHall.addEventListener('click', openTitleBook);
+    if (tbHall) tbHall.addEventListener('click', function () { openTitleBook('title'); });
 
     // ☁️ 구글 로그인 · 동기화 칩 (시작 화면 · 명예의 전당)
     if (window.CloudSync) {

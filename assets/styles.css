@@ -781,6 +781,7 @@ body {
 .badge.age { background: var(--accent-soft); color: var(--accent-ink); }
 .badge.milestone { background: #fff3d4; color: #99700f; }
 .badge.place { background: rgba(27, 26, 24, 0.045); color: var(--ink-3); }
+.badge.span { background: #eef2ff; color: #3b4f9e; }
 
 .card-title {
   margin: 0 0 9px;
@@ -2694,6 +2695,104 @@ body {
   border-radius: 99px;
   background: rgba(27, 26, 24, 0.08);
   overflow: hidden;
+}
+
+/* ── 📔 인생 도감 탭 (칭호 · 직업 · 인연) ── */
+.tm-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 5px;
+  padding: 2px 16px 0;
+}
+.tm-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 34px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--ink-3);
+  background: #fff;
+  border: 1.5px solid transparent;
+  border-radius: 11px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+.tm-tab.active {
+  color: var(--ink);
+  font-weight: 800;
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #fff 0%, #fff6f1 100%);
+}
+.tm-tab-n { font-size: 10px; font-weight: 800; color: var(--ink-4); }
+.tm-tab.active .tm-tab-n { color: var(--accent-ink); }
+
+/* ── ⚡ 진행 속도 선택 (시작 화면) ── */
+.mode-block { margin-top: 10px; }
+.mode-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mode-label { font-size: 11.5px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.2px; }
+.mode-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--ink-4);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-row { display: flex; gap: 6px; }
+.mode-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 8px;
+  font-family: inherit;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+.mode-chip .mc-emoji { font-size: 15px; line-height: 1; }
+.mc-body { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.mc-body b { font-size: 12px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; }
+.mc-body i { font-style: normal; font-size: 9.5px; font-weight: 700; color: var(--ink-4); white-space: nowrap; }
+.mode-chip.active {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #fff 0%, #fff6f1 100%);
+}
+.mode-chip.active .mc-body i { color: var(--accent-ink); }
+.mode-chip:active { transform: scale(0.98); }
+/* 빠른 모드를 고르면 시작 버튼도 같이 알려 준다 */
+#screen-start.has-fast #startBtn { background: linear-gradient(180deg, #f0a05c, var(--accent)); }
+
+@media (max-height: 760px) {
+  .mode-block { margin-top: 7px; }
+  .mode-chip { min-height: 34px; padding: 5px 8px; }
+  .mc-body b { font-size: 11.5px; }
+}
+@media (max-height: 700px) {
+  .mode-block { margin-top: 6px; }
+  .mode-head { margin-bottom: 4px; }
+  .mode-chip { min-height: 32px; }
 }
 .tm-progress i {
   display: block;

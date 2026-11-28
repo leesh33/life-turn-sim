@@ -26,7 +26,7 @@
     <div class="start-scroll">
       <header class="brand">
         <div class="brand-top">
-          <button type="button" class="brand-hall brand-title" id="titleBtnStart">🏅 칭호 도감</button>
+          <button type="button" class="brand-hall brand-title" id="titleBtnStart">📔 인생 도감</button>
           <button type="button" class="brand-hall" id="hallBtnStart">🏆 명예의 전당</button>
           <button type="button" class="brand-fb" id="fbBtnStart">💬 제안·제보</button>
         </div>
@@ -58,6 +58,15 @@
             <span class="scenario-hint" id="scenarioHint">평범한 집에서 태어납니다</span>
           </div>
           <div class="scenario-row" id="scenarioRow" role="group" aria-label="출발 시나리오 선택"></div>
+        </div>
+
+        <!-- ⚡ 진행 속도 — 희연 님 피드백(2026-11-28). 고른 값은 다음 판의 기본값이 된다 -->
+        <div class="mode-block">
+          <div class="mode-head">
+            <span class="mode-label">진행 속도</span>
+            <span class="mode-hint" id="modeHint">한 달씩 진행</span>
+          </div>
+          <div class="mode-row" id="modeRow" role="group" aria-label="진행 속도 선택"></div>
         </div>
 
         <!-- 가문 이어받기 — 명예의 전당에 내 기록이 있을 때만 보인다 -->
@@ -445,6 +454,8 @@
 <script src="assets/events/boomerang.js"></script>
 <!-- 🧬 이전 회차 인물 — 명예의 전당에 남은 내 인생의 사람이 다음 인생에 나타난다 -->
 <script src="assets/events/cameo.js"></script>
+<!-- 🔥 요즘 한국 현실 이벤트 팩 — 청약·국장·코인·부업·육아템·어린이집 대기 (2026-11-28) -->
+<script src="assets/events/kr-reality.js"></script>
 <script src="assets/events/zz-finalize.js"></script>
 <script src="assets/events/zz-ability.js"></script>
 <script src="assets/refdist.js"></script>
@@ -452,6 +463,8 @@
 <script src="assets/ads.js"></script>
 <script src="assets/feedback.js"></script>
 <script src="assets/titles.js"></script>
+<!-- 💼 직업 · 💕 인연 수집 도감 — 칭호 도감과 같은 모달에서 탭으로 본다 -->
+<script src="assets/codex.js"></script>
 <script src="assets/minigames.js"></script>
 <!-- 🔊 효과음(Web Audio 합성) · 📸 엔딩 결과 카드(canvas) -->
 <script src="assets/sfx.js"></script>

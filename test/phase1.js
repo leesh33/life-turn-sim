@@ -192,7 +192,7 @@ function JS_reduce() {
   return Life.load();
 }
 check('v5 예전 저장본 → 시나리오 kr·1대·가문 없음', oldSave.scenario === 'kr' && oldSave.generation === 1 &&
-  oldSave.legacy === null && oldSave.v === 5, `v${oldSave.v}`);
+  oldSave.legacy === null && oldSave.v === 6, `v${oldSave.v}`);
 
 // 졸업 등록 기록에도 대수·시나리오가 남는다
 const gradState = Life.newGame({ name: '유솔', gender: '여', startAge: 14, scenario: 'chaebol', legacy: 'r-parent' });

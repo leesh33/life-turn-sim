@@ -96,16 +96,25 @@ const REC = {
   check('이름에 @ 있으면 거부', env0.T.validate(Object.assign({}, p, { p_character_name: 'a@b' })).ok === false);
   check('캐릭터 이름 없으면 거부', env0.T.validate(Object.assign({}, p, { p_character_name: '' })).ok === false);
 
-  /* ═════════ ④ 점수 공식 — 엔진과 같은 재산 몫 ═════════ */
+  /* ═════════ ④ 점수 공식 — 엔진(lifeScore)과 같은 식 ═════════ */
   const as0 = env0.T.assetScoreOf(0), as3 = env0.T.assetScoreOf(32000), asBig = env0.T.assetScoreOf(1e12);
   check('재산 0 → 재산 몫 0', as0 === 0, as0);
-  check('재산 3.2억 → 41~45', as3 > 41 && as3 <= 45, as3.toFixed(2));
-  check('재산 몫 상한 45', asBig === 45, asBig);
-  // 엔진 scoreOfStats(게이지 평균 a, 재산 몫 b) = 0.55a + b — 그 범위 안이면 통과해야 한다
+  check('재산 3.2억 → 40~42 (log10/5.3 의 제곱 × 56)', as3 > 40 && as3 < 42, as3.toFixed(2));
+  check('재산 몫 상한 56', asBig === 56, asBig);
+  // 엔진 lifeScore(게이지 평균 a, 재산 몫 b) = 0.40a + b — 그 범위 안이면 통과해야 한다
   const gaugeAvg = (64 + 71 + 66 + 84 + 79 + 55) / 6;
-  const engineScore = Math.round((gaugeAvg * 0.55 + as3) * 10) / 10;
+  const engineScore = Math.round((gaugeAvg * 0.40 + as3) * 10) / 10;
   check('엔진 점수는 검증을 통과', env0.T.validate(Object.assign({}, p, { p_score: engineScore })).ok === true,
     `${engineScore}점(재산 몫 ${as3.toFixed(1)})`);
+  // 2026-11-28 수정 전에는 재산 1억·게이지 낮은 기록(32점)이 '점수와 재산이 맞지 않습니다'로 거부됐다
+  const lowGauge = env0.T.assetScoreOf(10000);
+  check('재산 1억·낮은 게이지(32점)도 통과',
+    env0.T.validate(Object.assign({}, p, { p_score: Math.round(lowGauge * 10) / 10, p_net_assets: 10000 })).ok === true,
+    `${lowGauge.toFixed(1)}점`);
+  check('게이지 몫 40 을 넘는 점수는 거부',
+    env0.T.validate(Object.assign({}, p, { p_score: 40 + env0.T.assetScoreOf(32000) + 1.5 })).ok === false);
+  check('재산 몫보다 낮은 점수는 거부',
+    env0.T.validate(Object.assign({}, p, { p_score: env0.T.assetScoreOf(32000) - 3 })).ok === false);
 
   /* ═════════ ⑤ 이 기기 백분위 ═════════ */
   const envPct = makeEnv({ records: [

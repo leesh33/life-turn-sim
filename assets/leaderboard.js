@@ -128,11 +128,27 @@
   function isSent(runKey) { return !!sentMap()[runKey]; }
   function sentCount() { return Object.keys(sentMap()).length; }
 
-  /* ── 엔진 점수 공식 (서버 검증과 같은 식) ── */
+  /* ── 엔진 점수 공식 (engine.js lifeScore 와 같은 식 · 2026-11-28 동기화) ──
+     예전에는 이 파일과 Supabase 함수가 옛 공식(여섯 게이지 평균 × 0.55 + 재산 몫 최대 45,
+     log10/4.6)을 검증에 쓰고 있었다. 앱의 엔진은 2026-11-25에
+     ‘게이지 평균 × 0.40 + 재산 점수(0~56, log10/5.3 의 제곱)’으로 통일됐으므로
+     검증도 그 식으로 맞춘다. (예: 재산 1억 · 게이지 낮음 = 32점대도 정상 기록이다) */
+  var SCORE = { gauge: 0.40, asset: 56, assetLog: 5.3, tolerance: 0.6 };
   function assetScoreOf(assets) {
     if (!(assets > 0)) return 0;
-    var v = (Math.log10(assets + 1) / 4.6) * 45;
-    return Math.max(0, Math.min(45, v));
+    var norm = Math.log10(assets + 1) / SCORE.assetLog;
+    return Math.max(0, Math.min(SCORE.asset, norm * norm * SCORE.asset));
+  }
+  // 기록의 능력치로 점수를 다시 매긴다 — 옛 공식으로 저장된 전당 기록도 서버와 같은 값이 된다
+  function scoreOfRecord(rec) {
+    rec = rec || {};
+    var st = rec.stats || {};
+    var hasGauges = global.Life && typeof global.Life.scoreOfStats === 'function' &&
+      ['hp', 'mental', 'charm', 'social', 'intel', 'luck'].every(function (k) { return typeof st[k] === 'number'; });
+    if (hasGauges) {
+      try { return Math.round(global.Life.scoreOfStats(st) * 10) / 10; } catch (e) { /* 아래 기존 값 */ }
+    }
+    return Math.round(num(rec.score) * 10) / 10;
   }
 
   /* ── 서버에 보낼 한 건 만들기 ── */
@@ -146,7 +162,7 @@
       p_archetype: clean(rec.archetype, 24),
       p_final_age: Math.round(num(rec.age)),
       p_grade: String(rec.grade || 'B').toUpperCase().slice(0, 1),
-      p_score: Math.round(num(rec.score) * 10) / 10,
+      p_score: scoreOfRecord(rec),
       p_net_assets: Math.round(num(st.asset)),
       p_scenario: String(rec.scenario || 'kr').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'kr',
       p_generation: Math.max(1, Math.round(num(rec.generation) || 1)),
@@ -164,7 +180,10 @@
     if (p.p_net_assets < -1000000 || p.p_net_assets > 100000000) return { ok: false, reason: '재산 값이 범위를 벗어났습니다' };
     if (p.p_final_age < 0 || p.p_final_age > 120) return { ok: false, reason: '나이는 0~120 사이여야 합니다' };
     var a = assetScoreOf(p.p_net_assets);
-    if (p.p_score < a - 0.6 || p.p_score > 55.5 + a) return { ok: false, reason: '점수와 재산이 맞지 않습니다' };
+    // 게이지 몫은 0~40 — 그 범위를 벗어난 조합은 서버도 거절한다
+    if (p.p_score < a - SCORE.tolerance || p.p_score > 40 + a + SCORE.tolerance) {
+      return { ok: false, reason: '점수와 재산이 맞지 않습니다' };
+    }
     return { ok: true };
   }
 

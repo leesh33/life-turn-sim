@@ -2,10 +2,11 @@
    sync.js — ☁️ 구글 로그인 · 클라우드 동기화 (선택)
    ─────────────────────────────────────────────
    · 로그인 없이도 그대로 논다. 로그인은 "기기를 바꿔도 이어서" 쓰고 싶을 때만.
-   · 로그인하면 아래 세 가지를 Supabase(life_sim_user_state)에 합쳐서 올리고 내려받는다.
+   · 로그인하면 아래 네 가지를 Supabase(life_sim_user_state)에 합쳐서 올리고 내려받는다.
        - 진행 중 인생(lifeTurnSim.save.v1)
        - 명예의 전당(lifeTurnSim.hall.v1)      ← 카메오 인물도 전당 기록에서 나온다
        - 칭호 도감(lifeTurnSim.titles.v1)
+       - 직업·인연 도감(lifeTurnSim.codex.v1)   ← 2026-11-28 추가
    · 합치기(merge)는 잃지 않는 쪽으로 한다.
        - 전당: id 기준 합집합(같은 기록은 한 번만)
        - 칭호: id 기준 합집합(먼저 딴 기록을 남긴다)
@@ -29,6 +30,7 @@
   var SAVE_KEY = 'lifeTurnSim.save.v1';
   var HALL_KEY = 'lifeTurnSim.hall.v1';
   var TITLES_KEY = 'lifeTurnSim.titles.v1';
+  var CODEX_KEY = 'lifeTurnSim.codex.v1';     // 💼 직업 · 💕 인연 도감 (2026-11-28)
 
   var SESSION_KEY = 'lifeTurnSim.auth.session.v1';
   var PKCE_KEY = 'lifeTurnSim.auth.pkce.v1';
@@ -558,6 +560,9 @@
     return out;
   }
 
+  // 💼 직업 · 💕 인연 도감도 칭호와 같은 규칙(먼저 만난 기록을 남긴다)
+  function mergeCodex(a, b) { return mergeTitles(a, b); }
+
   function mergeBundles(local, cloud, opts) {
     local = local || {}; cloud = cloud || {}; opts = opts || {};
 
@@ -583,6 +588,7 @@
       saveAt: saveAt,
       hall: mergeHall(local.hall, cloud.hall),
       titles: mergeTitles(local.titles, cloud.titles),
+      codex: mergeCodex(local.codex, cloud.codex),
       device: local.device || cloud.device || ''
     };
   }
@@ -592,6 +598,7 @@
     var save = readJson(SAVE_KEY, null);
     var hall = readJson(HALL_KEY, null) || {};
     var titles = readJson(TITLES_KEY, null) || {};
+    var codex = readJson(CODEX_KEY, null) || {};
     return {
       v: VERSION,
       at: num(meta.at),
@@ -599,6 +606,7 @@
       saveAt: num(meta.saveAt) || stampOf(save, 0),
       hall: { v: 1, seeded: !!hall.seeded, records: Array.isArray(hall.records) ? hall.records : [] },
       titles: (titles && typeof titles === 'object') ? titles : {},
+      codex: (codex && typeof codex === 'object') ? codex : {},
       device: deviceId()
     };
   }
@@ -620,6 +628,9 @@
 
     var titles = b.titles || {};
     if (!same(readJson(TITLES_KEY, null), titles)) { writeJson(TITLES_KEY, titles); written = true; }
+
+    var codex = b.codex || {};
+    if (!same(readJson(CODEX_KEY, null), codex)) { writeJson(CODEX_KEY, codex); written = true; }
 
     var meta = readJson(META_KEY, {}) || {};
     meta.at = Math.max(num(meta.at), num(b.at));
@@ -673,7 +684,7 @@
   function purgeLocal() {
     var keys = {};
     // ① 앱이 아는 키(열거가 안 되는 환경에서도 반드시 지운다)
-    [SAVE_KEY, HALL_KEY, TITLES_KEY, SESSION_KEY, PKCE_KEY, META_KEY, DEVICE_KEY,
+    [SAVE_KEY, HALL_KEY, TITLES_KEY, CODEX_KEY, SESSION_KEY, PKCE_KEY, META_KEY, DEVICE_KEY,
       'lifeTurnSim.leaderboard.nick.v1', 'lifeTurnSim.leaderboard.auto.v1',
       'lifeTurnSim.leaderboard.sent.v1', 'lifeTurnSim.bannerClosed',
       'lifeTurnSim.scenario.v1', 'lifeTurnSim.flash.v1', 'lifeTurnSim.autoPaused'
@@ -1025,6 +1036,7 @@
       mergeBundles: mergeBundles,
       mergeHall: mergeHall,
       mergeTitles: mergeTitles,
+      mergeCodex: mergeCodex,
       bundleLocal: bundleLocal,
       applyBundle: applyBundle,
       progressOf: progressOf,
@@ -1049,7 +1061,7 @@
       status: function () { return status; },
       config: { url: SUPABASE_URL, table: TABLE, rpc: RPC_PUT,
         wipe: RPC_WIPE, lbClear: RPC_LB_CLEAR,
-        save: SAVE_KEY, hall: HALL_KEY, titles: TITLES_KEY,
+        save: SAVE_KEY, hall: HALL_KEY, titles: TITLES_KEY, codex: CODEX_KEY,
         session: SESSION_KEY, meta: META_KEY, device: DEVICE_KEY }
     }
   };
